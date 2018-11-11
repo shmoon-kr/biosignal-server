@@ -1,5 +1,5 @@
 from django.contrib import admin
-from sa_api.models import Room, Bed, Client, FileRecorded, Channel
+from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device
 import datetime
 from pytz import reference
 
@@ -49,6 +49,7 @@ class FileRecordedAdmin(admin.ModelAdmin):
 
 
 # Register your models here.
+admin.site.register(Device)
 admin.site.register(Channel, ChannelAdmin)
 admin.site.register(Room)
 admin.site.register(Bed, BedAdmin)
