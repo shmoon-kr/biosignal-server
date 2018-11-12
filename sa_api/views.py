@@ -36,6 +36,7 @@ def device_info_body(request, api_type):
     log_dict = dict()
     log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['REQUEST_PATH'] = request.path
     log_dict['CLIENT_TYPE'] = api_type
     if device_type is not None:
         target_devices = Device.objects.filter(device_type=device_type)
@@ -87,6 +88,7 @@ def channel_info_body(request, api_type):
     log_dict = dict()
     log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['REQUEST_PATH'] = request.path
     log_dict['CLIENT_TYPE'] = api_type
 
     device_type = request.GET.get("device_type")
@@ -160,6 +162,7 @@ def client_info(request):
     log_dict = dict()
     log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['REQUEST_PATH'] = request.path
 
     if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
         mac = request.GET.get('mac')
@@ -227,6 +230,7 @@ def recording_info(request):
     log_dict = dict()
     log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['REQUEST_PATH'] = request.path
 
     if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
         mac = request.GET.get('mac')
