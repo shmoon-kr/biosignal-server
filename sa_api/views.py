@@ -62,7 +62,7 @@ def device_info_body(request, api_type):
         log_dict['message'] = r_dict['message'] = 'Requested device type is none.'
 
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], json.dumps(log_dict))
+    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
 
@@ -135,7 +135,7 @@ def channel_info_body(request, api_type):
         log_dict['message'] = r_dict['message'] = 'Requested device type or channel name is none.'
 
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], json.dumps(log_dict))
+    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
 
@@ -215,6 +215,9 @@ def client_info(request):
             log_dict['success'] = r_dict['success'] = False
             log_dict['message'] = r_dict['message'] = 'Requested mac is none.'
 
+    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
+    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
 
 @csrf_exempt
@@ -251,6 +254,9 @@ def recording_info(request):
     else:
         log_dict['success'] = r_dict['success'] = False
         log_dict['message'] = r_dict['message'] = 'A code was not written yet. A local server recording info api should be called here.'
+
+    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
+    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
 
