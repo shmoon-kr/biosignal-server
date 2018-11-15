@@ -113,26 +113,25 @@ def channel_info_body(request, api_type):
         target_channel = Channel.objects.filter(name=channel_name, device_type=device_type)
         if target_channel.count() == 0:
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
-                new_channel = Channel(name=channel_name, device_type=device_type)
-                new_channel.save()
-                r_dict['is_unknown'] = new_channel.is_unknown
-                r_dict['use_custom_setting'] = new_channel.use_custom_setting
-                r_dict['channel_name'] = new_channel.name
-                r_dict['device_type'] = new_channel.device_type
-                r_dict['abbreviation'] = new_channel.abbreviation
-                r_dict['recording_type'] = new_channel.recording_type
-                r_dict['recording_format'] = new_channel.recording_format
-                r_dict['unit'] = new_channel.unit
-                r_dict['minval'] = new_channel.minval
-                r_dict['maxval'] = new_channel.maxval
-                r_dict['color_a'] = new_channel.color_a
-                r_dict['color_r'] = new_channel.color_r
-                r_dict['color_g'] = new_channel.color_g
-                r_dict['color_b'] = new_channel.color_b
-                r_dict['srate'] = new_channel.srate
-                r_dict['adc_gain'] = new_channel.adc_gain
-                r_dict['adc_offset'] = new_channel.adc_offset
-                r_dict['mon_type'] = new_channel.mon_type
+                t_chn = Channel.objects.create(name=channel_name, device_type=device_type)
+                r_dict['is_unknown'] = t_chn.is_unknown
+                r_dict['use_custom_setting'] = t_chn.use_custom_setting
+                r_dict['channel_name'] = t_chn.name
+                r_dict['device_type'] = t_chn.device_type
+                r_dict['abbreviation'] = t_chn.abbreviation
+                r_dict['recording_type'] = t_chn.recording_type
+                r_dict['recording_format'] = t_chn.recording_format
+                r_dict['unit'] = t_chn.unit
+                r_dict['minval'] = t_chn.minval
+                r_dict['maxval'] = t_chn.maxval
+                r_dict['color_a'] = t_chn.color_a
+                r_dict['color_r'] = t_chn.color_r
+                r_dict['color_g'] = t_chn.color_g
+                r_dict['color_b'] = t_chn.color_b
+                r_dict['srate'] = t_chn.srate
+                r_dict['adc_gain'] = t_chn.adc_gain
+                r_dict['adc_offset'] = t_chn.adc_offset
+                r_dict['mon_type'] = t_chn.mon_type
                 r_dict['success'] = True
                 r_dict['message'] = 'A new channel was added.'
             else:
@@ -142,15 +141,33 @@ def channel_info_body(request, api_type):
                     r_dict['success'] = False
                     r_dict['message'] = 'A Global API server returned status code %d' % ( result.status_code )
                 else:
-                    r_dict = json.loads(result.content)
-                    print (r_dict)
-                    new_channel = Channel(is_unknown=r_dict['is_unknown'], use_custom_setting=r_dict['use_custom_setting'], channel_name=r_dict['channel_name'],
-                                        device_type=r_dict['device_type'], abbreviation=r_dict['abbreviation'], recording_type=r_dict['recording_type'],
-                                        recording_forma=r_dict['recording_format'], unit=r_dict['unit'], minval=r_dict['minval'],
-                                        maxval=r_dict['maxval'], color_a=r_dict['color_a'], color_r=r_dict['color_r'], color_g=r_dict['color_g'],
-                                        color_b=r_dict['color_b'], srate=r_dict['srate'], adc_gain=r_dict['adc_gain'], adc_offset=r_dict['adc_offset'],
-                                        mon_type=r_dict['mon_type'])
-                    new_channel.save()
+                    server_result = json.loads(result.content)
+                    t_chn = Channel.objects.create(is_unknown=server_result['is_unknown'], use_custom_setting=server_result['use_custom_setting'], name=server_result['channel_name'],
+                                        device_type=server_result['device_type'], abbreviation=server_result['abbreviation'], recording_type=server_result['recording_type'],
+                                        recording_format=server_result['recording_format'], unit=server_result['unit'], minval=server_result['minval'],
+                                        maxval=server_result['maxval'], color_a=server_result['color_a'], color_r=server_result['color_r'], color_g=server_result['color_g'],
+                                        color_b=server_result['color_b'], srate=server_result['srate'], adc_gain=server_result['adc_gain'], adc_offset=server_result['adc_offset'],
+                                        mon_type=server_result['mon_type'])
+                    r_dict['is_unknown'] = t_chn.is_unknown
+                    r_dict['use_custom_setting'] = t_chn.use_custom_setting
+                    r_dict['channel_name'] = t_chn.name
+                    r_dict['device_type'] = t_chn.device_type
+                    r_dict['abbreviation'] = t_chn.abbreviation
+                    r_dict['recording_type'] = t_chn.recording_type
+                    r_dict['recording_format'] = t_chn.recording_format
+                    r_dict['unit'] = t_chn.unit
+                    r_dict['minval'] = t_chn.minval
+                    r_dict['maxval'] = t_chn.maxval
+                    r_dict['color_a'] = t_chn.color_a
+                    r_dict['color_r'] = t_chn.color_r
+                    r_dict['color_g'] = t_chn.color_g
+                    r_dict['color_b'] = t_chn.color_b
+                    r_dict['srate'] = t_chn.srate
+                    r_dict['adc_gain'] = t_chn.adc_gain
+                    r_dict['adc_offset'] = t_chn.adc_offset
+                    r_dict['mon_type'] = t_chn.mon_type
+
+                    print (request.GET)
                     r_dict['success'] = True
                     r_dict['message'] = 'Channel information was acquired from a global server.'
         elif target_channel.count() > 1:

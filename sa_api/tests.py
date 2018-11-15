@@ -186,10 +186,10 @@ class UnitTestLocalServerAPI(TestCase):
         self.assertTrue(not r['success'])
         self.assertEqual(r['message'], 'A local server received a server API request.')
 
+        get_params['device_type'] = 'LocalTestDevice'
         get_params['channel_name'] = 'LocalTestChannelKnown'
         response = self.client.get('/client/channel_info', get_params)
         r = json.loads(response.content)
-        print(r)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was returned correctly.')
 
