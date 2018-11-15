@@ -46,6 +46,9 @@ def device_info_body(request, api_type):
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
                 new_device = Device(device_type=device_type, displayed_name=device_type)
                 new_device.save()
+                r_dict['device_type'] = new_device.device_type
+                r_dict['displayed_name'] = new_device.displayed_name
+                r_dict['is_main'] = new_device.is_main
                 r_dict['success'] = True
                 r_dict['message'] = 'New device was added.'
             else:
@@ -111,6 +114,24 @@ def channel_info_body(request, api_type):
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
                 new_channel = Channel(name=channel_name, device_type=device_type)
                 new_channel.save()
+                r_dict['is_unknown'] = new_channel.is_unknown
+                r_dict['use_custom_setting'] = new_channel.use_custom_setting
+                r_dict['channel_name'] = new_channel.name
+                r_dict['device_type'] = new_channel.device_type
+                r_dict['abbreviation'] = new_channel.abbreviation
+                r_dict['recording_type'] = new_channel.recording_type
+                r_dict['recording_format'] = new_channel.recording_format
+                r_dict['unit'] = new_channel.unit
+                r_dict['minval'] = new_channel.minval
+                r_dict['maxval'] = new_channel.maxval
+                r_dict['color_a'] = new_channel.color_a
+                r_dict['color_r'] = new_channel.color_r
+                r_dict['color_g'] = new_channel.color_g
+                r_dict['color_b'] = new_channel.color_b
+                r_dict['srate'] = new_channel.srate
+                r_dict['adc_gain'] = new_channel.adc_gain
+                r_dict['adc_offset'] = new_channel.adc_offset
+                r_dict['mon_type'] = new_channel.mon_type
                 r_dict['success'] = True
                 r_dict['message'] = 'A new channel was added.'
             else:
@@ -172,8 +193,6 @@ def channel_info_body(request, api_type):
 # This function could be called only in a global server.
 @csrf_exempt
 def channel_info_server(request):
-
-    print ('SERVER_TYPE: %s'%(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE']))
 
     if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] != 'global':
         r_dict = dict()
