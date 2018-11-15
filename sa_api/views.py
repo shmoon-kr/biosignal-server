@@ -44,11 +44,10 @@ def device_info_body(request, api_type):
         target_devices = Device.objects.filter(device_type=device_type)
         if target_devices.count() == 0:
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
-                new_device = Device(device_type=device_type, displayed_name=device_type)
-                new_device.save()
-                r_dict['device_type'] = new_device.device_type
-                r_dict['displayed_name'] = new_device.displayed_name
-                r_dict['is_main'] = new_device.is_main
+                t_dev = Device.objects.create(device_type=device_type, displayed_name=device_type)
+                r_dict['device_type'] = t_dev.device_type
+                r_dict['displayed_name'] = t_dev.displayed_name
+                r_dict['is_main'] = t_dev.is_main
                 r_dict['success'] = True
                 r_dict['message'] = 'New device was added.'
             else:
@@ -57,20 +56,22 @@ def device_info_body(request, api_type):
                     r_dict['success'] = False
                     r_dict['message'] = 'A Global API server returned status code %d' % ( result.status_code )
                 else:
-                    r_dict = json.loads(result.content)
-                    new_device = Device(device_type=r_dict['device_type'], displayed_name=r_dict['device_type'], is_main=r_dict['is_main'])
-                    new_device.save()
+                    servser_result = json.loads(result.content)
+                    t_dev = Device.objects.create(device_type=servser_result['device_type'], displayed_name=servser_result['device_type'], is_main=servser_result['is_main'])
+                    r_dict['device_type'] = t_dev.device_type
+                    r_dict['displayed_name'] = t_dev.displayed_name
+                    r_dict['is_main'] = t_dev.is_main
                     r_dict['success'] = True
                     r_dict['message'] = 'Device information was acquired from a global server.'
-        elif target_devices.count() > 1:
-            r_dict['success'] = False
-            r_dict['message'] = 'Multiple devices was for %s found.' % (device_type)
-        else:
+        elif target_devices.count() == 1:
             r_dict['device_type'] = target_devices[0].device_type
             r_dict['displayed_name'] = target_devices[0].displayed_name
             r_dict['is_main'] = target_devices[0].is_main
             r_dict['success'] = True
             r_dict['message'] = 'Device information was returned correctly.'
+        else:
+            r_dict['success'] = False
+            r_dict['message'] = 'Multiple devices was for %s found.' % (device_type)
     else:
         r_dict['success'] = False
         r_dict['message'] = 'Requested device type is none.'

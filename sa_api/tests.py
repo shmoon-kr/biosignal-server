@@ -189,6 +189,7 @@ class UnitTestLocalServerAPI(TestCase):
         get_params['channel_name'] = 'LocalTestChannelKnown'
         response = self.client.get('/client/channel_info', get_params)
         r = json.loads(response.content)
+        print(r)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was returned correctly.')
 
