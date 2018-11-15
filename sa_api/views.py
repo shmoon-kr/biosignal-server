@@ -1,4 +1,3 @@
-import time
 import json
 import os.path
 import datetime
@@ -17,9 +16,8 @@ from django.views.decorators.csrf import csrf_exempt
 def file_upload_storage(date_string, bed_name, filepath):
     ftp = FTP(host=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_HOSTNAME'], user=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_USER'], passwd=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_PASSWORD'])
     ftp.connect(host=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_HOSTNAME'])
-    ftp.login(user=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_USER'], passwd=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_PASSWWORD'])
+    ftp.login(user=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_USER'], passwd=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_PASSWORD'])
     ftp.cwd(settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_PATH'])
-    print ("Upload function was called.")
     if bed_name not in ftp.nlst():
         ftp.mkd(bed_name)
     ftp.cwd(bed_name)
@@ -401,78 +399,3 @@ def recording_info_server(request):
 def recording_info_client(request):
 
     return recording_info_body(request)
-
-
-@csrf_exempt
-def file_upload(request):
-    r_dict = dict()
-    r_dict['code'] = 0
-    mac = request.GET.get("mac")
-    begin = request.GET.get("begin")
-    end = request.GET.get("end")
-    path = request.GET.get("path")
-    room_id = request.GET.get("room_id")
-    bed_id = request.GET.get("bed_id")
-    if mac is not None and begin is not None \
-        and end is not None and path is not None \
-        and room_id is not None and bed_id is not None:
-
-        client = Client.objects.get(mac=mac)
-        if client is not None:
-            bed_name = client.bed.name
-            room_name = client.bed.room.name
-            file_data = FileRecorded.objects.create(client=client,
-                begin_date=begin, end_date=end, file_path=path,
-                room_id=client.bed.room.id, bed_id=client.bed.id,
-                bed_name=bed_name, room_name=room_name)
-            date_string = datetime.datetime.strptime(begin,"%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
-            # file_upload_storage(date_string, bed_name, path)
-            # file_data.bed_name = bed_name
-            # file_data.room_name = room_name
-            # file_data.bed_id = client.bed.id
-            # file_data.room_id = client.bed.room.id
-            # file_data.begin_date = begin
-            # file_data.end_date = end
-            # file_data.file_path = path
-            file_data.save();
-            if config.storage_server:
-                file_upload_storage(date_string, bed_name, path)
-            r_dict['code'] = 1
-            r_dict['result'] = 'File record registered'
-        else:
-            r_dict['result'] = 'Invalid MAC'
-    else:
-        r_dict['result'] = 'Invalid arguments'
-
-    # request.POST.
-    #
-    # target_client = Client.objects.filter(mac=mac)
-    #
-    # if target_client.count() == 0:
-    #     r_dict['result'] = 'No such a device exists.'
-    # elif target_client.count() == 1:
-    #     target_client[0].registered = 1
-    #     target_client[0].save()
-    #
-    #     r_dict['code'] = 1
-    #     r_dict['result'] = 'Valid mac address.'
-    # else:
-    #     r_dict['result'] = 'Duplicated mac address.'
-    # Write a file upload function here.
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
-
-@csrf_exempt
-def alive(request, mac):
-    #    client = get_object_or_404(Client, mac=mac)
-    target_client = Client.objects.get(mac=mac)
-    r_dict = dict()
-    r_dict['code'] = 0
-    if target_client is not None:
-        target_client.registered = 1
-        target_client.save()
-        r_dict['code'] = 1
-        r_dict['result'] = 'Valid mac address.'
-    else:
-        r_dict['result'] = 'Invalid mac address.'
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
-
