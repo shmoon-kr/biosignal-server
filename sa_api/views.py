@@ -3,6 +3,7 @@ import json
 import os.path
 import datetime
 import requests
+from .forms import UploadFileForm
 from fluent import sender
 from ftplib import FTP
 from django.conf import settings
@@ -18,13 +19,14 @@ def file_upload_storage(date_string, bed_name, filepath):
     ftp.connect(host=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_HOSTNAME'])
     ftp.login(user=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_USER'], passwd=settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_PASSWWORD'])
     ftp.cwd(settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER_PATH'])
+    print ("Upload function was called.")
     if bed_name not in ftp.nlst():
         ftp.mkd(bed_name)
     ftp.cwd(bed_name)
     if date_string not in ftp.nlst():
         ftp.mkd(date_string)
     ftp.cwd(date_string)
-    file = open(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH']+filepath, 'rb')
+    file = open(filepath, 'rb')
     ftp.storbinary('STOR '+os.path.basename(filepath), file)
     ftp.quit()
     return True
@@ -39,7 +41,9 @@ def device_info_body(request, api_type):
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
     log_dict['CLIENT_TYPE'] = api_type
     log_dict['REQUEST_PATH'] = request.path
-    log_dict['GET_PARAM'] = request.GET
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
+
     if device_type is not None:
         target_devices = Device.objects.filter(device_type=device_type)
         if target_devices.count() == 0:
@@ -105,7 +109,8 @@ def channel_info_body(request, api_type):
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
     log_dict['CLIENT_TYPE'] = api_type
     log_dict['REQUEST_PATH'] = request.path
-    log_dict['GET_PARAM'] = request.GET
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
 
     device_type = request.GET.get("device_type")
     channel_name = request.GET.get("channel_name")
@@ -167,7 +172,6 @@ def channel_info_body(request, api_type):
                     r_dict['adc_offset'] = t_chn.adc_offset
                     r_dict['mon_type'] = t_chn.mon_type
 
-                    print (request.GET)
                     r_dict['success'] = True
                     r_dict['message'] = 'Channel information was acquired from a global server.'
         elif target_channel.count() > 1:
@@ -236,7 +240,8 @@ def client_info_body(request):
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
     log_dict['CLIENT_TYPE'] = 'client'
     log_dict['REQUEST_PATH'] = request.path
-    log_dict['GET_PARAM'] = request.GET
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
 
     if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
         mac = request.GET.get('mac')
@@ -325,11 +330,12 @@ def recording_info_body(request):
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
     log_dict['CLIENT_TYPE'] = 'client'
     log_dict['REQUEST_PATH'] = request.path
-    log_dict['GET_PARAM'] = request.GET
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.POST
 
-    mac = request.GET.get('mac')
-    begin = request.GET.get("begin")
-    end = request.GET.get("end")
+    mac = request.POST.get('mac')
+    begin = request.POST.get("begin")
+    end = request.POST.get("end")
     if mac is None:
         r_dict['success'] = False
         r_dict['message'] = 'Requested mac address is none.'
@@ -343,11 +349,31 @@ def recording_info_body(request):
         target_client = Client.objects.get(mac=mac)
         if target_client is not None:
             recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
-            recorded.save()
             r_dict['success'] = True
             r_dict['message'] = 'Recording info was added correctly.'
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
-                print("An attached file should be uploaded here.")
+                form = UploadFileForm(request.POST, request.FILES)
+                if form.is_valid():
+                    date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S").strftime("%y%m%d")
+                    time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S").strftime("%H%M%S")
+                    pathname = '%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
+                    if not os.path.exists(pathname):
+                        os.makedirs('%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name))
+                    filename = '%s_%s_%s.vital'%(recorded.client.bed.name, date_str, time_str)
+                    with open(os.path.join(pathname, filename), 'wb+') as destination:
+                        for chunk in request.FILES['attachment'].chunks():
+                            destination.write(chunk)
+                    if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
+                        file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
+                    r_dict['success'] = True
+                    r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
+                else:
+                    r_dict['success'] = False
+                    r_dict['message'] = 'File attachment is not valid.'
+            else:
+                r_dict['success'] = True
+                r_dict['message'] = 'Recording info was added correctly.'
+
         else:
             r_dict['success'] = False
             r_dict['message'] = 'Requested client is none.'
@@ -399,7 +425,7 @@ def file_upload(request):
                 begin_date=begin, end_date=end, file_path=path,
                 room_id=client.bed.room.id, bed_id=client.bed.id,
                 bed_name=bed_name, room_name=room_name)
-            date_string = datetime.datetime.strptime(begin,"%Y-%m-%d %H:%M:%S").strftime("%y%m%d")
+            date_string = datetime.datetime.strptime(begin,"%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
             # file_upload_storage(date_string, bed_name, path)
             # file_data.bed_name = bed_name
             # file_data.room_name = room_name
