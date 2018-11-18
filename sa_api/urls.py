@@ -11,8 +11,4 @@ urlpatterns = [
     path('client/channel_info', views.channel_info_client),
     path('client/client_info', views.client_info_client),
     path('client/recording_info', views.recording_info_client),
-    path('alive/<str:mac>/', views.alive),
-#    path('client_info/<str:mac>/', views.client_info),
-    path('file_upload', views.file_upload),
-#    path('test', views.test),
 ]

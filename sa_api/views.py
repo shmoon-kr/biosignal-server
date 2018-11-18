@@ -352,8 +352,8 @@ def recording_info_body(request):
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
                 form = UploadFileForm(request.POST, request.FILES)
                 if form.is_valid():
-                    date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S").strftime("%y%m%d")
-                    time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S").strftime("%H%M%S")
+                    date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
+                    time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
                     pathname = '%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
                     if not os.path.exists(pathname):
                         os.makedirs('%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name))

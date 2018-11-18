@@ -1,8 +1,10 @@
 import json
+import pytz
 import datetime
 from django.test import TestCase, override_settings
 from django.test import Client as tClient
 from django.conf import settings
+from django.utils import timezone
 import sa_api.views
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded
 
@@ -119,10 +121,11 @@ class UnitTestGlobalServerAPI(TestCase):
 
     def test_recording_info(self):
         post_params = dict()
+        tz_name = pytz.timezone(settings.TIME_ZONE)
 
         post_params['mac'] = '00:00:00:00:00:00'
-        post_params['begin'] = (datetime.datetime.now() - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
-        post_params['end'] = (datetime.datetime.now() - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        post_params['begin'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        post_params['end'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         response = self.client.post('/client/recording_info', post_params)
         r = json.loads(response.content)
         self.assertTrue(r['success'])
@@ -208,9 +211,11 @@ class UnitTestLocalServerAPI(TestCase):
     def test_recording_info(self):
         post_params = dict()
 
+        tz_name = pytz.timezone(settings.TIME_ZONE)
+
         post_params['mac'] = '00:00:00:00:00:00'
-        post_params['begin'] = (datetime.datetime.now() - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
-        post_params['end'] = (datetime.datetime.now() - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        post_params['begin'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        post_params['end'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         response = self.client.post('/server/recording_info', post_params)
         r = json.loads(response.content)
         self.assertTrue(not r['success'])
