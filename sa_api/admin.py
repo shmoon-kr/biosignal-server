@@ -1,13 +1,12 @@
 from django.contrib import admin
 from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device
 import datetime
-from pytz import reference
 
 class ChannelAdmin(admin.ModelAdmin):
     list_display = ('id', 'device_type', 'name')
 
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'mac', 'status', 'last_connected')
+    list_display = ('id', 'name', 'mac', 'bed', 'status', 'last_connected')
 
     def status(self, obj):
         if obj.registered==1:

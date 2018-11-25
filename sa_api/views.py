@@ -346,21 +346,23 @@ def recording_info_body(request):
     else:
         target_client = Client.objects.get(mac=mac)
         if target_client is not None:
-            recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
             r_dict['success'] = True
             r_dict['message'] = 'Recording info was added correctly.'
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
                 form = UploadFileForm(request.POST, request.FILES)
                 if form.is_valid():
+                    recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
                     date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
                     time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
                     pathname = '%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
                     if not os.path.exists(pathname):
-                        os.makedirs('%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name))
+                        os.makedirs(pathname)
                     filename = '%s_%s_%s.vital'%(recorded.client.bed.name, date_str, time_str)
                     with open(os.path.join(pathname, filename), 'wb+') as destination:
                         for chunk in request.FILES['attachment'].chunks():
                             destination.write(chunk)
+                    recorded.file_path = os.path.join(pathname, filename)
+                    recorded.save(update_fields=['file_path'])
                     if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                         file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
                     r_dict['success'] = True
@@ -369,6 +371,7 @@ def recording_info_body(request):
                     r_dict['success'] = False
                     r_dict['message'] = 'File attachment is not valid.'
             else:
+                FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
                 r_dict['success'] = True
                 r_dict['message'] = 'Recording info was added correctly.'
 

@@ -4,8 +4,6 @@ import datetime
 from django.test import TestCase, override_settings
 from django.test import Client as tClient
 from django.conf import settings
-from django.utils import timezone
-import sa_api.views
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded
 
 # Create your tests here.
