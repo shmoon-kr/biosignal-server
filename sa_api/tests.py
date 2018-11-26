@@ -35,12 +35,14 @@ class UnitTestGlobalServerAPI(TestCase):
 
         get_params['device_type'] = 'TestDeviceNewServer'
         response = self.client.get('/server/device_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'New device was added.')
 
         get_params['device_type'] = 'TestDevice'
         response = self.client.get('/server/device_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Device information was returned correctly.')
@@ -53,6 +55,7 @@ class UnitTestGlobalServerAPI(TestCase):
 
         get_params['device_type'] = 'TestDevice'
         response = self.client.get('/client/device_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Device information was returned correctly.')
@@ -63,36 +66,42 @@ class UnitTestGlobalServerAPI(TestCase):
         get_params['device_type'] = 'TestDevice'
         get_params['channel_name'] = 'TestChannelKnown'
         response = self.client.get('/server/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was returned correctly.')
 
         get_params['channel_name'] = 'TestChannelUnknown'
         response = self.client.get('/server/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was not configured by an admin.')
 
         get_params['channel_name'] = 'TestChannelNewServer'
         response = self.client.get('/server/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'A new channel was added.')
 
         get_params['channel_name'] = 'TestChannelKnown'
         response = self.client.get('/client/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was returned correctly.')
 
         get_params['channel_name'] = 'TestChannelUnknown'
         response = self.client.get('/client/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was not configured by an admin.')
 
         get_params['channel_name'] = 'TestChannelNewClient'
         response = self.client.get('/client/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'A new channel was added.')
@@ -102,17 +111,20 @@ class UnitTestGlobalServerAPI(TestCase):
 
         get_params['mac'] = '00:00:00:00:00:01'
         response = self.client.get('/client/client_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'A new client was added.')
 
         response = self.client.get('/client/client_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Client information was returned correctly.')
 
         get_params['mac'] = '00:00:00:00:00:00'
         response = self.client.get('/client/client_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Client information was returned correctly.')
@@ -125,6 +137,7 @@ class UnitTestGlobalServerAPI(TestCase):
         post_params['begin'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         post_params['end'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         response = self.client.post('/client/recording_info', post_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Recording info was added correctly.')
@@ -167,12 +180,14 @@ class UnitTestLocalServerAPI(TestCase):
         # When a new device was requested.
         get_params['device_type'] = 'TestDeviceNewClient'
         response = self.client.get('/client/device_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Device information was acquired from a global server.')
 
         get_params['device_type'] = 'LocalTestDevice'
         response = self.client.get('/client/device_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Device information was returned correctly.')
@@ -183,6 +198,7 @@ class UnitTestLocalServerAPI(TestCase):
         get_params['device_type'] = 'TestDevice'
         get_params['channel_name'] = 'TestChannelKnown'
         response = self.client.get('/server/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(not r['success'])
         self.assertEqual(r['message'], 'A local server received a server API request.')
@@ -190,18 +206,21 @@ class UnitTestLocalServerAPI(TestCase):
         get_params['device_type'] = 'LocalTestDevice'
         get_params['channel_name'] = 'KnownLocalTestChannel'
         response = self.client.get('/client/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was returned correctly.')
 
         get_params['channel_name'] = 'UnknownLocalTestChannel'
         response = self.client.get('/client/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was not configured by an admin.')
 
         get_params['channel_name'] = 'TestChannelNewClient'
         response = self.client.get('/client/channel_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Channel information was acquired from a global server.')
@@ -215,6 +234,7 @@ class UnitTestLocalServerAPI(TestCase):
         post_params['begin'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         post_params['end'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         response = self.client.post('/server/recording_info', post_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(not r['success'])
         self.assertEqual(r['message'], 'Recording info API cannot be called from a local server.')
@@ -222,6 +242,7 @@ class UnitTestLocalServerAPI(TestCase):
         with open('test/test_original.txt') as fp:
             post_params['attachment'] = fp
             response = self.client.post('/client/recording_info', post_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Recording info was added and file was uploaded correctly.')

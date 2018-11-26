@@ -82,7 +82,7 @@ def device_info_body(request, api_type):
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
     logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
 
 # When a local server requested for device information.
 # This function could be called only in a global server.
@@ -207,7 +207,7 @@ def channel_info_body(request, api_type):
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
     logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
 
 # When a local server requested for channel information.
 # This function could be called only in a global server.
@@ -218,7 +218,7 @@ def channel_info_server(request):
         r_dict = dict()
         r_dict['success'] = False
         r_dict['message'] = 'A local server received a server API request.'
-        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
 
     return channel_info_body(request, 'server')
 
@@ -383,7 +383,7 @@ def recording_info_body(request):
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
     logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4))
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
 
 # When a local server requested for channel information.
 # This function could be called only in a global server.
