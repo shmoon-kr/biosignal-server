@@ -1,1 +1,7 @@
 *.pyc
+
+uwsgi_params
+
+sa_server_uwsgi.ini
+
+static/
