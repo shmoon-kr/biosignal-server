@@ -20,9 +20,9 @@ SERVICE_CONFIGURATIONS_GLOBAL = {
 class UnitTestGlobalServerAPI(TestCase):
     def setUp(self):
         self.client = tClient()
-        Device.objects.create(device_type='TestDevice', displayed_name='TestDevice')
-        Channel.objects.create(name='TestChannelUnknown', abbreviation='TestChannelUnknown', device_type='TestDevice', unit='mmHg', is_unknown=True)
-        Channel.objects.create(name='TestChannelKnown', abbreviation='TestChannelKnown', device_type='TestDevice', unit='mmHg', is_unknown=False)
+        testdevice = Device.objects.create(device_type='TestDevice', displayed_name='TestDevice')
+        Channel.objects.create(name='TestChannelUnknown', abbreviation='TestChannelUnknown', device=testdevice, device_type='TestDevice', unit='mmHg', is_unknown=True)
+        Channel.objects.create(name='TestChannelKnown', abbreviation='TestChannelKnown', device=testdevice, device_type='TestDevice', unit='mmHg', is_unknown=False)
         u_room = Room.objects.create(name='UknownRoom')
         u_bed = Bed.objects.create(name='UknownBed', room=u_room)
         Client.objects.create(name='UnknownClient', mac='00:00:00:00:00:00', bed=u_bed)
@@ -153,7 +153,7 @@ SERVICE_CONFIGURATIONS_LOCAL = {
     'LOCAL_SERVER_HOSTNAME': '192.168.134.101',
     'LOCAL_SERVER_PORT': 8000,
     'LOCAL_SERVER_DATAPATH': 'uploaded_data',
-    'STORAGE_SERVER': True,
+    'STORAGE_SERVER': False,
     'STORAGE_SERVER_HOSTNAME': '192.168.134.156',
     'STORAGE_SERVER_USER': 'shmoon',
     'STORAGE_SERVER_PASSWORD': 'qwer1234!',
@@ -164,9 +164,9 @@ SERVICE_CONFIGURATIONS_LOCAL = {
 class UnitTestLocalServerAPI(TestCase):
     def setUp(self):
         self.client = tClient()
-        Device.objects.create(device_type='LocalTestDevice', displayed_name='LocalTestDevice')
-        Channel.objects.create(name='UnknownLocalTestChannel', abbreviation='UnknownLocalTestChannel', device_type='LocalTestDevice', unit='mmHg', is_unknown=True)
-        Channel.objects.create(name='KnownLocalTestChannel', abbreviation='KnownLocalTestChannel', device_type='LocalTestDevice', unit='mmHg', is_unknown=False)
+        testdevice = Device.objects.create(device_type='LocalTestDevice', displayed_name='LocalTestDevice')
+        Channel.objects.create(name='UnknownLocalTestChannel', abbreviation='UnknownLocalTestChannel', device=testdevice, device_type='LocalTestDevice', unit='mmHg', is_unknown=True)
+        Channel.objects.create(name='KnownLocalTestChannel', abbreviation='KnownLocalTestChannel', device=testdevice, device_type='LocalTestDevice', unit='mmHg', is_unknown=False)
         u_room = Room.objects.create(name='UnknownLocalRoom')
         u_bed = Bed.objects.create(name='UnknownLocalBed', room=u_room)
         Client.objects.create(name='UnknownLocalClient', mac='00:00:00:00:00:00', bed=u_bed)
@@ -252,7 +252,7 @@ class UnitTestLocalServerAPI(TestCase):
 
         tz_name = pytz.timezone(settings.TIME_ZONE)
 
-        bus_info = {
+        bus_info_1 = {
             "bus_01": [
                 {"slot": "COM1", "device": "Phillips/IntelliVue"},
                 {"slot": "COM2", "device": "Covidien/BIS"},
@@ -260,16 +260,28 @@ class UnitTestLocalServerAPI(TestCase):
                 {"slot": "COM4", "device": ""}
             ],
             "bus_02": [
-                {"slot": "COM4", "device": ""}
+                {"slot": "COM5", "device": ""}
             ]
         }
-
+        bus_info_2 = {
+            "bus_01": [
+                {"slot": "COM1", "device": "Phillips/IntelliVue"},
+                {"slot": "COM2", "device": ""},
+            ]
+        }
         get_params['mac'] = '00:00:00:00:00:00'
         get_params['report_dt'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         get_params['status'] = 'Recording'
-        get_params['bus_info'] = json.loads(bus_info)
+        get_params['bus_info'] = json.dumps(bus_info_1, sort_keys=True, indent=4)
 
-        response = self.client.get('/server/recording_info', get_params)
+        response = self.client.get('/client/report_status', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content)
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'Client status was updated correctly.')
+
+        get_params['bus_info'] = json.dumps(bus_info_2, sort_keys=True, indent=4)
+        response = self.client.get('/client/report_status', get_params)
         self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])

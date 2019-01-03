@@ -3,20 +3,13 @@ from django.utils import timezone
 
 # Create your models here.
 
-# class BedType(models.Model):
-#     name = models.CharField(max_length=32)
-#     value = models.BigIntegerField()
-#
-#     def __str__(self): # __str__ on Python 3
-#         return self.name
-
 class Device(models.Model):
     device_type = models.CharField(max_length=64, unique=True)
     displayed_name = models.CharField(max_length=64, unique=True, null=True)
     is_main = models.BooleanField(default=False)
     use_custom_setting = models.BooleanField(default=False)
 
-    def __str__(self): # __str__ on Python 3
+    def __str__(self):
         return self.displayed_name
 
 class Room(models.Model):
@@ -155,4 +148,8 @@ class ClientBusSlot(models.Model):
     device = models.ForeignKey('Device', on_delete=models.SET_NULL, blank=True, null=True)
 
     def __str__(self): # __str__ on Python 3
-        return '%s, %s' % (self.name, self.device.device_type)
+        if self.device is None:
+            device = 'Not Connected'
+        else:
+            device = self.device.displayed_name
+        return '%s, %s' % (self.name,  device)

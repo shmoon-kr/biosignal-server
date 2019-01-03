@@ -112,8 +112,9 @@ def channel_info_body(request, api_type):
 
     device_type = request.GET.get("device_type")
     channel_name = request.GET.get("channel_name")
+
     if device_type is not None and channel_name is not None:
-        target_device = Device.objects.get_or_create(device_type=device_type)
+        target_device = Device.objects.get_or_create(device_type=device_type)[0]
         try:
             target_channel = Channel.objects.get(name=channel_name, device=target_device)
             r_dict['success'] = True
@@ -158,7 +159,7 @@ def channel_info_body(request, api_type):
         r_dict['is_unknown'] = target_channel.is_unknown
         r_dict['use_custom_setting'] = target_channel.use_custom_setting
         r_dict['channel_name'] = target_channel.name
-        r_dict['device_type'] = target_channel.device_type
+        r_dict['device_type'] = target_channel.device.device_type
         r_dict['abbreviation'] = target_channel.abbreviation
         r_dict['recording_type'] = target_channel.recording_type
         r_dict['recording_format'] = target_channel.recording_format
@@ -399,8 +400,23 @@ def report_status_client(request):
         target_client = Client.objects.get(mac=mac)
         bus = json.loads(bus_raw)
         if target_client is not None:
+            remaining_bus = ClientBus.objects.filter(client=target_client)
             for bus_name, bus_info in bus.items():
-                target_bus = ClientBus.objects.get_or_create(client=target_client, name=bus_name)
+                remaining_bus = remaining_bus.exclude(name=bus_name)
+                target_bus = ClientBus.objects.get_or_create(client=target_client, name=bus_name)[0]
+                remaining_slot = ClientBusSlot.objects.filter(clientbus=target_bus)
+                for slot_info in bus_info:
+                    slot_name = slot_info['slot']
+                    remaining_slot = remaining_slot.exclude(name=slot_name)
+                    target_clientbus = ClientBusSlot.objects.get_or_create(clientbus=target_bus, name=slot_name)[0]
+                    if slot_info['device']!='':
+                        target_device = Device.objects.get_or_create(device_type=slot_info['device'])[0]
+                        target_clientbus.device = target_device
+                    else:
+                        target_clientbus.device = None
+                remaining_slot.delete()
+            remaining_bus.delete()
+
             r_dict['success'] = True
             r_dict['message'] = 'Client status was updated correctly.'
         else:
