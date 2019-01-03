@@ -1,7 +1,6 @@
 *.pyc
-
-uwsgi_params
-
+.idea/*
+static/*
+uploaded_data/*
 sa_server_uwsgi.ini
-
-static/
+uwsgi_params
