@@ -65,7 +65,7 @@ class Channel(models.Model):
     use_custom_setting = models.BooleanField(default=False)
     name = models.CharField(max_length=64)
     abbreviation = models.CharField(max_length=32)
-    device = models.ForeignKey('Device', on_delete=models.CASCADE)
+    device = models.ForeignKey('Device', on_delete=models.SET_NULL, blank=True, null=True)
     device_type = models.CharField(max_length=64)
     RECORDING_TYPE_CHOICES = (
         (1, "TYPE_WAV"),
