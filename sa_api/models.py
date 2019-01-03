@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 # Create your models here.
 
@@ -11,8 +12,8 @@ from django.db import models
 
 class Device(models.Model):
     device_type = models.CharField(max_length=64, unique=True)
-    displayed_name = models.CharField(max_length=64, unique=True)
-    is_main = models.BooleanField(default=True)
+    displayed_name = models.CharField(max_length=64, unique=True, null=True)
+    is_main = models.BooleanField(default=False)
     use_custom_setting = models.BooleanField(default=False)
 
     def __str__(self): # __str__ on Python 3
@@ -36,17 +37,24 @@ class Bed(models.Model):
         (5, "Delivery Floor"),
     )
     bed_type = models.IntegerField(choices=BED_TYPE_CHOICES, default=0)
-    room = models.ForeignKey('Room', on_delete=models.PROTECT)
+    room = models.ForeignKey('Room', on_delete=models.CASCADE)
 
     def __str__(self): # __str__ on Python 3
         return '%s' % (self.name)
 
 class Client(models.Model):
     dt_update = models.DateTimeField(auto_now=True)
+    dt_report = models.DateTimeField(default=timezone.now)
     name = models.CharField(max_length=64)
     mac = models.CharField(max_length=17, unique=True)
-    bed = models.ForeignKey('Bed', on_delete=models.PROTECT)
+    bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
     registered = models.IntegerField(default=0)
+    CLIENT_STATUS_CHOICES = (
+        (0, "Unknown"),
+        (1, "Standby"),
+        (2, "Recording"),
+    )
+    status = models.IntegerField(choices=CLIENT_STATUS_CHOICES, default=0)
     def __str__(self): # __str__ on Python 3
         return self.name
 
@@ -57,6 +65,7 @@ class Channel(models.Model):
     use_custom_setting = models.BooleanField(default=False)
     name = models.CharField(max_length=64)
     abbreviation = models.CharField(max_length=32)
+    device = models.ForeignKey('Device', on_delete=models.CASCADE)
     device_type = models.CharField(max_length=64)
     RECORDING_TYPE_CHOICES = (
         (1, "TYPE_WAV"),
@@ -120,7 +129,7 @@ class Channel(models.Model):
         return '%s, %s' % (self.device_type, self.name)
 
 class FileRecorded(models.Model):
-    client = models.ForeignKey('Client', on_delete=models.PROTECT)
+    client = models.ForeignKey('Client', on_delete=models.SET_NULL, blank=True, null=True)
     upload_date = models.DateTimeField(auto_now_add=True)
     begin_date = models.DateTimeField()
     end_date = models.DateTimeField()
@@ -129,3 +138,21 @@ class FileRecorded(models.Model):
 
     def __str__(self): # __str__ on Python 3
         return self.file_path
+
+class ClientBus(models.Model):
+    client = models.ForeignKey('Client', on_delete=models.CASCADE)
+    name = models.CharField(max_length=64)
+
+    def __str__(self): # __str__ on Python 3
+        return self.name
+
+    class Meta:
+        unique_together = ("client", "name")
+
+class ClientBusSlot(models.Model):
+    clientbus = models.ForeignKey('ClientBus', on_delete=models.CASCADE)
+    name = models.CharField(max_length=64)
+    device = models.ForeignKey('Device', on_delete=models.SET_NULL, blank=True, null=True)
+
+    def __str__(self): # __str__ on Python 3
+        return '%s, %s' % (self.name, self.device.device_type)

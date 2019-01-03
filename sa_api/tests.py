@@ -246,3 +246,31 @@ class UnitTestLocalServerAPI(TestCase):
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Recording info was added and file was uploaded correctly.')
+
+    def test_report_status(self):
+        get_params = dict()
+
+        tz_name = pytz.timezone(settings.TIME_ZONE)
+
+        bus_info = {
+            "bus_01": [
+                {"slot": "COM1", "device": "Phillips/IntelliVue"},
+                {"slot": "COM2", "device": "Covidien/BIS"},
+                {"slot": "COM3", "device": "Edwards/EV1000"},
+                {"slot": "COM4", "device": ""}
+            ],
+            "bus_02": [
+                {"slot": "COM4", "device": ""}
+            ]
+        }
+
+        get_params['mac'] = '00:00:00:00:00:00'
+        get_params['report_dt'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        get_params['status'] = 'Recording'
+        get_params['bus_info'] = json.loads(bus_info)
+
+        response = self.client.get('/server/recording_info', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content)
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'Client status was updated correctly.')
