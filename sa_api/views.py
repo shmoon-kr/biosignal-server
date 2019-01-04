@@ -8,7 +8,7 @@ from ftplib import FTP
 from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBus, ClientBusSlot
 from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
@@ -58,8 +58,8 @@ def device_info_body(request, api_type):
                     r_dict['success'] = False
                     r_dict['message'] = 'A Global API server returned status code %d' % ( result.status_code )
                 else:
-                    servser_result = json.loads(result.content)
-                    t_dev = Device.objects.create(device_type=servser_result['device_type'], displayed_name=servser_result['device_type'], is_main=servser_result['is_main'])
+                    server_result = json.loads(result.content)
+                    t_dev = Device.objects.create(device_type=server_result['device_type'], displayed_name=server_result['device_type'], is_main=server_result['is_main'])
                     r_dict['device_type'] = t_dev.device_type
                     r_dict['displayed_name'] = t_dev.displayed_name
                     r_dict['is_main'] = t_dev.is_main
@@ -112,29 +112,19 @@ def channel_info_body(request, api_type):
 
     device_type = request.GET.get("device_type")
     channel_name = request.GET.get("channel_name")
+
     if device_type is not None and channel_name is not None:
-        target_channel = Channel.objects.filter(name=channel_name, device_type=device_type)
-        if target_channel.count() == 0:
+        target_device = Device.objects.get_or_create(device_type=device_type)[0]
+        try:
+            target_channel = Channel.objects.get(name=channel_name, device=target_device)
+            r_dict['success'] = True
+            if target_channel.is_unknown:
+                r_dict['message'] = 'Channel information was not configured by an admin.'
+            else:
+                r_dict['message'] = 'Channel information was returned correctly.'
+        except Channel.DoesNotExist:
+            target_channel = Channel(name=channel_name, device=target_device)
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
-                t_chn = Channel.objects.create(name=channel_name, device_type=device_type)
-                r_dict['is_unknown'] = t_chn.is_unknown
-                r_dict['use_custom_setting'] = t_chn.use_custom_setting
-                r_dict['channel_name'] = t_chn.name
-                r_dict['device_type'] = t_chn.device_type
-                r_dict['abbreviation'] = t_chn.abbreviation
-                r_dict['recording_type'] = t_chn.recording_type
-                r_dict['recording_format'] = t_chn.recording_format
-                r_dict['unit'] = t_chn.unit
-                r_dict['minval'] = t_chn.minval
-                r_dict['maxval'] = t_chn.maxval
-                r_dict['color_a'] = t_chn.color_a
-                r_dict['color_r'] = t_chn.color_r
-                r_dict['color_g'] = t_chn.color_g
-                r_dict['color_b'] = t_chn.color_b
-                r_dict['srate'] = t_chn.srate
-                r_dict['adc_gain'] = t_chn.adc_gain
-                r_dict['adc_offset'] = t_chn.adc_offset
-                r_dict['mon_type'] = t_chn.mon_type
                 r_dict['success'] = True
                 r_dict['message'] = 'A new channel was added.'
             else:
@@ -145,60 +135,45 @@ def channel_info_body(request, api_type):
                     r_dict['message'] = 'A Global API server returned status code %d' % ( result.status_code )
                 else:
                     server_result = json.loads(result.content)
-                    t_chn = Channel.objects.create(is_unknown=server_result['is_unknown'], use_custom_setting=server_result['use_custom_setting'], name=server_result['channel_name'],
-                                        device_type=server_result['device_type'], abbreviation=server_result['abbreviation'], recording_type=server_result['recording_type'],
-                                        recording_format=server_result['recording_format'], unit=server_result['unit'], minval=server_result['minval'],
-                                        maxval=server_result['maxval'], color_a=server_result['color_a'], color_r=server_result['color_r'], color_g=server_result['color_g'],
-                                        color_b=server_result['color_b'], srate=server_result['srate'], adc_gain=server_result['adc_gain'], adc_offset=server_result['adc_offset'],
-                                        mon_type=server_result['mon_type'])
-                    r_dict['is_unknown'] = t_chn.is_unknown
-                    r_dict['use_custom_setting'] = t_chn.use_custom_setting
-                    r_dict['channel_name'] = t_chn.name
-                    r_dict['device_type'] = t_chn.device_type
-                    r_dict['abbreviation'] = t_chn.abbreviation
-                    r_dict['recording_type'] = t_chn.recording_type
-                    r_dict['recording_format'] = t_chn.recording_format
-                    r_dict['unit'] = t_chn.unit
-                    r_dict['minval'] = t_chn.minval
-                    r_dict['maxval'] = t_chn.maxval
-                    r_dict['color_a'] = t_chn.color_a
-                    r_dict['color_r'] = t_chn.color_r
-                    r_dict['color_g'] = t_chn.color_g
-                    r_dict['color_b'] = t_chn.color_b
-                    r_dict['srate'] = t_chn.srate
-                    r_dict['adc_gain'] = t_chn.adc_gain
-                    r_dict['adc_offset'] = t_chn.adc_offset
-                    r_dict['mon_type'] = t_chn.mon_type
-
+                    target_channel.is_unknown = server_result['is_unknown']
+                    target_channel.use_custom_setting = server_result['use_custom_setting']
+                    target_channel.name = server_result['channel_name']
+                    target_channel.device_type = server_result['device_type']
+                    target_channel.abbreviation = server_result['abbreviation']
+                    target_channel.recording_type = server_result['recording_type']
+                    target_channel.recording_format = server_result['recording_format']
+                    target_channel.unit = server_result['unit']
+                    target_channel.minval = server_result['minval']
+                    target_channel.maxval = server_result['maxval']
+                    target_channel.color_a = server_result['color_a']
+                    target_channel.color_r = server_result['color_r']
+                    target_channel.color_g = server_result['color_g']
+                    target_channel.color_b = server_result['color_b']
+                    target_channel.srate = server_result['srate']
+                    target_channel.adc_gain = server_result['adc_gain']
+                    target_channel.adc_offset = server_result['adc_offset']
+                    target_channel.mon_type = server_result['mon_type']
                     r_dict['success'] = True
                     r_dict['message'] = 'Channel information was acquired from a global server.'
-        elif target_channel.count() > 1:
-            r_dict['success'] = False
-            r_dict['message'] = 'Multiple channels was for %s/%s found.' % (device_type, channel_name)
-        else:
-            r_dict['is_unknown'] = target_channel[0].is_unknown
-            r_dict['use_custom_setting'] = target_channel[0].use_custom_setting
-            r_dict['channel_name'] = target_channel[0].name
-            r_dict['device_type'] = target_channel[0].device_type
-            r_dict['abbreviation'] = target_channel[0].abbreviation
-            r_dict['recording_type'] = target_channel[0].recording_type
-            r_dict['recording_format'] = target_channel[0].recording_format
-            r_dict['unit'] = target_channel[0].unit
-            r_dict['minval'] = target_channel[0].minval
-            r_dict['maxval'] = target_channel[0].maxval
-            r_dict['color_a'] = target_channel[0].color_a
-            r_dict['color_r'] = target_channel[0].color_r
-            r_dict['color_g'] = target_channel[0].color_g
-            r_dict['color_b'] = target_channel[0].color_b
-            r_dict['srate'] = target_channel[0].srate
-            r_dict['adc_gain'] = target_channel[0].adc_gain
-            r_dict['adc_offset'] = target_channel[0].adc_offset
-            r_dict['mon_type'] = target_channel[0].mon_type
-            r_dict['success'] = True
-            if target_channel[0].is_unknown:
-                r_dict['message'] = 'Channel information was not configured by an admin.'
-            else:
-                r_dict['message'] = 'Channel information was returned correctly.'
+            target_channel.save()
+        r_dict['is_unknown'] = target_channel.is_unknown
+        r_dict['use_custom_setting'] = target_channel.use_custom_setting
+        r_dict['channel_name'] = target_channel.name
+        r_dict['device_type'] = target_channel.device.device_type
+        r_dict['abbreviation'] = target_channel.abbreviation
+        r_dict['recording_type'] = target_channel.recording_type
+        r_dict['recording_format'] = target_channel.recording_format
+        r_dict['unit'] = target_channel.unit
+        r_dict['minval'] = target_channel.minval
+        r_dict['maxval'] = target_channel.maxval
+        r_dict['color_a'] = target_channel.color_a
+        r_dict['color_r'] = target_channel.color_r
+        r_dict['color_g'] = target_channel.color_g
+        r_dict['color_b'] = target_channel.color_b
+        r_dict['srate'] = target_channel.srate
+        r_dict['adc_gain'] = target_channel.adc_gain
+        r_dict['adc_offset'] = target_channel.adc_offset
+        r_dict['mon_type'] = target_channel.mon_type
     else:
         r_dict['success'] = False
         r_dict['message'] = 'Requested device type or channel name is none.'
@@ -374,7 +349,6 @@ def recording_info_body(request):
                 FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
                 r_dict['success'] = True
                 r_dict['message'] = 'Recording info was added correctly.'
-
         else:
             r_dict['success'] = False
             r_dict['message'] = 'Requested client is none.'
@@ -402,3 +376,56 @@ def recording_info_server(request):
 def recording_info_client(request):
 
     return recording_info_body(request)
+
+@csrf_exempt
+def report_status_client(request):
+    r_dict = dict()
+    log_dict = dict()
+    log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+    log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['CLIENT_TYPE'] = 'client'
+    log_dict['REQUEST_PATH'] = request.path
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
+
+    mac = request.GET.get('mac')
+    report_dt = request.GET.get('report_dt')
+    record_begin_dt = request.GET.get('record_begin')
+    uptime = int(request.GET.get('uptime'))
+    status = request.GET.get('status')
+    bus_raw = request.GET.get('bus_info')
+
+    if mac is None or report_dt is None or status is None or bus_raw is None or uptime is None:
+        r_dict['success'] = False
+        r_dict['message'] = 'A requested parameter is none.'
+    else:
+        target_client = Client.objects.get(mac=mac)
+        target_client.dt_report = report_dt
+        target_client.dt_start_recording = record_begin_dt
+        target_client.uptime = datetime.timedelta(seconds=uptime)
+        bus = json.loads(bus_raw)
+        if target_client is not None:
+            remaining_bus = ClientBus.objects.filter(client=target_client, active=True)
+            for bus_name, bus_info in bus.items():
+                remaining_bus = remaining_bus.exclude(name=bus_name)
+                target_bus = ClientBus.objects.get_or_create(client=target_client, name=bus_name)[0]
+                remaining_slot = ClientBusSlot.objects.filter(clientbus=target_bus, active=True)
+                for slot_info in bus_info:
+                    slot_name = slot_info['slot']
+                    remaining_slot = remaining_slot.exclude(name=slot_name)
+                    target_clientbus = ClientBusSlot.objects.get_or_create(clientbus=target_bus, name=slot_name)[0]
+                    if slot_info['device']!='':
+                        target_device = Device.objects.get_or_create(device_type=slot_info['device'])[0]
+                        target_clientbus.device = target_device
+                    else:
+                        target_clientbus.device = None
+                remaining_slot.update(active=False)
+            remaining_bus.update(active=False)
+
+            r_dict['success'] = True
+            r_dict['message'] = 'Client status was updated correctly.'
+        else:
+            r_dict['success'] = False
+            r_dict['message'] = 'Requested client is none.'
+
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")

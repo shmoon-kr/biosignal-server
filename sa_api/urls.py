@@ -11,4 +11,5 @@ urlpatterns = [
     path('client/channel_info', views.channel_info_client),
     path('client/client_info', views.client_info_client),
     path('client/recording_info', views.recording_info_client),
+    path('client/report_status', views.report_status_client),
 ]
