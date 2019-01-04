@@ -8,7 +8,7 @@ from ftplib import FTP
 from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBus, ClientBusSlot
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot
 from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
@@ -390,7 +390,7 @@ def report_status_client(request):
 
     mac = request.GET.get('mac')
     report_dt = request.GET.get('report_dt')
-    record_begin_dt = request.GET.get('record_begin')
+    record_begin_dt = request.GET.get('record_begin_dt')
     uptime = int(request.GET.get('uptime'))
     status = request.GET.get('status')
     bus_raw = request.GET.get('bus_info')
@@ -400,27 +400,25 @@ def report_status_client(request):
         r_dict['message'] = 'A requested parameter is none.'
     else:
         target_client = Client.objects.get(mac=mac)
-        target_client.dt_report = report_dt
-        target_client.dt_start_recording = record_begin_dt
-        target_client.uptime = datetime.timedelta(seconds=uptime)
-        bus = json.loads(bus_raw)
         if target_client is not None:
-            remaining_bus = ClientBus.objects.filter(client=target_client, active=True)
+            target_client.dt_report = report_dt
+            target_client.dt_start_recording = record_begin_dt
+            target_client.uptime = datetime.timedelta(seconds=uptime)
+            target_client.save()
+            bus = json.loads(bus_raw)
+            remaining_slot = ClientBusSlot.objects.filter(client=target_client, active=True)
             for bus_name, bus_info in bus.items():
-                remaining_bus = remaining_bus.exclude(name=bus_name)
-                target_bus = ClientBus.objects.get_or_create(client=target_client, name=bus_name)[0]
-                remaining_slot = ClientBusSlot.objects.filter(clientbus=target_bus, active=True)
                 for slot_info in bus_info:
                     slot_name = slot_info['slot']
-                    remaining_slot = remaining_slot.exclude(name=slot_name)
-                    target_clientbus = ClientBusSlot.objects.get_or_create(clientbus=target_bus, name=slot_name)[0]
+                    remaining_slot = remaining_slot.exclude(bus=bus_name, name=slot_name)
+                    target_clientbusslot = ClientBusSlot.objects.get_or_create(client=target_client, bus=bus_name, name=slot_name)[0]
                     if slot_info['device']!='':
                         target_device = Device.objects.get_or_create(device_type=slot_info['device'])[0]
-                        target_clientbus.device = target_device
+                        target_clientbusslot.device = target_device
                     else:
-                        target_clientbus.device = None
-                remaining_slot.update(active=False)
-            remaining_bus.update(active=False)
+                        target_clientbusslot.device = None
+                    target_clientbusslot.save()
+            remaining_slot.update(active=False)
 
             r_dict['success'] = True
             r_dict['message'] = 'Client status was updated correctly.'
