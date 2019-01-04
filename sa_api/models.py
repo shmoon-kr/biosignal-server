@@ -44,10 +44,13 @@ class Client(models.Model):
     mac = models.CharField(max_length=17, unique=True)
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
     registered = models.IntegerField(default=0)
+    STATUS_UNKNOWN = 0
+    STATUS_STANDBY = 1
+    STATUS_RECORDING = 2
     CLIENT_STATUS_CHOICES = (
-        (0, "Unknown"),
-        (1, "Standby"),
-        (2, "Recording"),
+        (STATUS_UNKNOWN, "Unknown"),
+        (STATUS_STANDBY, "Standby"),
+        (STATUS_RECORDING, "Recording"),
     )
     status = models.IntegerField(choices=CLIENT_STATUS_CHOICES, default=0)
     def __str__(self): # __str__ on Python 3
