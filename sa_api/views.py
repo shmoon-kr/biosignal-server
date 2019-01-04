@@ -391,6 +391,7 @@ def report_status_client(request):
     mac = request.GET.get('mac')
     report_dt = request.GET.get('report_dt')
     record_begin_dt = request.GET.get('record_begin_dt')
+    ip_address = request.GET.get('ip_address')
     uptime = int(request.GET.get('uptime'))
     bus_raw = request.GET.get('bus_info')
 
@@ -403,7 +404,7 @@ def report_status_client(request):
     else:
         status = None
 
-    if mac is None or report_dt is None or status is None or bus_raw is None or uptime is None:
+    if mac is None or report_dt is None or status is None or bus_raw is None or uptime is None or ip_address is None:
         r_dict['success'] = False
         r_dict['message'] = 'A requested parameter is none.'
     else:
@@ -411,6 +412,7 @@ def report_status_client(request):
         if target_client is not None:
             target_client.dt_report = report_dt
             target_client.dt_start_recording = record_begin_dt
+            target_client.ip_address = ip_address
             target_client.uptime = datetime.timedelta(seconds=uptime)
             target_client.status = status
             target_client.save()
@@ -421,7 +423,7 @@ def report_status_client(request):
                     slot_name = slot_info['slot']
                     remaining_slot = remaining_slot.exclude(bus=bus_name, name=slot_name)
                     target_clientbusslot = ClientBusSlot.objects.get_or_create(client=target_client, bus=bus_name, name=slot_name)[0]
-                    if slot_info['device_type']!='':
+                    if slot_info['device_type'] != '':
                         target_device = Device.objects.get_or_create(device_type=slot_info['device_type'])[0]
                         target_clientbusslot.device = target_device
                     else:
