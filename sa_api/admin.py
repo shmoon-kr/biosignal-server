@@ -1,12 +1,40 @@
 from django.contrib import admin
-from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device
+from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot
 import datetime
+
+'''
+class ClientBusInline(admin.TabularInline):
+    model = ClientBus
+    extra = 0
+    readonly_fields = ('name', 'active')
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+'''
+
+class ClientBusSlotInline(admin.TabularInline):
+    model = ClientBusSlot
+    extra = 0
+    readonly_fields = ('client', 'bus', 'name', 'active', 'device')
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 class ChannelAdmin(admin.ModelAdmin):
     list_display = ('id', 'device_type', 'name')
 
 class ClientAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'mac', 'bed', 'status', 'last_connected')
+
+    inlines = [ClientBusSlotInline]
 
     def status(self, obj):
         if obj.registered==1:
@@ -16,8 +44,8 @@ class ClientAdmin(admin.ModelAdmin):
             delta = current_time - temp
             diff_seconds = int(delta.total_seconds())
             if diff_seconds < 15:
-                return 'On'
-        return 'Off'
+                return True
+        return False
 
     def last_connected(self, obj):
         if obj.registered==1:

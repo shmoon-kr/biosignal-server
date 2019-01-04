@@ -134,6 +134,8 @@ class FileRecorded(models.Model):
     def __str__(self): # __str__ on Python 3
         return self.file_path
 
+
+'''
 class ClientBus(models.Model):
     client = models.ForeignKey('Client', on_delete=models.CASCADE)
     name = models.CharField(max_length=64)
@@ -144,10 +146,13 @@ class ClientBus(models.Model):
 
     class Meta:
         unique_together = ("client", "name")
+'''
 
 class ClientBusSlot(models.Model):
-    clientbus = models.ForeignKey('ClientBus', on_delete=models.CASCADE)
+#    clientbus = models.ForeignKey('ClientBus', on_delete=models.CASCADE)
+    client = models.ForeignKey('Client', on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=64)
+    bus = models.CharField(max_length=64, blank=True, null=True)
     device = models.ForeignKey('Device', on_delete=models.SET_NULL, blank=True, null=True)
     active = models.BooleanField(default=True)
 
@@ -159,4 +164,4 @@ class ClientBusSlot(models.Model):
         return '%s, %s' % (self.name, device)
 
     class Meta:
-        unique_together = ("clientbus", "name")
+        unique_together = ("client", "name", "bus")
