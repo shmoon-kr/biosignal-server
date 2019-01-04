@@ -38,6 +38,8 @@ class Bed(models.Model):
 class Client(models.Model):
     dt_update = models.DateTimeField(auto_now=True)
     dt_report = models.DateTimeField(default=timezone.now)
+    dt_start_recording = models.DateTimeField(null=True)
+    uptime = models.DurationField(null=True)
     name = models.CharField(max_length=64)
     mac = models.CharField(max_length=17, unique=True)
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
@@ -126,7 +128,7 @@ class FileRecorded(models.Model):
     upload_date = models.DateTimeField(auto_now_add=True)
     begin_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    file_path = models.CharField(max_length=256)
+    file_path = models.CharField(max_length=256,blank=True)
     # path = models.CharField(max_length=256,null=True)
 
     def __str__(self): # __str__ on Python 3
@@ -135,6 +137,7 @@ class FileRecorded(models.Model):
 class ClientBus(models.Model):
     client = models.ForeignKey('Client', on_delete=models.CASCADE)
     name = models.CharField(max_length=64)
+    active = models.BooleanField(default=True)
 
     def __str__(self): # __str__ on Python 3
         return self.name
@@ -146,10 +149,14 @@ class ClientBusSlot(models.Model):
     clientbus = models.ForeignKey('ClientBus', on_delete=models.CASCADE)
     name = models.CharField(max_length=64)
     device = models.ForeignKey('Device', on_delete=models.SET_NULL, blank=True, null=True)
+    active = models.BooleanField(default=True)
 
     def __str__(self): # __str__ on Python 3
         if self.device is None:
             device = 'Not Connected'
         else:
             device = self.device.displayed_name
-        return '%s, %s' % (self.name,  device)
+        return '%s, %s' % (self.name, device)
+
+    class Meta:
+        unique_together = ("clientbus", "name")

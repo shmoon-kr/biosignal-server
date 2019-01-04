@@ -254,9 +254,9 @@ class UnitTestLocalServerAPI(TestCase):
 
         bus_info_1 = {
             "bus_01": [
-                {"slot": "COM1", "device": "Phillips/IntelliVue"},
-                {"slot": "COM2", "device": "Covidien/BIS"},
-                {"slot": "COM3", "device": "Edwards/EV1000"},
+                {"slot": "COM1", "device": "M8000"},
+                {"slot": "COM2", "device": "bis"},
+                {"slot": "COM3", "device": "EV1000"},
                 {"slot": "COM4", "device": ""}
             ],
             "bus_02": [
@@ -265,12 +265,14 @@ class UnitTestLocalServerAPI(TestCase):
         }
         bus_info_2 = {
             "bus_01": [
-                {"slot": "COM1", "device": "Phillips/IntelliVue"},
+                {"slot": "COM1", "device": "M8000"},
                 {"slot": "COM2", "device": ""},
             ]
         }
         get_params['mac'] = '00:00:00:00:00:00'
         get_params['report_dt'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        get_params['record_begin_dt'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        get_params['uptime'] = 145234
         get_params['status'] = 'Recording'
         get_params['bus_info'] = json.dumps(bus_info_1, sort_keys=True, indent=4)
 
