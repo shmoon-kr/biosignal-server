@@ -272,6 +272,7 @@ class UnitTestLocalServerAPI(TestCase):
         get_params['mac'] = mac = '00:00:00:00:00:00'
         get_params['report_dt'] = report_dt = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         get_params['record_begin_dt'] = record_begin_dt = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        get_params['ip_address'] = ip_address = '143.248.1.177'
         get_params['uptime'] = uptime = 145234
         get_params['status'] = status = 'Recording'
         get_params['bus_info'] = json.dumps(bus_info_1, sort_keys=True, indent=4)
