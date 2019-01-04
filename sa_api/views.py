@@ -392,8 +392,16 @@ def report_status_client(request):
     report_dt = request.GET.get('report_dt')
     record_begin_dt = request.GET.get('record_begin_dt')
     uptime = int(request.GET.get('uptime'))
-    status = request.GET.get('status')
     bus_raw = request.GET.get('bus_info')
+
+    if request.GET.get('status') == 'Unknown':
+        status = Client.STATUS_UNKNOWN
+    elif request.GET.get('status') == 'Standby':
+        status = Client.STATUS_STANDBY
+    elif request.GET.get('status') == 'Recording':
+        status = Client.STATUS_RECORDING
+    else:
+        status = None
 
     if mac is None or report_dt is None or status is None or bus_raw is None or uptime is None:
         r_dict['success'] = False
@@ -404,6 +412,7 @@ def report_status_client(request):
             target_client.dt_report = report_dt
             target_client.dt_start_recording = record_begin_dt
             target_client.uptime = datetime.timedelta(seconds=uptime)
+            target_client.status = status
             target_client.save()
             bus = json.loads(bus_raw)
             remaining_slot = ClientBusSlot.objects.filter(client=target_client, active=True)
@@ -412,11 +421,12 @@ def report_status_client(request):
                     slot_name = slot_info['slot']
                     remaining_slot = remaining_slot.exclude(bus=bus_name, name=slot_name)
                     target_clientbusslot = ClientBusSlot.objects.get_or_create(client=target_client, bus=bus_name, name=slot_name)[0]
-                    if slot_info['device']!='':
-                        target_device = Device.objects.get_or_create(device_type=slot_info['device'])[0]
+                    if slot_info['device_type']!='':
+                        target_device = Device.objects.get_or_create(device_type=slot_info['device_type'])[0]
                         target_clientbusslot.device = target_device
                     else:
                         target_clientbusslot.device = None
+                    target_clientbusslot.active = True
                     target_clientbusslot.save()
             remaining_slot.update(active=False)
 

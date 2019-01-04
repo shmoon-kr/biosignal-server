@@ -254,19 +254,19 @@ class UnitTestLocalServerAPI(TestCase):
 
         bus_info_1 = {
             "bus_01": [
-                {"slot": "COM1", "device": "M8000"},
-                {"slot": "COM2", "device": "bis"},
-                {"slot": "COM3", "device": "EV1000"},
-                {"slot": "COM4", "device": ""}
+                {"slot": "COM1", "device_type": "M8000"},
+                {"slot": "COM2", "device_type": "bis"},
+                {"slot": "COM3", "device_type": "EV1000"},
+                {"slot": "COM4", "device_type": ""}
             ],
             "bus_02": [
-                {"slot": "COM5", "device": ""}
+                {"slot": "COM5", "device_type": ""}
             ]
         }
         bus_info_2 = {
             "bus_01": [
-                {"slot": "COM1", "device": "M8000"},
-                {"slot": "COM2", "device": ""},
+                {"slot": "COM1", "device_type": "M8000"},
+                {"slot": "COM2", "device_type": ""},
             ]
         }
         get_params['mac'] = mac = '00:00:00:00:00:00'
