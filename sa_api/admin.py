@@ -2,25 +2,14 @@ from django.contrib import admin
 from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot
 import datetime
 
-'''
-class ClientBusInline(admin.TabularInline):
-    model = ClientBus
-    extra = 0
-    readonly_fields = ('name', 'active')
-    can_delete = False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-'''
-
 class ClientBusSlotInline(admin.TabularInline):
     model = ClientBusSlot
     extra = 0
     readonly_fields = ('client', 'bus', 'name', 'active', 'device')
     can_delete = False
+
+    def get_queryset(self, request):
+        return super(ClientBusSlotInline, self).get_queryset(request).filter(active=True)
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -33,6 +22,7 @@ class ChannelAdmin(admin.ModelAdmin):
 
 class ClientAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'mac', 'bed', 'status', 'last_connected')
+    readonly_fields = ('dt_report', 'dt_start_recording', 'uptime', 'ip_address')
 
     inlines = [ClientBusSlotInline]
 
