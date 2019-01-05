@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+from .local_settings import *
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -73,11 +74,13 @@ WSGI_APPLICATION = 'sa_server.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
+# This part should be moved to local_settings.py file
 
+'''
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'sa_server',
+        'NAME': 'dev_sa_server',
         'USER': 'sa_server',
         'PASSWORD': 'qwer1234!',
         'HOST': 'localhost',
@@ -87,7 +90,7 @@ DATABASES = {
         'NAME': 'test_sa_server'
     }
 }
-
+'''
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
@@ -128,6 +131,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 
+# Service configurations
+# This part should be moved to local_settings.py file
+
+'''
 SERVICE_CONFIGURATIONS = {
     'SERVER_TYPE': 'global',
     'GLOBAL_SERVER_HOSTNAME': 'dev.sig2.com',
@@ -144,3 +151,4 @@ SERVICE_CONFIGURATIONS = {
     'STORAGE_SERVER_PASSWORD': 'qwer1234!',
     'STORAGE_SERVER_PATH': '/CloudStation/CloudStation',
 }
+'''
