@@ -66,7 +66,6 @@ class Channel(models.Model):
     name = models.CharField(max_length=64)
     abbreviation = models.CharField(max_length=32)
     device = models.ForeignKey('Device', on_delete=models.SET_NULL, blank=True, null=True)
-    device_type = models.CharField(max_length=64)
     RECORDING_TYPE_CHOICES = (
         (1, "TYPE_WAV"),
         (2, "TYPE_NUM"),
@@ -122,8 +121,8 @@ class Channel(models.Model):
     )
     mon_type = models.IntegerField(choices=MON_TYPE_CHOICES, default=0)
 
-    class Meta:
-        unique_together = (("name", "device_type"),)
+ #   class Meta:
+ #       unique_together = (("name", "device_type"),)
 
     def __str__(self): # __str__ on Python 3
         return '%s, %s' % (self.device_type, self.name)

@@ -18,7 +18,7 @@ class ClientBusSlotInline(admin.TabularInline):
         return False
 
 class ChannelAdmin(admin.ModelAdmin):
-    list_display = ('id', 'device_type', 'name')
+    list_display = ('id', 'device', 'name')
 
 class ClientAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'mac', 'bed', 'status', 'last_connected')
