@@ -255,6 +255,12 @@ class UnitTestLocalServerAPI(TestCase):
         bus_info_1 = {
             "bus_01": [
                 {"slot": "COM1", "device_type": "M8000"},
+                {"slot": "COM2", "device_type": ""},
+            ]
+        }
+        bus_info_2 = {
+            "bus_01": [
+                {"slot": "COM1", "device_type": "M8000"},
                 {"slot": "COM2", "device_type": "bis"},
                 {"slot": "COM3", "device_type": "EV1000"},
                 {"slot": "COM4", "device_type": ""}
@@ -263,19 +269,13 @@ class UnitTestLocalServerAPI(TestCase):
                 {"slot": "COM5", "device_type": ""}
             ]
         }
-        bus_info_2 = {
-            "bus_01": [
-                {"slot": "COM1", "device_type": "M8000"},
-                {"slot": "COM2", "device_type": ""},
-            ]
-        }
         get_params['mac'] = mac = '00:00:00:00:00:00'
         get_params['report_dt'] = report_dt = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
-        get_params['record_begin_dt'] = record_begin_dt = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         get_params['ip_address'] = ip_address = '143.248.1.177'
+        get_params['client_version'] = client_version = '1.2.5'
         get_params['uptime'] = uptime = 145234
-        get_params['status'] = status = 'Recording'
         get_params['bus_info'] = json.dumps(bus_info_1, sort_keys=True, indent=4)
+        get_params['status'] = status = 'Standby'
 
         response = self.client.get('/client/report_status', get_params)
         self.assertTrue(response['Content-Type'].startswith('application/json'))
@@ -283,6 +283,8 @@ class UnitTestLocalServerAPI(TestCase):
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Client status was updated correctly.')
 
+        get_params['status'] = status = 'Recording'
+        get_params['record_begin_dt'] = record_begin_dt = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         get_params['bus_info'] = json.dumps(bus_info_2, sort_keys=True, indent=4)
         response = self.client.get('/client/report_status', get_params)
         self.assertTrue(response['Content-Type'].startswith('application/json'))

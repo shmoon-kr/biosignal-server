@@ -392,6 +392,7 @@ def report_status_client(request):
     report_dt = request.GET.get('report_dt')
     record_begin_dt = request.GET.get('record_begin_dt')
     ip_address = request.GET.get('ip_address')
+    client_version = request.GET.get('client_version')
     uptime = int(request.GET.get('uptime'))
     bus_raw = request.GET.get('bus_info')
 
@@ -404,7 +405,7 @@ def report_status_client(request):
     else:
         status = None
 
-    if mac is None or report_dt is None or status is None or bus_raw is None or uptime is None or ip_address is None:
+    if mac is None or report_dt is None or status is None or bus_raw is None or uptime is None or ip_address is None or client_version is None:
         r_dict['success'] = False
         r_dict['message'] = 'A requested parameter is none.'
     else:
@@ -413,6 +414,7 @@ def report_status_client(request):
             target_client.dt_report = report_dt
             target_client.dt_start_recording = record_begin_dt
             target_client.ip_address = ip_address
+            target_client.client_version = client_version
             target_client.uptime = datetime.timedelta(seconds=uptime)
             target_client.status = status
             target_client.save()
