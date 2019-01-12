@@ -43,6 +43,7 @@ class Client(models.Model):
     name = models.CharField(max_length=64)
     mac = models.CharField(max_length=17, unique=True)
     ip_address = models.CharField(max_length=32, null=True)
+    client_version = models.CharField(max_length=32, null=True)
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
     registered = models.IntegerField(default=0)
     STATUS_UNKNOWN = 0
