@@ -125,7 +125,7 @@ class Channel(models.Model):
  #       unique_together = (("name", "device_type"),)
 
     def __str__(self): # __str__ on Python 3
-        return '%s, %s' % (self.device_type, self.name)
+        return '%s, %s' % (self.device.device_type, self.name)
 
 class FileRecorded(models.Model):
     client = models.ForeignKey('Client', on_delete=models.SET_NULL, blank=True, null=True)
