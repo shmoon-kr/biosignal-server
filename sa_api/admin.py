@@ -18,7 +18,7 @@ class ClientBusSlotInline(admin.TabularInline):
         return False
 
 class ChannelAdmin(admin.ModelAdmin):
-    list_display = ('id', 'device_type', 'name')
+    list_display = ('id', 'device', 'name')
 
 class ClientAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'mac', 'bed', 'status', 'last_connected')
@@ -71,4 +71,4 @@ admin.site.register(Channel, ChannelAdmin)
 admin.site.register(Room)
 admin.site.register(Bed, BedAdmin)
 admin.site.register(Client, ClientAdmin)
-admin.site.register(FileRecorded,FileRecordedAdmin)
+admin.site.register(FileRecorded, FileRecordedAdmin)
