@@ -133,27 +133,11 @@ class FileRecorded(models.Model):
     begin_date = models.DateTimeField()
     end_date = models.DateTimeField()
     file_path = models.CharField(max_length=256,blank=True)
-    # path = models.CharField(max_length=256,null=True)
 
     def __str__(self): # __str__ on Python 3
         return self.file_path
 
-
-'''
-class ClientBus(models.Model):
-    client = models.ForeignKey('Client', on_delete=models.CASCADE)
-    name = models.CharField(max_length=64)
-    active = models.BooleanField(default=True)
-
-    def __str__(self): # __str__ on Python 3
-        return self.name
-
-    class Meta:
-        unique_together = ("client", "name")
-'''
-
 class ClientBusSlot(models.Model):
-#    clientbus = models.ForeignKey('ClientBus', on_delete=models.CASCADE)
     client = models.ForeignKey('Client', on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=64)
     bus = models.CharField(max_length=64, blank=True, null=True)
