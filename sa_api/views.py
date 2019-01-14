@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, render
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot
 from django.views.decorators.csrf import csrf_exempt
 
+
 # Create your views here.
 
 def file_upload_storage(date_string, bed_name, filepath):
@@ -29,7 +30,9 @@ def file_upload_storage(date_string, bed_name, filepath):
     ftp.quit()
     return True
 
+
 # Main body of device_info API function
+
 def device_info_body(request, api_type):
 
     device_type = request.GET.get("device_type")
@@ -82,6 +85,7 @@ def device_info_body(request, api_type):
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
+
 # When a local server requested for device information.
 # This function could be called only in a global server.
 @csrf_exempt
@@ -89,12 +93,14 @@ def device_info_server(request):
 
     return device_info_body(request, 'server')
 
+
 # When a client requested for device information.
 # This function could be called either in a global server or in a local server.
 @csrf_exempt
 def device_info_client(request):
 
     return device_info_body(request, 'client')
+
 
 # Main body of device_info API function
 def channel_info_body(request, api_type):
@@ -186,6 +192,7 @@ def channel_info_body(request, api_type):
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
+
 # When a local server requested for channel information.
 # This function could be called only in a global server.
 @csrf_exempt
@@ -199,12 +206,14 @@ def channel_info_server(request):
 
     return channel_info_body(request, 'server')
 
+
 # When a client requested for channel information.
 # This function could be called either in a global server or in a local server.
 @csrf_exempt
 def channel_info_client(request):
 
     return channel_info_body(request, 'client')
+
 
 @csrf_exempt
 def client_info_body(request):
@@ -259,6 +268,7 @@ def client_info_body(request):
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
+
 # When a local server requested for channel information.
 # This function could be called only in a global server.
 @csrf_exempt
@@ -270,12 +280,14 @@ def client_info_server(request):
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
 
+
 # When a client requested for channel information.
 # This function could be called either in a global server or in a local server.
 @csrf_exempt
 def client_info_client(request):
 
     return client_info_body(request)
+
 
 @csrf_exempt
 def recording_info_body(request):
@@ -337,6 +349,7 @@ def recording_info_body(request):
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
+
 # When a local server requested for channel information.
 # This function could be called only in a global server.
 @csrf_exempt
@@ -348,12 +361,14 @@ def recording_info_server(request):
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
 
+
 # When a client requested for channel information.
 # This function could be called either in a global server or in a local server.
 @csrf_exempt
 def recording_info_client(request):
 
     return recording_info_body(request)
+
 
 @csrf_exempt
 def report_status_client(request):

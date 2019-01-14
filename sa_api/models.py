@@ -3,6 +3,7 @@ from django.utils import timezone
 
 # Create your models here.
 
+
 class Device(models.Model):
     device_type = models.CharField(max_length=64, unique=True)
     displayed_name = models.CharField(max_length=64, unique=True, null=True)
@@ -11,6 +12,7 @@ class Device(models.Model):
 
     def __str__(self):
         return self.displayed_name
+
 
 class Room(models.Model):
     name = models.CharField(max_length=64)
@@ -35,6 +37,7 @@ class Bed(models.Model):
     def __str__(self): # __str__ on Python 3
         return '%s' % (self.name)
 
+
 class Client(models.Model):
     dt_update = models.DateTimeField(auto_now=True)
     dt_report = models.DateTimeField(default=timezone.now)
@@ -55,8 +58,10 @@ class Client(models.Model):
         (STATUS_RECORDING, "Recording"),
     )
     status = models.IntegerField(choices=CLIENT_STATUS_CHOICES, default=0)
+
     def __str__(self): # __str__ on Python 3
         return self.name
+
 
 class Channel(models.Model):
     dt_create = models.DateTimeField(auto_now_add=True)
@@ -127,6 +132,7 @@ class Channel(models.Model):
     def __str__(self): # __str__ on Python 3
         return '%s, %s' % (self.device.device_type, self.name)
 
+
 class FileRecorded(models.Model):
     client = models.ForeignKey('Client', on_delete=models.SET_NULL, blank=True, null=True)
     upload_date = models.DateTimeField(auto_now_add=True)
@@ -136,6 +142,7 @@ class FileRecorded(models.Model):
 
     def __str__(self): # __str__ on Python 3
         return self.file_path
+
 
 class ClientBusSlot(models.Model):
     client = models.ForeignKey('Client', on_delete=models.CASCADE, null=True)

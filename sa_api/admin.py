@@ -2,6 +2,7 @@ from django.contrib import admin
 from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot
 import datetime
 
+
 class ClientBusSlotInline(admin.TabularInline):
     model = ClientBusSlot
     extra = 0
@@ -17,8 +18,10 @@ class ClientBusSlotInline(admin.TabularInline):
     def has_delete_permission(self, request, obj=None):
         return False
 
+
 class ChannelAdmin(admin.ModelAdmin):
     list_display = ('id', 'device', 'name')
+
 
 class ClientAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'mac', 'bed', 'status', 'last_connected')
@@ -45,12 +48,14 @@ class ClientAdmin(admin.ModelAdmin):
             return dt_string
         return 'Not registered'
 
+
 class BedAdmin(admin.ModelAdmin):
     list_display = ('id', 'room', 'name', 'bed_type')
 
     def bed_type(self,obj):
         bed_type_name = obj.BED_TYPE_CHOICES[obj.bed_type]
         return bed_type_name
+
 
 class FileRecordedAdmin(admin.ModelAdmin):
     list_display = ('id', 'bed_name', 'room_name', 'upload_date', 'begin_date', 'end_date', 'client_mac', 'file_path')

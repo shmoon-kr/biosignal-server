@@ -16,6 +16,7 @@ SERVICE_CONFIGURATIONS_GLOBAL = {
     'LOG_SERVER_PORT': 24224,
 }
 
+
 @override_settings(SERVICE_CONFIGURATIONS=SERVICE_CONFIGURATIONS_GLOBAL)
 class UnitTestGlobalServerAPI(TestCase):
     def setUp(self):
@@ -159,6 +160,7 @@ SERVICE_CONFIGURATIONS_LOCAL = {
     'STORAGE_SERVER_PASSWORD': 'qwer1234!',
     'STORAGE_SERVER_PATH': '/CloudStation/CloudStation',
 }
+
 
 @override_settings(SERVICE_CONFIGURATIONS=SERVICE_CONFIGURATIONS_LOCAL)
 class UnitTestLocalServerAPI(TestCase):
