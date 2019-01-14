@@ -21,8 +21,8 @@ class UnitTestGlobalServerAPI(TestCase):
     def setUp(self):
         self.client = tClient()
         testdevice = Device.objects.create(device_type='TestDevice', displayed_name='TestDevice')
-        Channel.objects.create(name='TestChannelUnknown', abbreviation='TestChannelUnknown', device=testdevice, device_type='TestDevice', unit='mmHg', is_unknown=True)
-        Channel.objects.create(name='TestChannelKnown', abbreviation='TestChannelKnown', device=testdevice, device_type='TestDevice', unit='mmHg', is_unknown=False)
+        Channel.objects.create(name='TestChannelUnknown', abbreviation='TestChannelUnknown', device=testdevice, unit='mmHg', is_unknown=True)
+        Channel.objects.create(name='TestChannelKnown', abbreviation='TestChannelKnown', device=testdevice, unit='mmHg', is_unknown=False)
         u_room = Room.objects.create(name='UknownRoom')
         u_bed = Bed.objects.create(name='UknownBed', room=u_room)
         Client.objects.create(name='UnknownClient', mac='00:00:00:00:00:00', bed=u_bed)
@@ -165,8 +165,8 @@ class UnitTestLocalServerAPI(TestCase):
     def setUp(self):
         self.client = tClient()
         testdevice = Device.objects.create(device_type='LocalTestDevice', displayed_name='LocalTestDevice')
-        Channel.objects.create(name='UnknownLocalTestChannel', abbreviation='UnknownLocalTestChannel', device=testdevice, device_type='LocalTestDevice', unit='mmHg', is_unknown=True)
-        Channel.objects.create(name='KnownLocalTestChannel', abbreviation='KnownLocalTestChannel', device=testdevice, device_type='LocalTestDevice', unit='mmHg', is_unknown=False)
+        Channel.objects.create(name='UnknownLocalTestChannel', abbreviation='UnknownLocalTestChannel', device=testdevice, unit='mmHg', is_unknown=True)
+        Channel.objects.create(name='KnownLocalTestChannel', abbreviation='KnownLocalTestChannel', device=testdevice, unit='mmHg', is_unknown=False)
         u_room = Room.objects.create(name='UnknownLocalRoom')
         u_bed = Bed.objects.create(name='UnknownLocalBed', room=u_room)
         Client.objects.create(name='UnknownLocalClient', mac='00:00:00:00:00:00', bed=u_bed)
