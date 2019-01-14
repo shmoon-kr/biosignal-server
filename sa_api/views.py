@@ -41,48 +41,46 @@ def device_info_body(request, api_type):
     log_dict['REQUEST_PATH'] = request.path
     log_dict['METHOD'] = request.method
     log_dict['PARAM'] = request.GET
+    response_status = 200
 
     if device_type is not None:
-        target_devices = Device.objects.filter(device_type=device_type)
-        if target_devices.count() == 0:
-            if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
-                t_dev = Device.objects.create(device_type=device_type, displayed_name=device_type)
-                r_dict['device_type'] = t_dev.device_type
-                r_dict['displayed_name'] = t_dev.displayed_name
-                r_dict['is_main'] = t_dev.is_main
+        target_device, created = Device.objects.get_or_create(device_type=device_type, displayed_name=device_type)
+        if created and settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
+            result = requests.get('http://%s:%d/server/device_info' % (
+            settings.SERVICE_CONFIGURATIONS['GLOBAL_SERVER_HOSTNAME'],
+            settings.SERVICE_CONFIGURATIONS['GLOBAL_SERVER_PORT']), params=request.GET)
+            if int(result.status_code / 100) != 2:
+                r_dict['success'] = False
+                r_dict['message'] = 'A Global API server returned status code %d' % (result.status_code)
+                response_status = 500
+            else:
+                server_result = json.loads(result.content)
+                r_dict['device_type'] = target_device.device_type = server_result['device_type']
+                r_dict['displayed_name'] = target_device.displayed_name = server_result['displayed_name']
+                r_dict['is_main'] = target_device.is_main = server_result['is_main']
+                target_device.save()
                 r_dict['success'] = True
+                r_dict['message'] = 'Device information was acquired from a global server.'
+        else:
+            r_dict['device_type'] = target_device.device_type
+            r_dict['displayed_name'] = target_device.displayed_name
+            r_dict['is_main'] = target_device.is_main
+            r_dict['success'] = True
+            if created:
                 r_dict['message'] = 'New device was added.'
             else:
-                result = requests.get('http://%s:%d/server/device_info' % (settings.SERVICE_CONFIGURATIONS['GLOBAL_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['GLOBAL_SERVER_PORT']), params=request.GET)
-                if int(result.status_code/100) != 2:
-                    r_dict['success'] = False
-                    r_dict['message'] = 'A Global API server returned status code %d' % ( result.status_code )
-                else:
-                    server_result = json.loads(result.content)
-                    t_dev = Device.objects.create(device_type=server_result['device_type'], displayed_name=server_result['device_type'], is_main=server_result['is_main'])
-                    r_dict['device_type'] = t_dev.device_type
-                    r_dict['displayed_name'] = t_dev.displayed_name
-                    r_dict['is_main'] = t_dev.is_main
-                    r_dict['success'] = True
-                    r_dict['message'] = 'Device information was acquired from a global server.'
-        elif target_devices.count() == 1:
-            r_dict['device_type'] = target_devices[0].device_type
-            r_dict['displayed_name'] = target_devices[0].displayed_name
-            r_dict['is_main'] = target_devices[0].is_main
-            r_dict['success'] = True
-            r_dict['message'] = 'Device information was returned correctly.'
-        else:
-            r_dict['success'] = False
-            r_dict['message'] = 'Multiple devices was for %s found.' % (device_type)
+                r_dict['message'] = 'Device information was returned correctly.'
     else:
         r_dict['success'] = False
         r_dict['message'] = 'Requested device type is none.'
+        response_status = 400
 
+    log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
     logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 # When a local server requested for device information.
 # This function could be called only in a global server.
@@ -109,12 +107,13 @@ def channel_info_body(request, api_type):
     log_dict['REQUEST_PATH'] = request.path
     log_dict['METHOD'] = request.method
     log_dict['PARAM'] = request.GET
+    response_status = 200
 
     device_type = request.GET.get("device_type")
     channel_name = request.GET.get("channel_name")
 
     if device_type is not None and channel_name is not None:
-        target_device = Device.objects.get_or_create(device_type=device_type)[0]
+        target_device, _ = Device.objects.get_or_create(device_type=device_type)
         try:
             target_channel = Channel.objects.get(name=channel_name, device=target_device)
             r_dict['success'] = True
@@ -133,6 +132,7 @@ def channel_info_body(request, api_type):
                 if int(result.status_code/100) != 2:
                     r_dict['success'] = False
                     r_dict['message'] = 'A Global API server returned status code %d' % ( result.status_code )
+                    response_status = 500
                 else:
                     server_result = json.loads(result.content)
                     target_channel.is_unknown = server_result['is_unknown']
@@ -177,12 +177,14 @@ def channel_info_body(request, api_type):
     else:
         r_dict['success'] = False
         r_dict['message'] = 'Requested device type or channel name is none.'
+        response_status = 400
 
+    log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
     logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 # When a local server requested for channel information.
 # This function could be called only in a global server.
@@ -193,7 +195,7 @@ def channel_info_server(request):
         r_dict = dict()
         r_dict['success'] = False
         r_dict['message'] = 'A local server received a server API request.'
-        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
 
     return channel_info_body(request, 'server')
 
@@ -215,29 +217,25 @@ def client_info_body(request):
     log_dict['REQUEST_PATH'] = request.path
     log_dict['METHOD'] = request.method
     log_dict['PARAM'] = request.GET
+    response_status = 200
 
-    if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
-        mac = request.GET.get('mac')
-        if mac is not None:
-            target_client = Client.objects.filter(mac=mac)
-            if target_client.count() == 1:
-                target_client[0].registered = 1
-                target_client[0].save()
-                r_dict['client_name'] = target_client[0].name
-                r_dict['bed_name'] = target_client[0].bed.name
-                r_dict['room_name'] = target_client[0].bed.room.name
-                r_dict['success'] = True
-                r_dict['message'] = 'Client information was returned correctly.'
-            elif target_client.count() > 1:
-                r_dict['success'] = False
-                r_dict['message'] = 'Multiple clients for mac %s were found.'%(mac)
-            else:
-                unknown_bed = Bed.objects.filter(name='Unknown')
-                if unknown_bed.count() == 0: # If unknown room and bed don't exist.
-                    unknown_room = Room.objects.create(name='Uknown')
-                    unknown_room.save()
-                    unknown_bed = Bed.objects.create(name='Uknown', room=unknown_room)
-                    unknown_bed.save()
+    mac = request.GET.get('mac')
+    if mac is not None:
+        try:
+            target_client = Client.objects.get(mac=mac)
+            target_client.registered = 1
+            target_client.save()
+            r_dict['client_name'] = target_client.name
+            r_dict['bed_name'] = target_client.bed.name
+            r_dict['bed_id'] = target_client.bed_id
+            r_dict['room_name'] = target_client.bed.room.name
+            r_dict['room_id'] = target_client.bed.room_id
+            r_dict['success'] = True
+            r_dict['message'] = 'Client information was returned correctly.'
+        except Client.DoesNotExist:
+            if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global':
+                unknown_room, _ = Room.objects.get_or_create(name='Unknown')
+                unknown_bed, _ = Bed.objects.get_or_create(name='Unknown', room=unknown_room)
                 new_client = Client.objects.create(mac=mac, name='Unknown', bed=unknown_bed)
                 new_client.save()
                 r_dict['client_name'] = new_client.name
@@ -245,36 +243,21 @@ def client_info_body(request):
                 r_dict['room_name'] = new_client.bed.room.name
                 r_dict['success'] = True
                 r_dict['message'] = 'A new client was added.'
-        else:
-            r_dict['success'] = False
-            r_dict['message'] = 'Requested mac is none.'
-    else:
-        mac = request.GET.get('mac')
-        if mac is not None:
-            target_client = Client.objects.get(mac=mac)
-            if target_client is not None:
-                target_client.registered = 1
-                target_client.save()
-                r_dict['client_name'] = target_client.name
-                target_bed = Bed.objects.get(pk=target_client.bed_id)
-                r_dict['bed_name'] = target_bed.name
-                r_dict['bed_id'] = target_bed.id
-                r_dict['room_name'] = target_bed.room.name
-                r_dict['room_id'] = target_bed.room.id
-                r_dict['success'] = True
-                r_dict['message'] = 'Client information was returned correctly.'
             else:
                 r_dict['success'] = False
                 r_dict['message'] = 'Requested client is none.'
-        else:
-            r_dict['success'] = False
-            r_dict['message'] = 'Requested mac is none.'
+                response_status = 400
+    else:
+        r_dict['success'] = False
+        r_dict['message'] = 'Requested mac is none.'
+        response_status = 400
 
+    log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
     logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 # When a local server requested for channel information.
 # This function could be called only in a global server.
@@ -285,7 +268,7 @@ def client_info_server(request):
     r_dict['success'] = False
     r_dict['message'] = 'Client info API cannot be called from a local server.'
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
 
 # When a client requested for channel information.
 # This function could be called either in a global server or in a local server.
@@ -305,22 +288,18 @@ def recording_info_body(request):
     log_dict['REQUEST_PATH'] = request.path
     log_dict['METHOD'] = request.method
     log_dict['PARAM'] = request.POST
+    response_status = 200
 
     mac = request.POST.get('mac')
     begin = request.POST.get("begin")
     end = request.POST.get("end")
-    if mac is None:
+    if mac is None or begin is None or end is None:
         r_dict['success'] = False
-        r_dict['message'] = 'Requested mac address is none.'
-    elif begin is None:
-        r_dict['success'] = False
-        r_dict['message'] = 'Requested begining date is none.'
-    elif end is None:
-        r_dict['success'] = False
-        r_dict['message'] = 'Requested end date is none.'
+        r_dict['message'] = 'A requested parameter is none.'
+        response_status = 400
     else:
-        target_client = Client.objects.get(mac=mac)
-        if target_client is not None:
+        try:
+            target_client = Client.objects.get(mac=mac)
             r_dict['success'] = True
             r_dict['message'] = 'Recording info was added correctly.'
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
@@ -345,19 +324,18 @@ def recording_info_body(request):
                 else:
                     r_dict['success'] = False
                     r_dict['message'] = 'File attachment is not valid.'
-            else:
-                FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
-                r_dict['success'] = True
-                r_dict['message'] = 'Recording info was added correctly.'
-        else:
+                    response_status = 400
+        except Client.DoesNotExist:
             r_dict['success'] = False
             r_dict['message'] = 'Requested client is none.'
+            response_status = 400
 
+    log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
     logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
     logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 # When a local server requested for channel information.
 # This function could be called only in a global server.
@@ -368,7 +346,7 @@ def recording_info_server(request):
     r_dict['success'] = False
     r_dict['message'] = 'Recording info API cannot be called from a local server.'
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
 
 # When a client requested for channel information.
 # This function could be called either in a global server or in a local server.
@@ -395,6 +373,7 @@ def report_status_client(request):
     client_version = request.GET.get('client_version')
     uptime = int(request.GET.get('uptime'))
     bus_raw = request.GET.get('bus_info')
+    response_status = 200
 
     if request.GET.get('status') == 'Unknown':
         status = Client.STATUS_UNKNOWN
@@ -408,6 +387,7 @@ def report_status_client(request):
     if mac is None or report_dt is None or status is None or bus_raw is None or uptime is None or ip_address is None or client_version is None:
         r_dict['success'] = False
         r_dict['message'] = 'A requested parameter is none.'
+        response_status = 400
     else:
         target_client = Client.objects.get(mac=mac)
         if target_client is not None:
@@ -424,7 +404,7 @@ def report_status_client(request):
                 for slot_info in bus_info:
                     slot_name = slot_info['slot']
                     remaining_slot = remaining_slot.exclude(bus=bus_name, name=slot_name)
-                    target_clientbusslot = ClientBusSlot.objects.get_or_create(client=target_client, bus=bus_name, name=slot_name)[0]
+                    target_clientbusslot, _ = ClientBusSlot.objects.get_or_create(client=target_client, bus=bus_name, name=slot_name)
                     if slot_info['device_type'] != '':
                         target_device = Device.objects.get_or_create(device_type=slot_info['device_type'])[0]
                         target_clientbusslot.device = target_device
@@ -439,5 +419,11 @@ def report_status_client(request):
         else:
             r_dict['success'] = False
             r_dict['message'] = 'Requested client is none.'
+            response_status = 400
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8")
+    log_dict['RESPONSE_STATUS'] = response_status
+    log_dict['RESULT'] = r_dict
+    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
+    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
