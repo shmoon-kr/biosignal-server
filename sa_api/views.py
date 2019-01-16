@@ -2,6 +2,8 @@ import json
 import os.path
 import datetime
 import requests
+import MySQLdb
+import sa_api.AMCVitalReader as vr
 from .forms import UploadFileForm
 from fluent import sender
 from ftplib import FTP
@@ -29,6 +31,77 @@ def file_upload_storage(date_string, bed_name, filepath):
     ftp.storbinary('STOR '+os.path.basename(filepath), file)
     ftp.quit()
     return True
+
+
+# Create your views here.
+
+def db_upload_main_numeric(filepath):
+
+    timestamp_interval = 0.5
+    vr_file = vr.vital_reader(filepath)
+    vr_file.read_header()
+    vr_file.read_packets()
+    raw_data = vr_file.export_db_data(['GE/s5'])
+
+    def sort_by_time(val):
+        return val[:3]
+
+    raw_data.sort(key=sort_by_time)
+
+    aligned_data = []
+    tmp_aligned = {}
+    column_info = {}
+    for i, ri in enumerate(raw_data):
+        if not ri[0] in column_info:
+            column_info[ri[0]] = {}
+        if not ri[2] in column_info[ri[0]]:
+            column_info[ri[0]][ri[2]] = len(column_info[ri[0]])
+        if not i:
+            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
+        elif tmp_aligned['device'] != ri[0] or ri[1]-tmp_aligned['timestamp'] > timestamp_interval or ri[2] in tmp_aligned:
+            aligned_data.append(tmp_aligned)
+            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
+        else:
+            tmp_aligned[ri[2]] = ri[3]
+    aligned_data.append(tmp_aligned)
+
+    db = MySQLdb.connect(host='192.168.134.177', user='shmoon', password='ibsntxmes', db='op_signal')
+    cursor = db.cursor()
+    query = 'DESCRIBE number_ge'
+    cursor.execute(query)
+    rows = cursor.fetchall()
+
+    query = 'INSERT INTO number_ge ('
+    column_info_db = {}
+    for i, column in enumerate(rows):
+        if column[0] != 'id':
+            column_info_db[len(column_info_db)] = column[0]
+            if len(column_info_db) == 1:
+                query += column[0]
+            else:
+                query += ', ' + column[0]
+    query += ') VALUES '
+
+    for i, ad in enumerate(aligned_data):
+        tmp_query = '(\'%s\', \'%s\'' % ('C', 'C-05')
+        tmp_query += ', \'%s\'' % (datetime.datetime.fromtimestamp(ad['timestamp']).isoformat())
+        for key, val in column_info_db.items():
+            if val not in ['rosette', 'bed', 'dt']:
+                tmp_query += ', NULL' if val.upper() not in ad else ', %f' % (ad[val.upper()])
+        tmp_query += ')'
+        if i == 0:
+            query += tmp_query
+        else:
+            query += ',' + tmp_query
+
+    for key, val in column_info_db.items():
+        column_info['GE/s5'].pop(val.upper(), None)
+
+    cursor.execute(query)
+    db.commit()
+    db.close()
+
+    return len(aligned_data), column_info
 
 
 # Main body of device_info API function

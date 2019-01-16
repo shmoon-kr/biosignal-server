@@ -4,7 +4,8 @@ import datetime
 from django.test import TestCase, override_settings
 from django.test import Client as tClient
 from django.conf import settings
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded
+from sa_api.models import Device, Client, Bed, Channel, Room
+from sa_api.views import db_upload_main_numeric
 
 # Create your tests here.
 
@@ -293,3 +294,7 @@ class UnitTestLocalServerAPI(TestCase):
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Client status was updated correctly.')
+
+    def test_file_upload(self):
+        db_upload_main_numeric('test/C-05_190115_095659.vital')
+
