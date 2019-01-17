@@ -296,5 +296,8 @@ class UnitTestLocalServerAPI(TestCase):
         self.assertEqual(r['message'], 'Client status was updated correctly.')
 
     def test_file_upload(self):
-        db_upload_main_numeric('test/C-05_190115_095659.vital')
+#        db_upload_main_numeric('test/C-05_190115_095659.vital', 'C', 'C-05')
+#        db_upload_main_numeric('test/F-04_190117_112235.vital', 'F', 'F-04')
+#        db_upload_main_numeric('test/C-05_190115_095659.vital', 'C', 'C-05', db_writing=False)
+        db_upload_main_numeric('test/F-04_190117_112235.vital', 'F', 'F-04', db_writing=False)
 

@@ -35,13 +35,15 @@ def file_upload_storage(date_string, bed_name, filepath):
 
 # Create your views here.
 
-def db_upload_main_numeric(filepath):
+def db_upload_main_numeric(filepath, room, bed, db_writing=True):
+
+    table_name_info = {'GE/s5': 'number_ge', 'Philips/M8000': 'number_ph'}
 
     timestamp_interval = 0.5
     vr_file = vr.vital_reader(filepath)
     vr_file.read_header()
     vr_file.read_packets()
-    raw_data = vr_file.export_db_data(['GE/s5'])
+    raw_data = vr_file.export_db_data([*table_name_info])
 
     def sort_by_time(val):
         return val[:3]
@@ -65,43 +67,71 @@ def db_upload_main_numeric(filepath):
             tmp_aligned[ri[2]] = ri[3]
     aligned_data.append(tmp_aligned)
 
+    insert_query = {}
     db = MySQLdb.connect(host='192.168.134.177', user='shmoon', password='ibsntxmes', db='op_signal')
     cursor = db.cursor()
-    query = 'DESCRIBE number_ge'
-    cursor.execute(query)
-    rows = cursor.fetchall()
 
-    query = 'INSERT INTO number_ge ('
     column_info_db = {}
-    for i, column in enumerate(rows):
-        if column[0] != 'id':
-            column_info_db[len(column_info_db)] = column[0]
-            if len(column_info_db) == 1:
-                query += column[0]
-            else:
-                query += ', ' + column[0]
-    query += ') VALUES '
+    num_records = {}
+
+    for device_type in [*column_info]:
+        num_records[device_type] = 0
+        query = 'DESCRIBE %s' % (table_name_info[device_type])
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        insert_query[device_type] = 'INSERT IGNORE INTO %s (' % (table_name_info[device_type])
+        column_info_db[device_type] = {}
+        for i, column in enumerate(rows):
+            if column[0] != 'id':
+                column_info_db[device_type][len(column_info_db[device_type])] = column[0]
+                if len(column_info_db[device_type]) == 1:
+                    insert_query[device_type] += column[0]
+                else:
+                    insert_query[device_type] += ', ' + column[0]
+        insert_query[device_type] += ') VALUES '
 
     for i, ad in enumerate(aligned_data):
-        tmp_query = '(\'%s\', \'%s\'' % ('C', 'C-05')
+        tmp_query = '(\'%s\', \'%s\'' % (room, bed)
         tmp_query += ', \'%s\'' % (datetime.datetime.fromtimestamp(ad['timestamp']).isoformat())
-        for key, val in column_info_db.items():
+        device_type = ad['device']
+        num_records[device_type] += 1
+        for key, val in column_info_db[device_type].items():
             if val not in ['rosette', 'bed', 'dt']:
                 tmp_query += ', NULL' if val.upper() not in ad else ', %f' % (ad[val.upper()])
         tmp_query += ')'
         if i == 0:
-            query += tmp_query
+            insert_query[device_type] += tmp_query
         else:
-            query += ',' + tmp_query
+            insert_query[device_type] += ',' + tmp_query
 
-    for key, val in column_info_db.items():
-        column_info['GE/s5'].pop(val.upper(), None)
+    for device_type in [*column_info_db]:
+        for key, val in column_info_db[device_type].items():
+            column_info[device_type].pop(val.upper(), None)
 
-    cursor.execute(query)
-    db.commit()
+    for key, val in insert_query.items():
+        insert_start = datetime.datetime.now()
+        if db_writing:
+            cursor.execute(val)
+            db.commit()
+        db_upload_execution_time = datetime.datetime.now() - insert_start
+        log_dict = dict()
+        log_dict['SERVER_NAME'] = 'global'\
+            if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global'\
+            else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+        log_dict['ACTION'] = 'DB_UPLOAD(%s)' % ('actual' if db_writing else 'fake')
+        log_dict['TARGET_DEVICE'] = key
+        log_dict['NEW_CHANNEL'] = [*column_info[key]]
+        log_dict['NUM_RECORDS_QUERY'] = num_records[key]
+        log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount if db_writing else 0
+        log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time) if db_writing else 0
+        logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                     port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
+        logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
     db.close()
 
-    return len(aligned_data), column_info
+    return
 
 
 # Main body of device_info API function
