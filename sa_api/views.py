@@ -68,7 +68,10 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     aligned_data.append(tmp_aligned)
 
     insert_query = {}
-    db = MySQLdb.connect(host='192.168.134.177', user='shmoon', password='ibsntxmes', db='op_signal')
+    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DBNAME'])
     cursor = db.cursor()
 
     column_info_db = {}
