@@ -71,7 +71,7 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
                          user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
                          password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DBNAME'])
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
     cursor = db.cursor()
 
     column_info_db = {}
