@@ -53,7 +53,7 @@ class vital_record:
     infolen = 0
     dt = 0
     tid = 0
-    data = []
+#    data = []
 
 
 def sort_timestamp(val):
@@ -392,23 +392,15 @@ class vital_reader(object):
                                         self.track[rec.tid].v_number.append(num)
                                         if self.track[rec.tid].st == 0:
                                             self.track[rec.tid].st = rec.dt
-#                                else:
-#                                    if len(self.track[rec.tid].dt) >= 2:
-#                                        if (abs((rec.dt - self.track[rec.tid].dt[-2]) - num / self.track[rec.tid].srate) >= 3):
-#                                            print("Time gap is more than 3 second in the wave type track.")
-                                        rec.data = []
-
-                                    if self.track[rec.tid].rec_fmt == 1:
-                                        listval = list(struct.unpack('<'+'f'*num,packet_data.read(4*num)))
-                                        rec.data.extend(listval)
-                                        self.track[rec.tid].v_wave.extend(listval)
-                                    elif self.track[rec.tid].rec_fmt == 5 or self.track[rec.tid].rec_fmt == 6:
-                                        self.track[rec.tid].v_string.append(packet_data.read(2*num))
-                                        listval = list(struct.unpack('<'+'h'*num,self.track[rec.tid].v_string[-1])) # Little Endian
-#                                    listval = list(struct.unpack('>'+'h'*num,self.track[rec.tid].v_string[-1])) # Big Endian
-                                        for p in range(len(listval)):
-                                            self.track[rec.tid].v_wave.append(listval[p] * self.track[rec.tid].adc_gain + self.track[rec.tid].adc_offset )
-                                            self.track[rec.tid].v_test.append(listval[p])
+                                        if self.track[rec.tid].rec_fmt == 1:
+                                            listval = list(struct.unpack('<'+'f'*num, packet_data.read(4*num)))
+                                            self.track[rec.tid].v_wave.extend(listval)
+                                        elif self.track[rec.tid].rec_fmt == 5 or self.track[rec.tid].rec_fmt == 6:
+                                            self.track[rec.tid].v_string.append(packet_data.read(2*num))
+                                            listval = list(struct.unpack('<'+'h'*num, self.track[rec.tid].v_string[-1])) # Little Endian
+                                            for p in range(len(listval)):
+                                                self.track[rec.tid].v_wave.append(listval[p] * self.track[rec.tid].adc_gain + self.track[rec.tid].adc_offset)
+                                                self.track[rec.tid].v_test.append(listval[p])
 
 
                                 elif self.track[rec.tid].rec_type == 2:  # Number
@@ -419,8 +411,6 @@ class vital_reader(object):
                                         value = struct.unpack('<f', packet_data.read(4))[0]
                                         self.track[rec.tid].dt.append(rec.dt)
                                         self.track[rec.tid].v_number.append(value)
-#                                    print(value)
-                                        rec.data.append(value)
                                     else:
                                         print("Unknown Format, add codes")
                                         exit(1)

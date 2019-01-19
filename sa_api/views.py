@@ -38,12 +38,14 @@ def file_upload_storage(date_string, bed_name, filepath):
 def db_upload_main_numeric(filepath, room, bed, db_writing=True):
 
     table_name_info = {'GE/s5': 'number_ge', 'Philips/M8000': 'number_ph'}
-
     timestamp_interval = 0.5
+
+    read_start = datetime.datetime.now()
     vr_file = vr.vital_reader(filepath)
     vr_file.read_header()
-    vr_file.read_packets()
+    vr_file.read_packets(skip_wave=True)
     raw_data = vr_file.export_db_data([*table_name_info])
+    del vr_file
 
     def sort_by_time(val):
         return val[:3]
@@ -66,6 +68,22 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
         else:
             tmp_aligned[ri[2]] = ri[3]
     aligned_data.append(tmp_aligned)
+
+    file_read_execution_time = datetime.datetime.now() - read_start
+
+    log_dict = dict()
+    log_dict['SERVER_NAME'] = 'global' \
+        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
+    log_dict['FILE_NAME'] = filepath
+    log_dict['NUM_RECORDS_FILE'] = len(raw_data)
+    log_dict['NUM_RECORDS_ALIGNED'] = len(aligned_data)
+    log_dict['READING_EXECUTION_TIME'] = str(file_read_execution_time)
+    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                 port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
+    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+    del log_dict
 
     insert_query = {}
     db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
@@ -122,7 +140,7 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
         log_dict['SERVER_NAME'] = 'global'\
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global'\
             else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-        log_dict['ACTION'] = 'DB_UPLOAD(%s)' % ('actual' if db_writing else 'fake')
+        log_dict['ACTION'] = 'DB_UPLOAD_%s' % ('REAL' if db_writing else 'FAKE')
         log_dict['TARGET_DEVICE'] = key
         log_dict['NEW_CHANNEL'] = [*column_info[key]]
         log_dict['NUM_RECORDS_QUERY'] = num_records[key]
@@ -131,6 +149,7 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
         logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
                                      port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
         logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+        del log_dict
 
     db.close()
 
@@ -153,7 +172,7 @@ def device_info_body(request, api_type):
     response_status = 200
 
     if device_type is not None:
-        target_device, created = Device.objects.get_or_create(device_type=device_type, displayed_name=device_type)
+        target_device, created = Device.objects.get_or_create(device_type=device_type)
         if created and settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
             result = requests.get('http://%s:%d/server/device_info' % (
             settings.SERVICE_CONFIGURATIONS['GLOBAL_SERVER_HOSTNAME'],
@@ -171,6 +190,9 @@ def device_info_body(request, api_type):
                 r_dict['success'] = True
                 r_dict['message'] = 'Device information was acquired from a global server.'
         else:
+            if created:
+                target_device.displayed_name = target_device.device_type
+                target_device.save()
             r_dict['device_type'] = target_device.device_type
             r_dict['displayed_name'] = target_device.displayed_name
             r_dict['is_main'] = target_device.is_main
@@ -437,6 +459,8 @@ def recording_info_body(request):
                     recorded.save(update_fields=['file_path'])
                     if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                         file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
+                    if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
+                        db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
                     r_dict['success'] = True
                     r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
                 else:
