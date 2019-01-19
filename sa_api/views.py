@@ -172,7 +172,7 @@ def device_info_body(request, api_type):
     response_status = 200
 
     if device_type is not None:
-        target_device, created = Device.objects.get_or_create(device_type=device_type)
+        target_device, created = Device.objects.get_or_create(device_type=device_type, defaults={'displayed_name': device_type})
         if created and settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
             result = requests.get('http://%s:%d/server/device_info' % (
             settings.SERVICE_CONFIGURATIONS['GLOBAL_SERVER_HOSTNAME'],
@@ -190,9 +190,6 @@ def device_info_body(request, api_type):
                 r_dict['success'] = True
                 r_dict['message'] = 'Device information was acquired from a global server.'
         else:
-            if created:
-                target_device.displayed_name = target_device.device_type
-                target_device.save()
             r_dict['device_type'] = target_device.device_type
             r_dict['displayed_name'] = target_device.displayed_name
             r_dict['is_main'] = target_device.is_main
