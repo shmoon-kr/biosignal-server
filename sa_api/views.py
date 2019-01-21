@@ -37,7 +37,7 @@ def file_upload_storage(date_string, bed_name, filepath):
 
 def db_upload_main_numeric(filepath, room, bed, db_writing=True):
 
-    table_name_info = {'GE/s5': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
+    table_name_info = {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
     timestamp_interval = 0.5
 
     read_start = datetime.datetime.now()
@@ -461,7 +461,6 @@ def recording_info_body(request):
                         recorded.save(update_fields=['file_path'])
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
-
                         if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
                             db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
                         r_dict['success'] = True
