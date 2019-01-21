@@ -17,7 +17,7 @@ class Device(models.Model):
 class Room(models.Model):
     name = models.CharField(max_length=64)
 
-    def __str__(self): # __str__ on Python 3
+    def __str__(self):
         return self.name
 
 
@@ -34,8 +34,8 @@ class Bed(models.Model):
     bed_type = models.IntegerField(choices=BED_TYPE_CHOICES, default=0)
     room = models.ForeignKey('Room', on_delete=models.CASCADE)
 
-    def __str__(self): # __str__ on Python 3
-        return '%s' % (self.name)
+    def __str__(self):
+        return self.name
 
 
 class Client(models.Model):
@@ -59,7 +59,7 @@ class Client(models.Model):
     )
     status = models.IntegerField(choices=CLIENT_STATUS_CHOICES, default=0)
 
-    def __str__(self): # __str__ on Python 3
+    def __str__(self):
         return self.name
 
 
@@ -129,7 +129,7 @@ class Channel(models.Model):
     class Meta:
         unique_together = (("name", "device"),)
 
-    def __str__(self): # __str__ on Python 3
+    def __str__(self):
         return '%s, %s' % (self.device.device_type, self.name)
 
 
@@ -138,9 +138,9 @@ class FileRecorded(models.Model):
     upload_date = models.DateTimeField(auto_now_add=True)
     begin_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    file_path = models.CharField(max_length=256,blank=True)
+    file_path = models.CharField(max_length=256, blank=True)
 
-    def __str__(self): # __str__ on Python 3
+    def __str__(self):
         return self.file_path
 
 
