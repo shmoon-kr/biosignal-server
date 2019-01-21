@@ -303,6 +303,6 @@ class UnitTestLocalServerAPI(TestCase):
     def test_db_upload(self):
 #        db_upload_main_numeric('test/C-05_190115_095659.vital', 'C', 'C-05')
 #        db_upload_main_numeric('test/F-04_190117_112235.vital', 'F', 'F-04')
-        db_upload_main_numeric('test/C-05_190115_095659.vital', 'C', 'C-05', db_writing=False)
-#        db_upload_main_numeric('test/H-08_190119_231133.vital', 'H', 'H-08', db_writing=False)
+#        db_upload_main_numeric('test/C-05_190115_095659.vital', 'C', 'C-05', db_writing=False)
+        db_upload_main_numeric('test/H-08_190120_001210.vital', 'H', 'H-08', db_writing=False)
 

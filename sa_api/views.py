@@ -37,7 +37,7 @@ def file_upload_storage(date_string, bed_name, filepath):
 
 def db_upload_main_numeric(filepath, room, bed, db_writing=True):
 
-    table_name_info = {'GE/s5': 'number_ge', 'Philips/M8000': 'number_ph'}
+    table_name_info = {'GE/s5': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
     timestamp_interval = 0.5
 
     read_start = datetime.datetime.now()
@@ -46,6 +46,9 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     vr_file.read_packets(skip_wave=True)
     raw_data = vr_file.export_db_data([*table_name_info])
     del vr_file
+
+    if not len(raw_data):
+        raise ValueError('No number data was found in vital file.')
 
     def sort_by_time(val):
         return val[:3]
@@ -244,7 +247,7 @@ def channel_info_body(request, api_type):
     channel_name = request.GET.get("channel_name")
 
     if device_type is not None and channel_name is not None:
-        target_device, _ = Device.objects.get_or_create(device_type=device_type)
+        target_device, _ = Device.objects.get_or_create(device_type=device_type, defaults={'displayed_name': device_type})
         try:
             target_channel = Channel.objects.get(name=channel_name, device=target_device)
             r_dict['success'] = True
@@ -437,29 +440,37 @@ def recording_info_body(request):
     else:
         try:
             target_client = Client.objects.get(mac=mac)
+            r_dict['bed'] = target_client.bed.name
             r_dict['success'] = True
             r_dict['message'] = 'Recording info was added correctly.'
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
                 form = UploadFileForm(request.POST, request.FILES)
                 if form.is_valid():
-                    recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
-                    date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
-                    time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
-                    pathname = '%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
-                    if not os.path.exists(pathname):
-                        os.makedirs(pathname)
-                    filename = '%s_%s_%s.vital'%(recorded.client.bed.name, date_str, time_str)
-                    with open(os.path.join(pathname, filename), 'wb+') as destination:
-                        for chunk in request.FILES['attachment'].chunks():
-                            destination.write(chunk)
-                    recorded.file_path = os.path.join(pathname, filename)
-                    recorded.save(update_fields=['file_path'])
-                    if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
-                        file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
-                    if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
-                        db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
-                    r_dict['success'] = True
-                    r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
+                    try:
+                        recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
+                        date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
+                        time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
+                        pathname = '%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
+                        if not os.path.exists(pathname):
+                            os.makedirs(pathname)
+                        filename = '%s_%s_%s.vital'%(recorded.client.bed.name, date_str, time_str)
+                        with open(os.path.join(pathname, filename), 'wb+') as destination:
+                            for chunk in request.FILES['attachment'].chunks():
+                                destination.write(chunk)
+                        recorded.file_path = os.path.join(pathname, filename)
+                        recorded.save(update_fields=['file_path'])
+                        if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
+                            file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
+
+                        if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
+                            db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
+                        r_dict['success'] = True
+                        r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
+                    except Exception as e:
+                        r_dict['success'] = False
+                        r_dict['exception'] = str(e)
+                        r_dict['message'] = 'An exception was raised.'
+                        response_status = 500
                 else:
                     r_dict['success'] = False
                     r_dict['message'] = 'File attachment is not valid.'
@@ -531,8 +542,8 @@ def report_status_client(request):
         r_dict['message'] = 'A requested parameter is none.'
         response_status = 400
     else:
-        target_client = Client.objects.get(mac=mac)
-        if target_client is not None:
+        try:
+            target_client = Client.objects.get(mac=mac)
             target_client.dt_report = report_dt
             target_client.dt_start_recording = record_begin_dt
             target_client.ip_address = ip_address
@@ -548,7 +559,7 @@ def report_status_client(request):
                     remaining_slot = remaining_slot.exclude(bus=bus_name, name=slot_name)
                     target_clientbusslot, _ = ClientBusSlot.objects.get_or_create(client=target_client, bus=bus_name, name=slot_name)
                     if slot_info['device_type'] != '':
-                        target_device = Device.objects.get_or_create(device_type=slot_info['device_type'])[0]
+                        target_device, _ = Device.objects.get_or_create(device_type=slot_info['device_type'], defaults={'displayed_name': slot_info['device_type']})
                         target_clientbusslot.device = target_device
                     else:
                         target_clientbusslot.device = None
@@ -558,7 +569,7 @@ def report_status_client(request):
 
             r_dict['success'] = True
             r_dict['message'] = 'Client status was updated correctly.'
-        else:
+        except Client.DoesNotExist:
             r_dict['success'] = False
             r_dict['message'] = 'Requested client is none.'
             response_status = 400
