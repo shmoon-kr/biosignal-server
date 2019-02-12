@@ -2,6 +2,8 @@ import json
 import os.path
 import datetime
 import requests
+import MySQLdb
+import sa_api.AMCVitalReader as vr
 from .forms import UploadFileForm
 from fluent import sender
 from ftplib import FTP
@@ -31,6 +33,132 @@ def file_upload_storage(date_string, bed_name, filepath):
     return True
 
 
+# Create your views here.
+
+def db_upload_main_numeric(filepath, room, bed, db_writing=True):
+
+    table_name_info = {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
+    timestamp_interval = 0.5
+
+    read_start = datetime.datetime.now()
+    vr_file = vr.vital_reader(filepath)
+    vr_file.read_header()
+    vr_file.read_packets(skip_wave=True)
+    raw_data = vr_file.export_db_data([*table_name_info])
+    del vr_file
+
+    if not len(raw_data):
+        raise ValueError('No number data was found in vital file.')
+
+    def sort_by_time(val):
+        return val[:3]
+
+    raw_data.sort(key=sort_by_time)
+
+    aligned_data = []
+    tmp_aligned = {}
+    column_info = {}
+    for i, ri in enumerate(raw_data):
+        if not ri[0] in column_info:
+            column_info[ri[0]] = {}
+        if not ri[2] in column_info[ri[0]]:
+            column_info[ri[0]][ri[2]] = len(column_info[ri[0]])
+        if not i:
+            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
+        elif tmp_aligned['device'] != ri[0] or ri[1]-tmp_aligned['timestamp'] > timestamp_interval or ri[2] in tmp_aligned:
+            aligned_data.append(tmp_aligned)
+            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
+        else:
+            tmp_aligned[ri[2]] = ri[3]
+    aligned_data.append(tmp_aligned)
+
+    file_read_execution_time = datetime.datetime.now() - read_start
+
+    log_dict = dict()
+    log_dict['SERVER_NAME'] = 'global' \
+        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
+    log_dict['FILE_NAME'] = filepath
+    log_dict['NUM_RECORDS_FILE'] = len(raw_data)
+    log_dict['NUM_RECORDS_ALIGNED'] = len(aligned_data)
+    log_dict['READING_EXECUTION_TIME'] = str(file_read_execution_time)
+    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                 port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
+    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+    del log_dict
+
+    insert_query = {}
+    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+    cursor = db.cursor()
+
+    column_info_db = {}
+    num_records = {}
+
+    for device_type in [*column_info]:
+        num_records[device_type] = 0
+        query = 'DESCRIBE %s' % (table_name_info[device_type])
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        insert_query[device_type] = 'INSERT IGNORE INTO %s (' % (table_name_info[device_type])
+        column_info_db[device_type] = {}
+        for i, column in enumerate(rows):
+            if column[0] != 'id':
+                column_info_db[device_type][len(column_info_db[device_type])] = column[0]
+                if len(column_info_db[device_type]) == 1:
+                    insert_query[device_type] += column[0]
+                else:
+                    insert_query[device_type] += ', ' + column[0]
+        insert_query[device_type] += ') VALUES '
+
+    for i, ad in enumerate(aligned_data):
+        tmp_query = '(\'%s\', \'%s\'' % (room, bed)
+        tmp_query += ', \'%s\'' % (datetime.datetime.fromtimestamp(ad['timestamp']).isoformat())
+        device_type = ad['device']
+        num_records[device_type] += 1
+        for key, val in column_info_db[device_type].items():
+            if val not in ['rosette', 'bed', 'dt']:
+                tmp_query += ', NULL' if val.upper() not in ad else ', %f' % (ad[val.upper()])
+        tmp_query += ')'
+        if i == 0:
+            insert_query[device_type] += tmp_query
+        else:
+            insert_query[device_type] += ',' + tmp_query
+
+    for device_type in [*column_info_db]:
+        for key, val in column_info_db[device_type].items():
+            column_info[device_type].pop(val.upper(), None)
+
+    for key, val in insert_query.items():
+        insert_start = datetime.datetime.now()
+        if db_writing:
+            cursor.execute(val)
+            db.commit()
+        db_upload_execution_time = datetime.datetime.now() - insert_start
+        log_dict = dict()
+        log_dict['SERVER_NAME'] = 'global'\
+            if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global'\
+            else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+        log_dict['ACTION'] = 'DB_UPLOAD_%s' % ('REAL' if db_writing else 'FAKE')
+        log_dict['TARGET_DEVICE'] = key
+        log_dict['NEW_CHANNEL'] = [*column_info[key]]
+        log_dict['NUM_RECORDS_QUERY'] = num_records[key]
+        log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount if db_writing else 0
+        log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time) if db_writing else 0
+        logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                     port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
+        logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+        del log_dict
+
+    db.close()
+
+    return
+
+
 # Main body of device_info API function
 
 def device_info_body(request, api_type):
@@ -47,7 +175,7 @@ def device_info_body(request, api_type):
     response_status = 200
 
     if device_type is not None:
-        target_device, created = Device.objects.get_or_create(device_type=device_type, displayed_name=device_type)
+        target_device, created = Device.objects.get_or_create(device_type=device_type, defaults={'displayed_name': device_type})
         if created and settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
             result = requests.get('http://%s:%d/server/device_info' % (
             settings.SERVICE_CONFIGURATIONS['GLOBAL_SERVER_HOSTNAME'],
@@ -119,7 +247,7 @@ def channel_info_body(request, api_type):
     channel_name = request.GET.get("channel_name")
 
     if device_type is not None and channel_name is not None:
-        target_device, _ = Device.objects.get_or_create(device_type=device_type)
+        target_device, _ = Device.objects.get_or_create(device_type=device_type, defaults={'displayed_name': device_type})
         try:
             target_channel = Channel.objects.get(name=channel_name, device=target_device)
             r_dict['success'] = True
@@ -312,27 +440,36 @@ def recording_info_body(request):
     else:
         try:
             target_client = Client.objects.get(mac=mac)
+            r_dict['bed'] = target_client.bed.name
             r_dict['success'] = True
             r_dict['message'] = 'Recording info was added correctly.'
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local':
                 form = UploadFileForm(request.POST, request.FILES)
                 if form.is_valid():
-                    recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
-                    date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
-                    time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
-                    pathname = '%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
-                    if not os.path.exists(pathname):
-                        os.makedirs(pathname)
-                    filename = '%s_%s_%s.vital'%(recorded.client.bed.name, date_str, time_str)
-                    with open(os.path.join(pathname, filename), 'wb+') as destination:
-                        for chunk in request.FILES['attachment'].chunks():
-                            destination.write(chunk)
-                    recorded.file_path = os.path.join(pathname, filename)
-                    recorded.save(update_fields=['file_path'])
-                    if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
-                        file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
-                    r_dict['success'] = True
-                    r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
+                    try:
+                        recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
+                        date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
+                        time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
+                        pathname = '%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
+                        if not os.path.exists(pathname):
+                            os.makedirs(pathname)
+                        filename = '%s_%s_%s.vital'%(recorded.client.bed.name, date_str, time_str)
+                        with open(os.path.join(pathname, filename), 'wb+') as destination:
+                            for chunk in request.FILES['attachment'].chunks():
+                                destination.write(chunk)
+                        recorded.file_path = os.path.join(pathname, filename)
+                        recorded.save(update_fields=['file_path'])
+                        if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
+                            file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
+                        if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
+                            db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
+                        r_dict['success'] = True
+                        r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
+                    except Exception as e:
+                        r_dict['success'] = False
+                        r_dict['exception'] = str(e)
+                        r_dict['message'] = 'An exception was raised.'
+                        response_status = 500
                 else:
                     r_dict['success'] = False
                     r_dict['message'] = 'File attachment is not valid.'
@@ -404,8 +541,8 @@ def report_status_client(request):
         r_dict['message'] = 'A requested parameter is none.'
         response_status = 400
     else:
-        target_client = Client.objects.get(mac=mac)
-        if target_client is not None:
+        try:
+            target_client = Client.objects.get(mac=mac)
             target_client.dt_report = report_dt
             target_client.dt_start_recording = record_begin_dt
             target_client.ip_address = ip_address
@@ -421,7 +558,7 @@ def report_status_client(request):
                     remaining_slot = remaining_slot.exclude(bus=bus_name, name=slot_name)
                     target_clientbusslot, _ = ClientBusSlot.objects.get_or_create(client=target_client, bus=bus_name, name=slot_name)
                     if slot_info['device_type'] != '':
-                        target_device = Device.objects.get_or_create(device_type=slot_info['device_type'])[0]
+                        target_device, _ = Device.objects.get_or_create(device_type=slot_info['device_type'], defaults={'displayed_name': slot_info['device_type']})
                         target_clientbusslot.device = target_device
                     else:
                         target_clientbusslot.device = None
@@ -431,7 +568,7 @@ def report_status_client(request):
 
             r_dict['success'] = True
             r_dict['message'] = 'Client status was updated correctly.'
-        else:
+        except Client.DoesNotExist:
             r_dict['success'] = False
             r_dict['message'] = 'Requested client is none.'
             response_status = 400

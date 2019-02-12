@@ -4,7 +4,8 @@ import datetime
 from django.test import TestCase, override_settings
 from django.test import Client as tClient
 from django.conf import settings
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded
+from sa_api.models import Device, Client, Bed, Channel, Room
+from sa_api.views import db_upload_main_numeric
 
 # Create your tests here.
 
@@ -21,7 +22,7 @@ SERVICE_CONFIGURATIONS_GLOBAL = {
 class UnitTestGlobalServerAPI(TestCase):
     def setUp(self):
         self.client = tClient()
-        testdevice = Device.objects.create(device_type='TestDevice', displayed_name='TestDevice')
+        testdevice = Device.objects.create(device_type='TestDevice', displayed_name='TestDeviceDisplay')
         Channel.objects.create(name='TestChannelUnknown', abbreviation='TestChannelUnknown', device=testdevice, unit='mmHg', is_unknown=True)
         Channel.objects.create(name='TestChannelKnown', abbreviation='TestChannelKnown', device=testdevice, unit='mmHg', is_unknown=False)
         u_room = Room.objects.create(name='UknownRoom')
@@ -159,6 +160,11 @@ SERVICE_CONFIGURATIONS_LOCAL = {
     'STORAGE_SERVER_USER': 'shmoon',
     'STORAGE_SERVER_PASSWORD': 'qwer1234!',
     'STORAGE_SERVER_PATH': '/CloudStation/CloudStation',
+    'DB_SERVER': True,
+    'DB_SERVER_HOSTNAME': '192.168.134.177',
+    'DB_SERVER_USER': 'shmoon',
+    'DB_SERVER_PASSWORD': 'ibsntxmes',
+    'DB_SERVER_DATABASE': 'op_signal'
 }
 
 
@@ -166,7 +172,7 @@ SERVICE_CONFIGURATIONS_LOCAL = {
 class UnitTestLocalServerAPI(TestCase):
     def setUp(self):
         self.client = tClient()
-        testdevice = Device.objects.create(device_type='LocalTestDevice', displayed_name='LocalTestDevice')
+        testdevice = Device.objects.create(device_type='LocalTestDevice', displayed_name='LocalTestDeviceDisplay')
         Channel.objects.create(name='UnknownLocalTestChannel', abbreviation='UnknownLocalTestChannel', device=testdevice, unit='mmHg', is_unknown=True)
         Channel.objects.create(name='KnownLocalTestChannel', abbreviation='KnownLocalTestChannel', device=testdevice, unit='mmHg', is_unknown=False)
         u_room = Room.objects.create(name='UnknownLocalRoom')
@@ -293,3 +299,10 @@ class UnitTestLocalServerAPI(TestCase):
         r = json.loads(response.content)
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Client status was updated correctly.')
+
+    def test_db_upload(self):
+#        db_upload_main_numeric('test/C-05_190121_100007.vital', 'C', 'C-05')
+#        db_upload_main_numeric('test/F-04_190117_112235.vital', 'F', 'F-04')
+        db_upload_main_numeric('test/C-05_190121_100007.vital', 'C', 'C-05', db_writing=False)
+        db_upload_main_numeric('test/H-08_190120_001210.vital', 'H', 'H-08', db_writing=False)
+
