@@ -1,6 +1,21 @@
+from django.contrib.admin.widgets import AdminFileWidget
+from django.utils.translation import ugettext as _
+from django.utils.safestring import mark_safe
 from django.contrib import admin
 from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review
 import datetime
+
+
+class AdminImageWidget(AdminFileWidget):
+    def render(self, name, value, attrs=None):
+        output = []
+        if value and getattr(value, "url", None):
+            image_url = value.url
+            file_name = str(value)
+            output.append(u' <a href="%s" target="_blank"><img src="%s" alt="%s" /></a> %s ' % \
+                          (image_url, image_url, file_name, _('Change:')))
+        output.append(super(AdminFileWidget, self).render(name, value, attrs))
+        return mark_safe(u''.join(output))
 
 
 class ClientBusSlotInline(admin.TabularInline):
@@ -72,6 +87,7 @@ class FileRecordedAdmin(admin.ModelAdmin):
 
 class ReviewAdmin(admin.ModelAdmin):
     list_display = ('id', 'bed_name', 'room_name', 'dt_report', 'exist_comment')
+    readonly_fields = ('chart_image', )
 
     def bed_name(self, obj):
         return obj.bed.name
@@ -82,6 +98,13 @@ class ReviewAdmin(admin.ModelAdmin):
     def exist_comment(self, obj):
         return obj.comment != ''
 
+    def chart_image(self, obj):
+        return mark_safe('<img src="{url}" width="{width}" height={height} />'.format(
+            url=obj.chart.url,
+            width=obj.chart.width,
+            height=obj.chart.height,
+            )
+        )
 
 # Register your models here.
 admin.site.register(Device)

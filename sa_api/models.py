@@ -1,8 +1,17 @@
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+import os
 
 # Create your models here.
+
+
+class OverwriteStorage(FileSystemStorage):
+    def get_available_name(self, name, max_length=None):
+        if self.exists(name):
+            os.remove(name)
+        return name
 
 
 class Device(models.Model):
@@ -164,11 +173,11 @@ class ClientBusSlot(models.Model):
 
 
 class Review(models.Model):
-    dt_report = models.DateTimeField(default=timezone.now)
+    dt_report = models.DateField(default=timezone.now)
     name = models.CharField(max_length=255, blank=True)
     local_server_name = models.CharField(max_length=255, default=settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME'])
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
-    chart = models.ImageField(upload_to='reviews')
+    chart = models.ImageField(upload_to='reviews', storage=OverwriteStorage())
     comment = models.TextField(blank=True)
 
     def __str__(self):
