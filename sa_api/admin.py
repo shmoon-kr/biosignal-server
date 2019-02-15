@@ -86,7 +86,7 @@ class FileRecordedAdmin(admin.ModelAdmin):
 
 
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ('id', 'bed_name', 'room_name', 'dt_report', 'exist_comment')
+    list_display = ('id', 'name', 'bed_name', 'room_name', 'dt_report', 'exist_comment')
     readonly_fields = ('chart_image', )
 
     def bed_name(self, obj):
