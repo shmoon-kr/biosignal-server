@@ -1,5 +1,5 @@
 from django.contrib import admin
-from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot
+from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review
 import datetime
 
 
@@ -30,7 +30,7 @@ class ClientAdmin(admin.ModelAdmin):
     inlines = [ClientBusSlotInline]
 
     def status(self, obj):
-        if obj.registered==1:
+        if obj.registered == 1:
             current_time = datetime.datetime.now()
             temp = obj.dt_update
             temp = temp.replace(tzinfo=None)
@@ -52,7 +52,7 @@ class ClientAdmin(admin.ModelAdmin):
 class BedAdmin(admin.ModelAdmin):
     list_display = ('id', 'room', 'name', 'bed_type')
 
-    def bed_type(self,obj):
+    def bed_type(self, obj):
         bed_type_name = obj.BED_TYPE_CHOICES[obj.bed_type]
         return bed_type_name
 
@@ -60,14 +60,27 @@ class BedAdmin(admin.ModelAdmin):
 class FileRecordedAdmin(admin.ModelAdmin):
     list_display = ('id', 'bed_name', 'room_name', 'upload_date', 'begin_date', 'end_date', 'client_mac', 'file_path')
 
-    def client_mac(self,obj):
+    def client_mac(self, obj):
         return obj.client.mac
 
-    def bed_name(self,obj):
+    def bed_name(self, obj):
         return obj.client.bed.name
 
-    def room_name(self,obj):
+    def room_name(self, obj):
         return obj.client.bed.room.name
+
+
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ('id', 'bed_name', 'room_name', 'dt_report', 'exist_comment')
+
+    def bed_name(self, obj):
+        return obj.bed.name
+
+    def room_name(self, obj):
+        return obj.bed.room.name
+
+    def exist_comment(self, obj):
+        return obj.comment != ''
 
 
 # Register your models here.
@@ -77,3 +90,4 @@ admin.site.register(Room)
 admin.site.register(Bed, BedAdmin)
 admin.site.register(Client, ClientAdmin)
 admin.site.register(FileRecorded, FileRecordedAdmin)
+admin.site.register(Review, ReviewAdmin)

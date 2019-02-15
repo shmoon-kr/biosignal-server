@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 
 # Create your models here.
 
@@ -160,3 +161,15 @@ class ClientBusSlot(models.Model):
 
     class Meta:
         unique_together = ("client", "name", "bus")
+
+
+class Review(models.Model):
+    dt_report = models.DateTimeField(default=timezone.now)
+    name = models.CharField(max_length=255, blank=True)
+    local_server_name = models.CharField(max_length=255, default=settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME'])
+    bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
+    chart = models.ImageField(upload_to='reviews')
+    comment = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name

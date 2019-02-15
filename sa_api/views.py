@@ -4,13 +4,13 @@ import datetime
 import requests
 import MySQLdb
 import sa_api.AMCVitalReader as vr
-from .forms import UploadFileForm
+from .forms import UploadFileForm, UploadReviewForm
 from fluent import sender
 from ftplib import FTP
 from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review
 from django.views.decorators.csrf import csrf_exempt
 
 
@@ -450,10 +450,10 @@ def recording_info_body(request):
                         recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
                         date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
                         time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
-                        pathname = '%s/%s'%(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
+                        pathname = '%s/%s' % (settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
                         if not os.path.exists(pathname):
                             os.makedirs(pathname)
-                        filename = '%s_%s_%s.vital'%(recorded.client.bed.name, date_str, time_str)
+                        filename = '%s_%s_%s.vital' % (recorded.client.bed.name, date_str, time_str)
                         with open(os.path.join(pathname, filename), 'wb+') as destination:
                             for chunk in request.FILES['attachment'].chunks():
                                 destination.write(chunk)
@@ -579,3 +579,65 @@ def report_status_client(request):
     logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
+
+
+# When a server requested for a upload_review API function.
+@csrf_exempt
+def upload_review(request):
+    r_dict = dict()
+    log_dict = dict()
+    log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+    log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['CLIENT_TYPE'] = 'client'
+    log_dict['REQUEST_PATH'] = request.path
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.POST
+    response_status = 200
+
+    dt_report = request.POST.get('dt_report')
+    name = request.POST.get('name')
+    bed = request.POST.get('bed')
+    local_server_name = request.POST.get('local_server_name')
+
+    if dt_report is None or name is None or bed is None:
+        r_dict['success'] = False
+        r_dict['message'] = 'A requested parameter is missing.'
+        response_status = 400
+    elif settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' and local_server_name is None:
+        r_dict['success'] = False
+        r_dict['message'] = 'A local server name is missing for global api.'
+        response_status = 400
+    else:
+        comment = request.POST.get('comment')
+        if comment is None:
+            comment = ''
+        if local_server_name is None:
+            local_server_name = settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+        form = UploadReviewForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                target_bed = Bed.objects.get(name=bed)
+                Review.objects.create(dt_report=dt_report, name=name, local_server_name=local_server_name, bed=target_bed,
+                                      chart=request.FILES['chart'], comment=comment)
+                r_dict['success'] = True
+                r_dict['message'] = 'A review was successfully uploaded.'
+            except Bed.DoesNotExist:
+                r_dict['success'] = False
+                r_dict['message'] = 'The requested bed does not exist.'
+            except Bed.MultipleObjectsReturned:
+                r_dict['success'] = False
+                r_dict['message'] = 'Multiple objects are returned.'
+        else:
+            r_dict['success'] = False
+            r_dict['message'] = 'An attached file form is not valid.'
+            response_status = 400
+
+    log_dict['RESPONSE_STATUS'] = response_status
+    log_dict['RESULT'] = r_dict
+    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
+    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+                        status=response_status)
+
+

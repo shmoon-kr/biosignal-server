@@ -178,6 +178,8 @@ class UnitTestLocalServerAPI(TestCase):
         u_room = Room.objects.create(name='UnknownLocalRoom')
         u_bed = Bed.objects.create(name='UnknownLocalBed', room=u_room)
         Client.objects.create(name='UnknownLocalClient', mac='00:00:00:00:00:00', bed=u_bed)
+        d_room = Room.objects.create(name='D')
+        d_06_bed = Bed.objects.create(name='D-06', room=d_room)
 
     def test_configuration(self):
         self.assertTrue(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'local')
@@ -280,13 +282,13 @@ class UnitTestLocalServerAPI(TestCase):
                 {"slot": "COM5", "device_type": ""}
             ]
         }
-        get_params['mac'] = mac = '00:00:00:00:00:00'
-        get_params['report_dt'] = report_dt = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
-        get_params['ip_address'] = ip_address = '143.248.1.177'
-        get_params['client_version'] = client_version = '1.2.5'
-        get_params['uptime'] = uptime = 145234
+        get_params['mac'] = '00:00:00:00:00:00'
+        get_params['report_dt'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        get_params['ip_address'] = '143.248.1.177'
+        get_params['client_version'] = '1.2.5'
+        get_params['uptime'] = 145234
         get_params['bus_info'] = json.dumps(bus_info_1, sort_keys=True, indent=4)
-        get_params['status'] = status = 'Standby'
+        get_params['status'] = 'Standby'
 
         response = self.client.get('/client/report_status', get_params)
         self.assertTrue(response['Content-Type'].startswith('application/json'))
@@ -294,8 +296,8 @@ class UnitTestLocalServerAPI(TestCase):
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Client status was updated correctly.')
 
-        get_params['status'] = status = 'Recording'
-        get_params['record_begin_dt'] = record_begin_dt = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        get_params['status'] = 'Recording'
+        get_params['record_begin_dt'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S%z")
         get_params['bus_info'] = json.dumps(bus_info_2, sort_keys=True, indent=4)
         response = self.client.get('/client/report_status', get_params)
         self.assertTrue(response['Content-Type'].startswith('application/json'))
@@ -311,5 +313,20 @@ class UnitTestLocalServerAPI(TestCase):
             db_upload_main_numeric('test/F-04_190117_112235.vital', 'F', 'F-04', db_writing=False)
         except Exception as e:
             self.assertTrue(True)
+
+    def test_upload_review(self):
+        post_params = dict()
+        post_params['dt_report'] = '2019-02-14'
+        post_params['name'] = 'D-06_190214'
+        post_params['bed'] = 'D-06'
+
+        with open('test/D-06_190214.png', 'rb') as fp:
+            post_params['chart'] = fp
+            response = self.client.post('/upload_review', post_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content)
+        self.assertTrue(r['success'])
+#        print(r)
+        self.assertEqual(r['message'], 'A review was successfully uploaded.')
 
 
