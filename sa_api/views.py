@@ -617,16 +617,25 @@ def upload_review(request):
         if form.is_valid():
             try:
                 target_bed = Bed.objects.get(name=bed)
-                Review.objects.create(dt_report=dt_report, name=name, local_server_name=local_server_name, bed=target_bed,
-                                      chart=request.FILES['chart'], comment=comment)
-                r_dict['success'] = True
-                r_dict['message'] = 'A review was successfully uploaded.'
+                try:
+                    obj_review = Review.objects.get(name=name)
+                    obj_review.chart = request.FILES['chart']
+                    obj_review.save()
+                    r_dict['success'] = True
+                    r_dict['message'] = 'An existing review was successfully updated.'
+                except Review.DoesNotExist:
+                    Review.objects.create(dt_report=dt_report, name=name, local_server_name=local_server_name,
+                                          bed=target_bed, chart=request.FILES['chart'], comment=comment)
+                    r_dict['success'] = True
+                    r_dict['message'] = 'A review was successfully uploaded.'
             except Bed.DoesNotExist:
                 r_dict['success'] = False
                 r_dict['message'] = 'The requested bed does not exist.'
+                response_status = 400
             except Bed.MultipleObjectsReturned:
                 r_dict['success'] = False
                 r_dict['message'] = 'Multiple objects are returned.'
+                response_status = 400
         else:
             r_dict['success'] = False
             r_dict['message'] = 'An attached file form is not valid.'

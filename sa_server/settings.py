@@ -134,7 +134,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = 'media/'
 
-
 # Service configurations
 # This part should be moved to local_settings.py file
 

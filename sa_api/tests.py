@@ -326,7 +326,13 @@ class UnitTestLocalServerAPI(TestCase):
         self.assertTrue(response['Content-Type'].startswith('application/json'))
         r = json.loads(response.content)
         self.assertTrue(r['success'])
-#        print(r)
         self.assertEqual(r['message'], 'A review was successfully uploaded.')
+        with open('test/D-06_190214.png', 'rb') as fp:
+            post_params['chart'] = fp
+            response = self.client.post('/upload_review', post_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content)
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'An existing review was successfully updated.')
 
 

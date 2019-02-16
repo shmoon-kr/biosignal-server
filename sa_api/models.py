@@ -10,7 +10,7 @@ import os
 class OverwriteStorage(FileSystemStorage):
     def get_available_name(self, name, max_length=None):
         if self.exists(name):
-            os.remove(name)
+            os.remove(os.path.join(settings.MEDIA_ROOT, name))
         return name
 
 
@@ -182,3 +182,6 @@ class Review(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        unique_together = ("name", "local_server_name")
