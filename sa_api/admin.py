@@ -86,8 +86,11 @@ class FileRecordedAdmin(admin.ModelAdmin):
 
 
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'bed_name', 'room_name', 'dt_report', 'exist_comment')
+    list_display = ('id', 'org', 'name', 'bed_name', 'room_name', 'dt_report', 'exist_comment')
     readonly_fields = ('name', 'bed', 'dt_report', 'chart_image', 'local_server_name')
+
+    def org(self, obj):
+        return obj.local_server_name
 
     def bed_name(self, obj):
         return obj.bed.name
