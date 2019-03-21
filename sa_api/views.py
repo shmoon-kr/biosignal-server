@@ -462,9 +462,13 @@ def recording_info_body(request):
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
                         if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
-                            db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
-                        r_dict['success'] = True
-                        r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
+                            try:
+                                db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
+                                r_dict['success'] = True
+                                r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
+                            except Exception as e:
+                                r_dict['success'] = True
+                                r_dict['message'] = 'Recording info was added and file was uploaded correctly. But DB upload was failed.'
                     except Exception as e:
                         r_dict['success'] = False
                         r_dict['exception'] = str(e)
