@@ -1,8 +1,11 @@
 image: debian:9
 
-test:
-  script:
+before_script:
   - apt-get update -qy
   - apt-get install -y default-libmysqlclient-dev python3-dev python3-pip
+  - cp sa_server/local_settings.py.test sa_server/local_settings.py
+
+test:
+  script:
   - pip3 install -r requirements.txt
   - python3 manage.py test
