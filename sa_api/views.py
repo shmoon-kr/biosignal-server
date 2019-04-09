@@ -185,7 +185,7 @@ def device_info_body(request, api_type):
                 r_dict['message'] = 'A Global API server returned status code %d' % (result.status_code)
                 response_status = 500
             else:
-                server_result = json.loads(result.content)
+                server_result = json.loads(result.content.decode('utf-8'))
                 r_dict['device_type'] = target_device.device_type = server_result['device_type']
                 r_dict['displayed_name'] = target_device.displayed_name = server_result['displayed_name']
                 r_dict['is_main'] = target_device.is_main = server_result['is_main']
@@ -268,7 +268,7 @@ def channel_info_body(request, api_type):
                     r_dict['message'] = 'A Global API server returned status code %d' % ( result.status_code )
                     response_status = 500
                 else:
-                    server_result = json.loads(result.content)
+                    server_result = json.loads(result.content.decode('utf-8'))
                     target_channel.is_unknown = server_result['is_unknown']
                     target_channel.use_custom_setting = server_result['use_custom_setting']
                     target_channel.name = server_result['channel_name']
@@ -554,7 +554,7 @@ def report_status_client(request):
             target_client.uptime = datetime.timedelta(seconds=uptime)
             target_client.status = status
             target_client.save()
-            bus = json.loads(bus_raw)
+            bus = json.loads(bus_raw.decode('utf-8'))
             remaining_slot = ClientBusSlot.objects.filter(client=target_client, active=True)
             for bus_name, bus_info in bus.items():
                 for slot_info in bus_info:
