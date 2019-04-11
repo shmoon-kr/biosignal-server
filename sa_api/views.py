@@ -554,7 +554,7 @@ def report_status_client(request):
             target_client.uptime = datetime.timedelta(seconds=uptime)
             target_client.status = status
             target_client.save()
-            bus = json.loads(bus_raw.decode('utf-8'))
+            bus = json.loads(bus_raw)
             remaining_slot = ClientBusSlot.objects.filter(client=target_client, active=True)
             for bus_name, bus_info in bus.items():
                 for slot_info in bus_info:
