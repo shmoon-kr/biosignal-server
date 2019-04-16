@@ -1,0 +1,27 @@
+SECRET_KEY = ')7%z%^qw4_1o#vh%mb055(kf27&0n)fp%w15s&m=$m2j#k&tom'
+
+DEBUG = False
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
+        'NAME': 'sqlite3.db',                      # Or path to database file if using sqlite3.
+    },
+}
+
+SERVICE_CONFIGURATIONS = {
+    'SERVER_TYPE': 'global',
+    'GLOBAL_SERVER_HOSTNAME': 'dev.sig2.com',
+    'GLOBAL_SERVER_PORT': 8000,
+    'LOG_SERVER_HOSTNAME': 'dev.sig2.com',
+    'LOG_SERVER_PORT': 24224,
+    'LOCAL_SERVER_NAME': 'AMC/Anesthesia',
+    'LOCAL_SERVER_HOSTNAME': '192.168.134.101',
+    'LOCAL_SERVER_PORT': 8000,
+    'LOCAL_SERVER_DATAPATH': '/home/shmoon/sig2_files',
+    'STORAGE_SERVER': False,
+    'STORAGE_SERVER_HOSTNAME': '192.168.134.156',
+    'STORAGE_SERVER_USER': 'shmoon',
+    'STORAGE_SERVER_PASSWORD': 'qwer1234!',
+    'STORAGE_SERVER_PATH': '/CloudStation/CloudStation',
+}
