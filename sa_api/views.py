@@ -5,14 +5,13 @@ import requests
 import MySQLdb
 import sa_api.AMCVitalReader as vr
 from .forms import UploadFileForm, UploadReviewForm
-from fluent import sender
+from pyfluent.client import FluentSender
 from ftplib import FTP
 from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review
 from django.views.decorators.csrf import csrf_exempt
-
 
 # Create your views here.
 
@@ -83,9 +82,9 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     log_dict['NUM_RECORDS_FILE'] = len(raw_data)
     log_dict['NUM_RECORDS_ALIGNED'] = len(aligned_data)
     log_dict['READING_EXECUTION_TIME'] = str(file_read_execution_time)
-    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                 port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
     del log_dict
 
     insert_query = {}
@@ -149,9 +148,10 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
         log_dict['NUM_RECORDS_QUERY'] = num_records[key]
         log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount if db_writing else 0
         log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time) if db_writing else 0
-        logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                     port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-        logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
         del log_dict
 
     db.close()
@@ -208,8 +208,9 @@ def device_info_body(request, api_type):
 
     log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
-    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
@@ -315,8 +316,9 @@ def channel_info_body(request, api_type):
 
     log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
-    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
@@ -391,8 +393,9 @@ def client_info_body(request):
 
     log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
-    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
@@ -485,8 +488,9 @@ def recording_info_body(request):
 
     log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
-    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
@@ -579,8 +583,9 @@ def report_status_client(request):
 
     log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
-    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
@@ -647,8 +652,9 @@ def upload_review(request):
 
     log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
-    logger = sender.FluentSender('sa', host=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], port=settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], nanosecond_precision=True)
-    logger.emit(settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'], log_dict)
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=response_status)

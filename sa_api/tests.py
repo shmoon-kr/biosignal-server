@@ -6,6 +6,7 @@ from django.test import Client as tClient
 from django.conf import settings
 from sa_api.models import Device, Client, Bed, Channel, Room
 from sa_api.views import db_upload_main_numeric
+from pyfluent.client import FluentSender
 
 # Create your tests here.
 
@@ -239,6 +240,9 @@ class UnitTestLocalServerAPI(TestCase):
         post_params = dict()
 
         tz_name = pytz.timezone(settings.TIME_ZONE)
+
+        fluent = FluentSender('log.sig2.com', 24224, 'sa')
+        fluent.send({'hello': 'fluent'}, 'sa.local')
 
         post_params['mac'] = '00:00:00:00:00:00'
         post_params['begin'] = (datetime.datetime.now(tz=tz_name) - datetime.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S%z")

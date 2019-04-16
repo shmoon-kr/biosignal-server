@@ -21,6 +21,7 @@ class Device(models.Model):
     use_custom_setting = models.BooleanField(default=False)
 
     def __str__(self):
+        print(1, self.displayed_name)
         return self.displayed_name
 
 
