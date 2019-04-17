@@ -39,29 +39,20 @@ class ChannelAdmin(admin.ModelAdmin):
 
 
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'mac', 'bed', 'status', 'last_connected')
+    list_display = ('id', 'name', 'mac', 'bed', 'slot', 'status', 'dt_report')
     readonly_fields = ('dt_report', 'dt_start_recording', 'uptime', 'ip_address')
 
     inlines = [ClientBusSlotInline]
 
-    def status(self, obj):
-        if obj.registered == 1:
-            current_time = datetime.datetime.now()
-            temp = obj.dt_update
-            temp = temp.replace(tzinfo=None)
-            delta = current_time - temp
-            diff_seconds = int(delta.total_seconds())
-            if diff_seconds < 15:
-                return True
-        return False
+    def slot(self, obj):
+        active_slot = ClientBusSlot.objects.filter(client=obj, active=True)
+        found_device = active_slot.exclude(device__isnull=True)
+        return '%d/%d' % (found_device.count(), active_slot.count())
 
-    def last_connected(self, obj):
-        if obj.registered==1:
-            temp = obj.dt_update
-            temp = temp.replace(tzinfo=None)
-            dt_string = temp.strftime("%Y-%m-%d %H:%M:%S")
-            return dt_string
-        return 'Not registered'
+    '''
+    def get_ordering(self, request):
+        return ['bed']
+    '''
 
 
 class BedAdmin(admin.ModelAdmin):
