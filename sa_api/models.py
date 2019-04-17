@@ -59,7 +59,6 @@ class Client(models.Model):
     ip_address = models.CharField(max_length=32, null=True)
     client_version = models.CharField(max_length=32, null=True)
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
-    registered = models.IntegerField(default=0)
     STATUS_UNKNOWN = 0
     STATUS_STANDBY = 1
     STATUS_RECORDING = 2

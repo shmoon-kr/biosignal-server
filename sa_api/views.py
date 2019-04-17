@@ -362,7 +362,6 @@ def client_info_body(request):
     if mac is not None:
         try:
             target_client = Client.objects.get(mac=mac)
-            target_client.registered = 1
             target_client.save()
             r_dict['client_name'] = target_client.name
             r_dict['bed_name'] = target_client.bed.name

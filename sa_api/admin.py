@@ -39,10 +39,13 @@ class ChannelAdmin(admin.ModelAdmin):
 
 
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'mac', 'bed', 'slot', 'status', 'dt_report')
+    list_display = ('id', 'name', 'mac', 'ver', 'bed', 'slot', 'status', 'dt_report')
     readonly_fields = ('dt_report', 'dt_start_recording', 'uptime', 'ip_address')
 
     inlines = [ClientBusSlotInline]
+
+    def ver(self, obj):
+        return obj.client_version
 
     def slot(self, obj):
         active_slot = ClientBusSlot.objects.filter(client=obj, active=True)
