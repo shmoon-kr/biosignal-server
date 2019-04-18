@@ -3,7 +3,6 @@ from django.utils.translation import ugettext as _
 from django.utils.safestring import mark_safe
 from django.contrib import admin
 from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review
-import datetime
 
 
 class AdminImageWidget(AdminFileWidget):
@@ -35,7 +34,7 @@ class ClientBusSlotInline(admin.TabularInline):
 
 
 class ChannelAdmin(admin.ModelAdmin):
-    list_display = ('id', 'device', 'unk', 'name', 'abbreviation', 'rec_fmt', 'unit', 'min', 'max', 'srate')
+    list_display = ('id', 'device', 'unk', 'name', 'colored_abbreviation', 'rec_fmt', 'unit', 'min', 'max', 'srate')
     list_filter = ('device', 'is_unknown')
 
     def unk(self, obj):
@@ -45,14 +44,14 @@ class ChannelAdmin(admin.ModelAdmin):
         return obj.minval
 
     def max(self, obj):
-        return obj.minval
+        return obj.maxval
 
     def rec_fmt(self, obj):
         return obj.RECORDING_FORMAT_CHOICES[obj.recording_format]
 
 
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'mac', 'ver', 'bed', 'slot', 'status', 'dt_report')
+    list_display = ('id', 'name', 'mac', 'ver', 'colored_bed', 'slot', 'status', 'dt_report')
     readonly_fields = ('dt_report', 'dt_start_recording', 'uptime', 'ip_address')
 
     inlines = [ClientBusSlotInline]
@@ -65,10 +64,8 @@ class ClientAdmin(admin.ModelAdmin):
         found_device = active_slot.exclude(device__isnull=True)
         return '%d/%d' % (found_device.count(), active_slot.count())
 
-    '''
     def get_ordering(self, request):
-        return ['bed']
-    '''
+        return ['bed__name']
 
 
 class BedAdmin(admin.ModelAdmin):

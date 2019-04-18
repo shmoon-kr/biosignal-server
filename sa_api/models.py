@@ -1,8 +1,10 @@
 from django.db import models
 from django.utils import timezone
+from django.utils.html import format_html
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 import os
+import datetime
 
 # Create your models here.
 
@@ -68,6 +70,20 @@ class Client(models.Model):
         (STATUS_RECORDING, "Recording"),
     )
     status = models.IntegerField(choices=CLIENT_STATUS_CHOICES, default=0)
+
+    def colored_bed(self):
+        if self.bed.name == 'Reserved':
+            color_code = 'grey'
+        elif self.dt_report + datetime.timedelta(seconds=3600) < timezone.now():
+            color_code = 'red'
+        else:
+            color_code = 'black'
+
+        return format_html('<span style="color: %s;">%s</span>' % (color_code, self.bed.name))
+
+    colored_bed.allow_tags = True
+    colored_bed.admin_order_field = 'bed__name'
+    colored_bed.short_description = 'bed'
 
     def __str__(self):
         return self.name
@@ -135,6 +151,14 @@ class Channel(models.Model):
         (21, "MON_CVP_CVP"),
     )
     mon_type = models.IntegerField(choices=MON_TYPE_CHOICES, default=0)
+
+    def colored_abbreviation(self):
+        color_code = format(self.color_r, '02x') + format(self.color_g, '02x') + format(self.color_b, '02x')
+        return format_html('<span style="color: #%s; background-color: black;">%s</span>' % (color_code, self.abbreviation))
+
+    colored_abbreviation.allow_tags = True
+    colored_abbreviation.admin_order_field = 'abbreviation'
+    colored_abbreviation.short_description = 'abbreviation'
 
     class Meta:
         unique_together = (("name", "device"),)
