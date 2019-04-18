@@ -35,7 +35,20 @@ class ClientBusSlotInline(admin.TabularInline):
 
 
 class ChannelAdmin(admin.ModelAdmin):
-    list_display = ('id', 'device', 'name')
+    list_display = ('id', 'device', 'unk', 'name', 'abbreviation', 'rec_fmt', 'unit', 'min', 'max', 'srate')
+    list_filter = ('device', 'is_unknown')
+
+    def unk(self, obj):
+        return obj.is_unknown
+
+    def min(self, obj):
+        return obj.minval
+
+    def max(self, obj):
+        return obj.minval
+
+    def rec_fmt(self, obj):
+        return obj.RECORDING_FORMAT_CHOICES[obj.recording_format]
 
 
 class ClientAdmin(admin.ModelAdmin):
