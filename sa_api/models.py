@@ -59,7 +59,7 @@ class Client(models.Model):
     name = models.CharField(max_length=64)
     mac = models.CharField(max_length=17, unique=True)
     ip_address = models.CharField(max_length=32, null=True)
-    client_version = models.CharField(max_length=32, null=True)
+    client_version = models.CharField(max_length=32, default='1.0.0', editable=False)
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
     STATUS_UNKNOWN = 0
     STATUS_STANDBY = 1
@@ -71,17 +71,19 @@ class Client(models.Model):
     )
     status = models.IntegerField(choices=CLIENT_STATUS_CHOICES, default=0)
 
-    def colored_bed(self):
+    def color_info(self):
         if self.bed.name == 'Reserved':
-            color_code = 'grey'
+            return 2, 'grey'
         elif self.dt_report + datetime.timedelta(seconds=3600) < timezone.now():
-            color_code = 'red'
+            return 0, 'red'
         else:
-            color_code = 'black'
+            return 1, 'black'
 
-        return format_html('<span style="color: %s;">%s</span>' % (color_code, self.bed.name))
+    def colored_bed(self):
+        return format_html('<span style="color: %s;">%s</span>' % (self.color_info()[1], self.bed.name))
 
     colored_bed.allow_tags = True
+#    colored_bed.admin_order_field = 'color_info'
     colored_bed.admin_order_field = 'bed__name'
     colored_bed.short_description = 'bed'
 
