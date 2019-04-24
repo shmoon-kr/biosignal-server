@@ -17,13 +17,13 @@ class OverwriteStorage(FileSystemStorage):
 
 
 class Device(models.Model):
+    dt_update = models.DateTimeField(auto_now=True)
     device_type = models.CharField(max_length=64, unique=True)
     displayed_name = models.CharField(max_length=64, unique=True, null=True)
     is_main = models.BooleanField(default=False)
     use_custom_setting = models.BooleanField(default=False)
 
     def __str__(self):
-        print(1, self.displayed_name)
         return self.displayed_name
 
 

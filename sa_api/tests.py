@@ -145,6 +145,64 @@ class UnitTestGlobalServerAPI(TestCase):
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Recording info was added correctly.')
 
+    def test_device_list(self):
+        get_params = dict()
+
+        response = self.client.get('/server/device_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'Last updated dates of all devices were returned successfully.')
+
+        response = self.client.get('/client/device_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'Last updated dates of all devices were returned successfully.')
+
+    def test_channel_list(self):
+        get_params = dict()
+
+        response = self.client.get('/server/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'Requested device type is none.')
+
+        response = self.client.get('/client/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'Requested device type is none.')
+
+        get_params['device_type'] = 'DummyDevice'
+        response = self.client.get('/server/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'Requested device type does not exists.')
+
+        get_params['device_type'] = 'DummyDevice'
+        response = self.client.get('/client/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'Requested device type does not exists.')
+
+        get_params['device_type'] = 'TestDevice'
+        response = self.client.get('/server/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'Last updated dates of the requested device channels were returned successfully.')
+
+        get_params['device_type'] = 'TestDevice'
+        response = self.client.get('/client/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'Last updated dates of the requested device channels were returned successfully.')
+
 
 SERVICE_CONFIGURATIONS_LOCAL = {
     'SERVER_TYPE': 'local',
@@ -339,4 +397,61 @@ class UnitTestLocalServerAPI(TestCase):
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'An existing review was successfully updated.')
 
+    def test_device_list(self):
+        get_params = dict()
 
+        response = self.client.get('/server/device_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'A local server received a server API request.')
+
+        response = self.client.get('/client/device_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        print(r['dt_update'])
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'Last updated dates of all devices were returned successfully.')
+
+    def test_channel_list(self):
+        get_params = dict()
+
+        response = self.client.get('/server/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'A local server received a server API request.')
+
+        response = self.client.get('/client/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'Requested device type is none.')
+
+        get_params['device_type'] = 'DummyDevice'
+        response = self.client.get('/server/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'A local server received a server API request.')
+
+        get_params['device_type'] = 'DummyDevice'
+        response = self.client.get('/client/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'Requested device type does not exists.')
+
+        get_params['device_type'] = 'LocalTestDevice'
+        response = self.client.get('/server/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(not r['success'])
+        self.assertEqual(r['message'], 'A local server received a server API request.')
+
+        get_params['device_type'] = 'LocalTestDevice'
+        response = self.client.get('/client/channel_list', get_params)
+        self.assertTrue(response['Content-Type'].startswith('application/json'))
+        r = json.loads(response.content.decode('utf-8'))
+        self.assertTrue(r['success'])
+        self.assertEqual(r['message'], 'Last updated dates of the requested device channels were returned successfully.')

@@ -220,6 +220,25 @@ def device_info_body(request, api_type):
 @csrf_exempt
 def device_info_server(request):
 
+    if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] != 'global':
+        r_dict = dict()
+        r_dict['success'] = False
+        r_dict['message'] = 'A local server received a server API request.'
+        response_status = 400
+        log_dict = dict()
+        log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+        log_dict['SERVER_NAME'] = settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+        log_dict['CLIENT_TYPE'] = 'server'
+        log_dict['REQUEST_PATH'] = request.path
+        log_dict['METHOD'] = request.method
+        log_dict['PARAM'] = request.GET
+        log_dict['RESPONSE_STATUS'] = response_status
+        log_dict['RESULT'] = r_dict
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
+
     return device_info_body(request, 'server')
 
 
@@ -229,6 +248,69 @@ def device_info_server(request):
 def device_info_client(request):
 
     return device_info_body(request, 'client')
+
+
+def device_list_body(request, api_type):
+
+    r_dict = dict()
+    log_dict = dict()
+    log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+    log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['CLIENT_TYPE'] = api_type
+    log_dict['REQUEST_PATH'] = request.path
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
+    response_status = 200
+
+    all_devices = Device.objects.all()
+    device_dt_update = dict()
+    for device in all_devices:
+        device_dt_update[device.device_type] = device.dt_update.isoformat()
+
+    r_dict['dt_update'] = device_dt_update
+    r_dict['success'] = True
+    r_dict['message'] = 'Last updated dates of all devices were returned successfully.'
+
+    log_dict['RESPONSE_STATUS'] = response_status
+    log_dict['RESULT'] = r_dict
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
+
+# When a local server requested for device list.
+@csrf_exempt
+def device_list_server(request):
+
+    if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] != 'global':
+        r_dict = dict()
+        r_dict['success'] = False
+        r_dict['message'] = 'A local server received a server API request.'
+        response_status = 400
+        log_dict = dict()
+        log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+        log_dict['SERVER_NAME'] = settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+        log_dict['CLIENT_TYPE'] = 'server'
+        log_dict['REQUEST_PATH'] = request.path
+        log_dict['METHOD'] = request.method
+        log_dict['PARAM'] = request.GET
+        log_dict['RESPONSE_STATUS'] = response_status
+        log_dict['RESULT'] = r_dict
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
+
+    return device_list_body(request, 'server')
+
+
+# When a client requested for device list.
+# This function could be called either in a global server or in a local server.
+@csrf_exempt
+def device_list_client(request):
+
+    return device_list_body(request, 'client')
 
 
 # Main body of device_info API function
@@ -332,7 +414,20 @@ def channel_info_server(request):
         r_dict = dict()
         r_dict['success'] = False
         r_dict['message'] = 'A local server received a server API request.'
-        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
+        response_status = 400
+        log_dict = dict()
+        log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+        log_dict['SERVER_NAME'] = settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+        log_dict['CLIENT_TYPE'] = 'server'
+        log_dict['REQUEST_PATH'] = request.path
+        log_dict['METHOD'] = request.method
+        log_dict['PARAM'] = request.GET
+        log_dict['RESPONSE_STATUS'] = response_status
+        log_dict['RESULT'] = r_dict
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
     return channel_info_body(request, 'server')
 
@@ -343,6 +438,84 @@ def channel_info_server(request):
 def channel_info_client(request):
 
     return channel_info_body(request, 'client')
+
+
+def channel_list_body(request, api_type):
+
+    r_dict = dict()
+    log_dict = dict()
+    log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+    log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['CLIENT_TYPE'] = api_type
+    log_dict['REQUEST_PATH'] = request.path
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
+    response_status = 200
+
+    device_type = request.GET.get("device_type")
+
+    if device_type is not None:
+        try:
+            target_device = Device.objects.get(device_type=device_type)
+            requested_channels = Channel.objects.filter(device=target_device)
+            channel_dt_update = dict()
+            for channel in requested_channels:
+                channel_dt_update[channel.name] = channel.dt_update.isoformat()
+            r_dict['dt_update'] = channel_dt_update
+            r_dict['success'] = True
+            r_dict['message'] = 'Last updated dates of the requested device channels were returned successfully.'
+
+        except Device.DoesNotExist:
+            r_dict['success'] = False
+            r_dict['message'] = 'Requested device type does not exists.'
+            response_status = 400
+    else:
+        r_dict['success'] = False
+        r_dict['message'] = 'Requested device type is none.'
+        response_status = 400
+
+    log_dict['RESPONSE_STATUS'] = response_status
+    log_dict['RESULT'] = r_dict
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
+
+
+# When a local server requested for device information.
+# This function could be called only in a global server.
+@csrf_exempt
+def channel_list_server(request):
+
+    if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] != 'global':
+        r_dict = dict()
+        r_dict['success'] = False
+        r_dict['message'] = 'A local server received a server API request.'
+        response_status = 400
+        log_dict = dict()
+        log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+        log_dict['SERVER_NAME'] = settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+        log_dict['CLIENT_TYPE'] = 'server'
+        log_dict['REQUEST_PATH'] = request.path
+        log_dict['METHOD'] = request.method
+        log_dict['PARAM'] = request.GET
+        log_dict['RESPONSE_STATUS'] = response_status
+        log_dict['RESULT'] = r_dict
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
+
+    return channel_list_body(request, 'server')
+
+
+# When a client requested for device information.
+# This function could be called either in a global server or in a local server.
+@csrf_exempt
+def channel_list_client(request):
+
+    return channel_list_body(request, 'client')
 
 
 @csrf_exempt
@@ -407,8 +580,21 @@ def client_info_server(request):
     r_dict = dict()
     r_dict['success'] = False
     r_dict['message'] = 'Client info API cannot be called from a local server.'
+    response_status = 400
+    log_dict = dict()
+    log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+    log_dict['SERVER_NAME'] = settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['CLIENT_TYPE'] = 'server'
+    log_dict['REQUEST_PATH'] = request.path
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
+    log_dict['RESPONSE_STATUS'] = response_status
+    log_dict['RESULT'] = r_dict
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 
 # When a client requested for channel information.
@@ -502,8 +688,21 @@ def recording_info_server(request):
     r_dict = dict()
     r_dict['success'] = False
     r_dict['message'] = 'Recording info API cannot be called from a local server.'
+    response_status = 400
+    log_dict = dict()
+    log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+    log_dict['SERVER_NAME'] = settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['CLIENT_TYPE'] = 'server'
+    log_dict['REQUEST_PATH'] = request.path
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
+    log_dict['RESPONSE_STATUS'] = response_status
+    log_dict['RESULT'] = r_dict
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 
 # When a client requested for channel information.
