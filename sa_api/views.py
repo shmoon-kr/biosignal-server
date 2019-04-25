@@ -1,4 +1,5 @@
 import json
+import pytz
 import os.path
 import datetime
 import requests
@@ -193,6 +194,7 @@ def device_info_body(request, api_type):
                 r_dict['success'] = True
                 r_dict['message'] = 'Device information was acquired from a global server.'
         else:
+            r_dict['dt_update'] = target_device.dt_update
             r_dict['device_type'] = target_device.device_type
             r_dict['displayed_name'] = target_device.displayed_name
             r_dict['is_main'] = target_device.is_main
@@ -251,6 +253,7 @@ def device_info_client(request):
 
 
 def device_list_body(request, api_type):
+    tz_name = pytz.timezone(settings.TIME_ZONE)
 
     r_dict = dict()
     log_dict = dict()
@@ -265,7 +268,7 @@ def device_list_body(request, api_type):
     all_devices = Device.objects.all()
     device_dt_update = dict()
     for device in all_devices:
-        device_dt_update[device.device_type] = device.dt_update.isoformat()
+        device_dt_update[device.device_type] = device.dt_update.isoformat(tz=tz_name)
 
     r_dict['dt_update'] = device_dt_update
     r_dict['success'] = True
