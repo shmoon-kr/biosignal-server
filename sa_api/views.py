@@ -59,7 +59,6 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     tmp_aligned = {}
     column_info = {}
     for i, ri in enumerate(raw_data):
-        ri[2] = ri[2].upper()
         if not ri[0] in column_info:
             column_info[ri[0]] = {}
         if not ri[2] in column_info[ri[0]]:
@@ -123,7 +122,7 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
         num_records[device_type] += 1
         for key, val in column_info_db[device_type].items():
             if val not in ['rosette', 'bed', 'dt']:
-                tmp_query += ', NULL' if val.upper() not in ad else ', %f' % (ad[val.upper()])
+                tmp_query += ', NULL' if val not in ad else ', %f' % (ad[val])
         tmp_query += ')'
         if i == 0:
             insert_query[device_type] += tmp_query
@@ -132,7 +131,7 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
 
     for device_type in [*column_info_db]:
         for key, val in column_info_db[device_type].items():
-            column_info[device_type].pop(val.upper(), None)
+            column_info[device_type].pop(val, None)
 
     for key, val in insert_query.items():
         insert_start = datetime.datetime.now()
