@@ -59,6 +59,7 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     tmp_aligned = {}
     column_info = {}
     for i, ri in enumerate(raw_data):
+        ri[2] = ri[2].upper()
         if not ri[0] in column_info:
             column_info[ri[0]] = {}
         if not ri[2] in column_info[ri[0]]:
