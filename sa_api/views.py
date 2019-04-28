@@ -194,7 +194,7 @@ def device_info_body(request, api_type):
                 r_dict['success'] = True
                 r_dict['message'] = 'Device information was acquired from a global server.'
         else:
-            r_dict['dt_update'] = target_device.dt_update
+            r_dict['dt_update'] = target_device.dt_update.isoformat()
             r_dict['device_type'] = target_device.device_type
             r_dict['displayed_name'] = target_device.displayed_name
             r_dict['is_main'] = target_device.is_main
