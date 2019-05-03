@@ -10,7 +10,7 @@ from pyfluent.client import FluentSender
 from ftplib import FTP
 from itertools import product
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review
@@ -175,6 +175,12 @@ def summary_bed(request):
     log_dict['METHOD'] = request.method
     log_dict['PARAM'] = request.GET
 
+    if not settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        return HttpResponseBadRequest('The server does not run number DB service.')
+
     tz = pytz.timezone(settings.TIME_ZONE)
 
     col_list_ph = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
@@ -259,32 +265,6 @@ def summary_bed(request):
         result_table.append(row)
 
     title = ['bed', 'rosette', 'files_total', 'files_effective', 'duration_effective', 'total count'] + field_list_ph
-
-    '''
-    for bed, val in bed_stat.items():
-        if val['rosette'] in ['C', 'D']:
-            table_name = 'number_ge'
-        elif val['rosette'] in ['F', 'H', 'DL']:
-            table_name = 'number_ph'
-        else:
-            table_name = None
-        
-        if table_name is not None:
-            if table_name == 'number_ge':
-                field_list = field_list_ge
-            elif table_name == 'number_ph':
-                field_list = field_list_ph
-            else:
-                assert False, 'Unknown table name %s.' % table_name
-            query = "SELECT bed, COUNT(*) TOTAL_COUNT, %s FROM %s WHERE bed = '%s'" %\
-                    (', '.join(field_list), table_name, bed)
-            interval = list()
-            for inv in val['intervals']:
-                interval.append("dt BETWEEN '%s' AND '%s'" % (inv[0].isoformat(), inv[1].isoformat()))
-            query += ' AND (%s)' % ' OR '.join(interval)
-            cursor.execute(query)
-            result_table.append(cursor.fetchall()[0])
-    '''
 
     template = loader.get_template('summary.html')
     context = {
