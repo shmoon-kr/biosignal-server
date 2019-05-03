@@ -8,8 +8,10 @@ import sa_api.AMCVitalReader as vr
 from .forms import UploadFileForm, UploadReviewForm
 from pyfluent.client import FluentSender
 from ftplib import FTP
+from itertools import product
 from django.conf import settings
 from django.http import HttpResponse
+from django.template import loader
 from django.shortcuts import get_object_or_404, render
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review
 from django.views.decorators.csrf import csrf_exempt
@@ -160,9 +162,146 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     return
 
 
-# Main body of device_info API function
+@csrf_exempt
+def summary_bed(request):
 
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    log_dict = dict()
+    log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+    log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['REQUEST_PATH'] = request.path
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
+
+    tz = pytz.timezone(settings.TIME_ZONE)
+
+    col_list_ph = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
+    col_list_ge = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
+    agg_list = ['MIN', 'MAX', 'AVG', 'COUNT']
+    val_list_ph = product(col_list_ph, agg_list)
+    val_list_ge = product(col_list_ge, agg_list)
+
+    if start_date is None:
+        start_date = tz.localize(datetime.datetime.now()) + datetime.timedelta(days=-1)
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        start_date = tz.localize(datetime.datetime.strptime(start_date, '%Y-%m-%d'))
+
+    if end_date is None:
+        end_date = start_date + datetime.timedelta(days=1)
+    else:
+        end_date = tz.localize(datetime.datetime.strptime(end_date, '%Y-%m-%d'))
+
+    record_all = FileRecorded.objects.filter(begin_date__range=(start_date, end_date))
+
+    bed_stat = dict()
+
+    for record in record_all:
+        if record.bed.name not in bed_stat.keys():
+            bed_stat[record.bed.name] = dict()
+            bed_stat[record.bed.name]['rosette'] = record.bed.room.name
+            bed_stat[record.bed.name]['files_total'] = 0
+            bed_stat[record.bed.name]['files_effective'] = 0
+            bed_stat[record.bed.name]['intervals'] = list()
+            bed_stat[record.bed.name]['duration_effective'] = datetime.timedelta()
+        bed_stat[record.bed.name]['files_total'] += 1
+        if record.end_date - record.begin_date >= datetime.timedelta(seconds=600):
+            bed_stat[record.bed.name]['files_effective'] += 1
+            bed_stat[record.bed.name]['duration_effective'] += record.end_date - record.begin_date
+            bed_stat[record.bed.name]['intervals'].append([record.begin_date.astimezone(tz), record.end_date.astimezone(tz)])
+
+    field_list_ph = list()
+    for val in val_list_ph:
+        field_list_ph.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
+    field_list_ge = list()
+    for val in val_list_ge:
+        field_list_ge.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
+
+    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+    cursor = db.cursor()
+
+    result_table = list()
+
+    query = "SELECT bed, COUNT(*) TOTAL_COUNT, %s FROM number_ph WHERE dt BETWEEN '%s' AND '%s' GROUP BY bed" %\
+            (', '.join(field_list_ph), start_date.isoformat(), end_date.isoformat())
+    print(query)
+    cursor.execute(query)
+
+    for row in cursor.fetchall():
+        if row[0] in bed_stat.keys():
+            bed_stat[row[0]]['stat'] = row[1:]
+
+    query = "SELECT bed, COUNT(*) TOTAL_COUNT, %s FROM number_ge WHERE dt BETWEEN '%s' AND '%s' GROUP BY bed" %\
+            (', '.join(field_list_ge), start_date.isoformat(), end_date.isoformat())
+    cursor.execute(query)
+
+    for row in cursor.fetchall():
+        if row[0] in bed_stat.keys():
+            bed_stat[row[0]]['stat'] = row[1:]
+
+    for bed, val in bed_stat.items():
+        row = list()
+        row.append(bed)
+        row.append(val['rosette'])
+        row.append(val['files_total'])
+        row.append(val['files_effective'])
+        row.append(val['duration_effective'])
+        if 'stat' in val.keys():
+            row.extend(val['stat'])
+        else:
+            row.append(0)
+            row.extend([None] * len(field_list_ge))
+        result_table.append(row)
+
+    title = ['bed', 'rosette', 'files_total', 'files_effective', 'duration_effective', 'total count'] + field_list_ph
+
+    '''
+    for bed, val in bed_stat.items():
+        if val['rosette'] in ['C', 'D']:
+            table_name = 'number_ge'
+        elif val['rosette'] in ['F', 'H', 'DL']:
+            table_name = 'number_ph'
+        else:
+            table_name = None
+        
+        if table_name is not None:
+            if table_name == 'number_ge':
+                field_list = field_list_ge
+            elif table_name == 'number_ph':
+                field_list = field_list_ph
+            else:
+                assert False, 'Unknown table name %s.' % table_name
+            query = "SELECT bed, COUNT(*) TOTAL_COUNT, %s FROM %s WHERE bed = '%s'" %\
+                    (', '.join(field_list), table_name, bed)
+            interval = list()
+            for inv in val['intervals']:
+                interval.append("dt BETWEEN '%s' AND '%s'" % (inv[0].isoformat(), inv[1].isoformat()))
+            query += ' AND (%s)' % ' OR '.join(interval)
+            cursor.execute(query)
+            result_table.append(cursor.fetchall()[0])
+    '''
+
+    template = loader.get_template('summary.html')
+    context = {
+        'title': title,
+        'result_table': result_table
+    }
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
+    return HttpResponse(template.render(context, request))
+
+
+# Main body of device_info API function
 def device_info_body(request, api_type):
+
+    tz = pytz.timezone(settings.TIME_ZONE)
 
     device_type = request.GET.get("device_type")
     r_dict = dict()
@@ -183,7 +322,7 @@ def device_info_body(request, api_type):
             settings.SERVICE_CONFIGURATIONS['GLOBAL_SERVER_PORT']), params=request.GET)
             if int(result.status_code / 100) != 2:
                 r_dict['success'] = False
-                r_dict['message'] = 'A Global API server returned status code %d' % (result.status_code)
+                r_dict['message'] = 'A Global API server returned status code %d' % result.status_code
                 response_status = 500
             else:
                 server_result = json.loads(result.content.decode('utf-8'))
@@ -194,7 +333,7 @@ def device_info_body(request, api_type):
                 r_dict['success'] = True
                 r_dict['message'] = 'Device information was acquired from a global server.'
         else:
-            r_dict['dt_update'] = target_device.dt_update.isoformat()
+            r_dict['dt_update'] = target_device.dt_update.astimezone(tz).isoformat()
             r_dict['device_type'] = target_device.device_type
             r_dict['displayed_name'] = target_device.displayed_name
             r_dict['is_main'] = target_device.is_main
@@ -254,6 +393,8 @@ def device_info_client(request):
 
 def device_list_body(request, api_type):
 
+    tz = pytz.timezone(settings.TIME_ZONE)
+
     r_dict = dict()
     log_dict = dict()
     log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
@@ -267,7 +408,7 @@ def device_list_body(request, api_type):
     all_devices = Device.objects.all()
     device_dt_update = dict()
     for device in all_devices:
-        device_dt_update[device.device_type] = device.dt_update.isoformat()
+        device_dt_update[device.device_type] = device.dt_update.astimezone(tz).isoformat()
 
     r_dict['dt_update'] = device_dt_update
     r_dict['success'] = True
@@ -317,6 +458,8 @@ def device_list_client(request):
 
 # Main body of device_info API function
 def channel_info_body(request, api_type):
+
+    tz = pytz.timezone(settings.TIME_ZONE)
 
     r_dict = dict()
     log_dict = dict()
@@ -375,6 +518,8 @@ def channel_info_body(request, api_type):
                     r_dict['success'] = True
                     r_dict['message'] = 'Channel information was acquired from a global server.'
             target_channel.save()
+            r_dict['dt_update'] = target_channel.dt_update.astimezone(tz).isoformat()
+        r_dict['dt_update'] = target_channel.dt_update.astimezone(tz).isoformat()
         r_dict['is_unknown'] = target_channel.is_unknown
         r_dict['use_custom_setting'] = target_channel.use_custom_setting
         r_dict['channel_name'] = target_channel.name
@@ -444,6 +589,8 @@ def channel_info_client(request):
 
 def channel_list_body(request, api_type):
 
+    tz = pytz.timezone(settings.TIME_ZONE)
+
     r_dict = dict()
     log_dict = dict()
     log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
@@ -462,7 +609,7 @@ def channel_list_body(request, api_type):
             requested_channels = Channel.objects.filter(device=target_device)
             channel_dt_update = dict()
             for channel in requested_channels:
-                channel_dt_update[channel.name] = channel.dt_update.isoformat()
+                channel_dt_update[channel.name] = channel.dt_update.astimezone(tz).isoformat()
             r_dict['dt_update'] = channel_dt_update
             r_dict['success'] = True
             r_dict['message'] = 'Last updated dates of the requested device channels were returned successfully.'
@@ -637,7 +784,7 @@ def recording_info_body(request):
                 form = UploadFileForm(request.POST, request.FILES)
                 if form.is_valid():
                     try:
-                        recorded = FileRecorded.objects.create(client=target_client, begin_date=begin, end_date=end)
+                        recorded = FileRecorded.objects.create(client=target_client, bed=target_client.bed, begin_date=begin, end_date=end)
                         date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
                         time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
                         pathname = '%s/%s' % (settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)

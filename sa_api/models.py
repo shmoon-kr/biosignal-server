@@ -171,6 +171,7 @@ class Channel(models.Model):
 
 class FileRecorded(models.Model):
     client = models.ForeignKey('Client', on_delete=models.SET_NULL, blank=True, null=True)
+    bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
     upload_date = models.DateTimeField(auto_now_add=True)
     begin_date = models.DateTimeField()
     end_date = models.DateTimeField()
