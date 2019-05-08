@@ -136,11 +136,6 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
             column_info[device_type].pop(val, None)
 
     for key, val in insert_query.items():
-        insert_start = datetime.datetime.now()
-        if db_writing:
-            cursor.execute(val)
-            db.commit()
-        db_upload_execution_time = datetime.datetime.now() - insert_start
         log_dict = dict()
         log_dict['SERVER_NAME'] = 'global'\
             if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global'\
@@ -149,6 +144,20 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
         log_dict['TARGET_DEVICE'] = key
         log_dict['NEW_CHANNEL'] = [*column_info[key]]
         log_dict['NUM_RECORDS_QUERY'] = num_records[key]
+        insert_start = datetime.datetime.now()
+        try:
+            if db_writing:
+                cursor.execute(val)
+        except MySQLdb.Error as e:
+            log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+            log_dict['EXCEPTION'] = str(e)
+            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
+            return
+        db.commit()
+        db_upload_execution_time = datetime.datetime.now() - insert_start
         log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount if db_writing else 0
         log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time) if db_writing else 0
 

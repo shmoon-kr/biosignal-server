@@ -220,7 +220,7 @@ SERVICE_CONFIGURATIONS_LOCAL = {
     'STORAGE_SERVER_PASSWORD': 'qwer1234!',
     'STORAGE_SERVER_PATH': '/CloudStation/CloudStation',
     'DB_SERVER': True,
-    'DB_SERVER_HOSTNAME': '192.168.134.177',
+    'DB_SERVER_HOSTNAME': '192.168.134.175',
     'DB_SERVER_USER': 'shmoon',
     'DB_SERVER_PASSWORD': 'ibsntxmes',
     'DB_SERVER_DATABASE': 'op_signal'
@@ -368,11 +368,10 @@ class UnitTestLocalServerAPI(TestCase):
         self.assertEqual(r['message'], 'Client status was updated correctly.')
 
     def test_db_upload(self):
-#        db_upload_main_numeric('test/C-05_190121_100007.vital', 'C', 'C-05')
-#        db_upload_main_numeric('test/F-04_190117_112235.vital', 'F', 'F-04')
         try:
             db_upload_main_numeric('test/C-05_190121_100007.vital', 'C', 'C-05', db_writing=False)
             db_upload_main_numeric('test/F-04_190117_112235.vital', 'F', 'F-04', db_writing=False)
+#            db_upload_main_numeric('test/F-04_190430_065448.vital', 'F', 'F-04', db_writing=True)
         except Exception as e:
             self.assertTrue(True)
 
