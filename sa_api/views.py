@@ -16,6 +16,8 @@ from django.shortcuts import get_object_or_404, render
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review
 from django.views.decorators.csrf import csrf_exempt
 
+tz = pytz.timezone(settings.TIME_ZONE)
+
 # Create your views here.
 
 def file_upload_storage(date_string, bed_name, filepath):
@@ -33,6 +35,88 @@ def file_upload_storage(date_string, bed_name, filepath):
     ftp.storbinary('STOR '+os.path.basename(filepath), file)
     ftp.quit()
     return True
+
+
+def db_upload_summary(record):
+
+    table_name_info = {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
+
+    col_list = dict()
+    col_list['summary'] = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
+    col_list['Philips/IntelliVue'] = col_list['summary']
+    col_list['GE/Carescape'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
+    agg_list = ['MIN', 'MAX', 'AVG', 'COUNT']
+
+    val_list = dict()
+    val_list['summary'] = product(col_list['summary'], agg_list)
+    val_list['Philips/IntelliVue'] = product(col_list['Philips/IntelliVue'], agg_list)
+    val_list['GE/Carescape'] = product(col_list['GE/Carescape'], agg_list)
+
+    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+    cursor = db.cursor()
+
+    for device_displayed_name, table in table_name_info.items():
+        field_list = list()
+        for val in val_list[device_displayed_name]:
+            field_list.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
+
+        query = 'SELECT COUNT(*) TOTAL_COUNT, %s' % ', '.join(field_list)
+        query += " FROM %s WHERE bed = '%s' AND" % (table, record.bed.name)
+        query += " dt BETWEEN '%s' and '%s'" % (record.begin_date.astimezone(tz), record.end_date.astimezone(tz))
+
+        cursor.execute(query)
+
+        summary = cursor.fetchall()[0]
+        if summary[0]:
+            field_list = list()
+            field_list.append('device_displayed_name')
+            field_list.append('file_basename')
+            field_list.append('rosette')
+            field_list.append('bed')
+            field_list.append('begin_date')
+            field_list.append('end_date')
+            field_list.append('effective')
+            field_list.append('TOTAL_COUNT')
+            for val in val_list['summary']:
+                field_list.append('%s_%s' % (val[0], val[1]))
+            value_list = list()
+            value_list.append("'%s'" % device_displayed_name)
+            value_list.append("'%s'" % os.path.basename(record.file_path))
+            value_list.append("'%s'" % record.bed.room.name)
+            value_list.append("'%s'" % record.bed.name)
+            value_list.append("'%s'" % record.begin_date.astimezone(tz).isoformat())
+            value_list.append("'%s'" % record.end_date.astimezone(tz).isoformat())
+            value_list.append('1' if record.end_date - record.begin_date > datetime.timedelta(minutes=10) else '0')
+            for i in summary:
+                if i is None:
+                    value_list.append('NULL')
+                else:
+                    value_list.append(str(i))
+            query = 'INSERT IGNORE INTO %s (%s)' % ('summary_by_file', ', '.join(field_list))
+            query += ' VALUES (%s)' % ', '.join(value_list)
+
+            try:
+                cursor.execute(query)
+                db.commit()
+            except MySQLdb.Error as e:
+                log_dict = dict()
+                log_dict['SERVER_NAME'] = 'global' \
+                    if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+                    else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+                log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
+                log_dict['FILE_NAME'] = record.file_path
+                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                log_dict['EXCEPTION'] = str(e)
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+                return
+
+    db.close()
+    return
 
 
 # Create your views here.
@@ -190,8 +274,6 @@ def summary_bed(request):
         fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
         return HttpResponseBadRequest('The server does not run number DB service.')
 
-    tz = pytz.timezone(settings.TIME_ZONE)
-
     col_list_ph = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
     col_list_ge = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
     agg_list = ['MIN', 'MAX', 'AVG', 'COUNT']
@@ -244,7 +326,6 @@ def summary_bed(request):
 
     query = "SELECT bed, COUNT(*) TOTAL_COUNT, %s FROM number_ph WHERE dt BETWEEN '%s' AND '%s' GROUP BY bed" %\
             (', '.join(field_list_ph), start_date.isoformat(), end_date.isoformat())
-    print(query)
     cursor.execute(query)
 
     for row in cursor.fetchall():
@@ -790,6 +871,7 @@ def recording_info_body(request):
                         if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
                             try:
                                 db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
+                                db_upload_summary(recorded)
                                 r_dict['success'] = True
                                 r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
                             except Exception as e:
