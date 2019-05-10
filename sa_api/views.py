@@ -1,3 +1,4 @@
+import re
 import json
 import pytz
 import os.path
@@ -253,6 +254,37 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     db.close()
 
     return
+
+
+@csrf_exempt
+def dashboard(request):
+
+    beds_red = list()
+    beds_green = list()
+    beds_yellow = list()
+
+    bed_re = re.compile('[B-K]-[0-9]{2}')
+
+    clients_all = Client.objects.all()
+
+    for client in clients_all:
+        if bed_re.match(client.bed.name):
+            tmp_bed_name = client.bed.name.replace('-', '').lower()
+            if client.color_info() == 'red':
+                beds_red.append("'%s'" % tmp_bed_name)
+            elif client.status == Client.STATUS_RECORDING:
+                beds_yellow.append("'%s'" % tmp_bed_name)
+            else:
+                beds_green.append("'%s'" % tmp_bed_name)
+
+    template = loader.get_template('dashboard.html')
+    context = {
+        'beds_red': ','.join(beds_red),
+        'beds_green': ','.join(beds_green),
+        'beds_yellow': ','.join(beds_yellow),
+    }
+
+    return HttpResponse(template.render(context, request))
 
 
 @csrf_exempt

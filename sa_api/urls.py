@@ -3,6 +3,7 @@ from django.urls import path
 from sa_api import views
 
 urlpatterns = [
+    path('dashboard', views.dashboard),
     path('summary_bed', views.summary_bed),
     path('upload_review', views.upload_review),
     path('server/device_info', views.device_info_server),
