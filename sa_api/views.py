@@ -408,7 +408,6 @@ def summary_file(request):
                          password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
                          db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
 
-    print(query)
     cursor = db.cursor()
     cursor.execute(query)
     result_table = cursor.fetchall()
@@ -426,6 +425,7 @@ def summary_file(request):
 @csrf_exempt
 def summary_bed(request):
 
+    agg_list = get_agg_list()
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
 
