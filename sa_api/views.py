@@ -19,6 +19,30 @@ from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
+
+def get_table_name_info():
+    return {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
+
+
+def get_agg_list():
+    return ['MIN', 'MAX', 'AVG', 'COUNT']
+
+
+def get_table_col_val_list():
+
+    table_col_list = dict()
+    table_col_list['summary_by_file'] = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
+    table_col_list['Philips/IntelliVue'] = table_col_list['summary_by_file']
+    table_col_list['GE/Carescape'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
+
+    table_val_list = dict()
+    table_val_list['summary_by_file'] = product(table_col_list['summary_by_file'], get_agg_list())
+    table_val_list['Philips/IntelliVue'] = product(table_col_list['Philips/IntelliVue'], get_agg_list())
+    table_val_list['GE/Carescape'] = product(table_col_list['GE/Carescape'], get_agg_list())
+
+    return table_col_list, table_val_list
+
+
 # Create your views here.
 
 def file_upload_storage(date_string, bed_name, filepath):
@@ -40,18 +64,17 @@ def file_upload_storage(date_string, bed_name, filepath):
 
 def db_upload_summary(record):
 
-    table_name_info = {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
+    table_name_info = get_table_name_info()
+    table_col_list, table_val_list = get_table_col_val_list()
 
-    col_list = dict()
-    col_list['summary'] = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
-    col_list['Philips/IntelliVue'] = col_list['summary']
-    col_list['GE/Carescape'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
-    agg_list = ['MIN', 'MAX', 'AVG', 'COUNT']
-
-    val_list = dict()
-    val_list['summary'] = product(col_list['summary'], agg_list)
-    val_list['Philips/IntelliVue'] = product(col_list['Philips/IntelliVue'], agg_list)
-    val_list['GE/Carescape'] = product(col_list['GE/Carescape'], agg_list)
+    log_dict = dict()
+    log_dict['LOGTYPE'] = 'parameter_check'
+    log_dict['FUNCTION'] = 'db_upload_summary'
+    log_dict['begin_date'] = str(record.begin_date)
+    log_dict['end_date'] = str(record.end_date)
+    log_dict['file_path'] = os.path.basename(record.file_path)
+    log_dict['rosette'] = record.bed.room.name
+    log_dict['bed'] = record.bed.name
 
     db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
                          user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
@@ -61,12 +84,17 @@ def db_upload_summary(record):
 
     for device_displayed_name, table in table_name_info.items():
         field_list = list()
-        for val in val_list[device_displayed_name]:
+        for val in table_val_list[device_displayed_name]:
             field_list.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
 
         query = 'SELECT COUNT(*) TOTAL_COUNT, %s' % ', '.join(field_list)
         query += " FROM %s WHERE bed = '%s' AND" % (table, record.bed.name)
         query += " dt BETWEEN '%s' and '%s'" % (record.begin_date.astimezone(tz), record.end_date.astimezone(tz))
+
+        log_dict['query'] = query
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
         cursor.execute(query)
 
@@ -81,7 +109,7 @@ def db_upload_summary(record):
             field_list.append('end_date')
             field_list.append('effective')
             field_list.append('TOTAL_COUNT')
-            for val in val_list['summary']:
+            for val in table_val_list['summary_by_file']:
                 field_list.append('%s_%s' % (val[0], val[1]))
             value_list = list()
             value_list.append("'%s'" % device_displayed_name)
@@ -124,8 +152,8 @@ def db_upload_summary(record):
 
 def db_upload_main_numeric(filepath, room, bed, db_writing=True):
 
-    table_name_info = {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
     timestamp_interval = 0.5
+    table_name_info = get_table_name_info()
 
     read_start = datetime.datetime.now()
     vr_file = vr.vital_reader(filepath)
@@ -288,6 +316,114 @@ def dashboard(request):
 
 
 @csrf_exempt
+def summary_file(request):
+
+    table_col_list, table_val_list = get_table_col_val_list()
+
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    by = request.GET.get("by")
+
+    log_dict = dict()
+    log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
+    log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['REQUEST_PATH'] = request.path
+    log_dict['METHOD'] = request.method
+    log_dict['PARAM'] = request.GET
+
+    if not settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        return HttpResponseBadRequest('The server does not run number DB service.')
+
+    if start_date is None:
+        start_date = tz.localize(datetime.datetime.now()) + datetime.timedelta(days=-1)
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        start_date = tz.localize(datetime.datetime.strptime(start_date, '%Y-%m-%d'))
+
+    if end_date is None:
+        end_date = start_date + datetime.timedelta(days=1)
+    else:
+        end_date = tz.localize(datetime.datetime.strptime(end_date, '%Y-%m-%d'))
+
+    if by is None or by not in ['rosette', 'bed', 'file']:
+        by = 'file'
+
+    db_start_date = str(start_date.replace(tzinfo=None))
+    db_end_date = str(end_date.replace(tzinfo=None))
+
+    if by == 'file':
+        col_list = list()
+        col_list.append('rosette')
+        col_list.append('bed')
+        col_list.append('file_basename')
+        col_list.append('begin_date')
+        col_list.append('end_date')
+        col_list.append('TOTAL_COUNT')
+
+        for val in table_val_list['summary_by_file']:
+            col_list.append('%s_%s' % (val[0], val[1]))
+
+        col_list_query = col_list
+
+        query = "SELECT %s FROM summary_by_file WHERE begin_date BETWEEN '%s' AND '%s' ORDER BY rosette, bed, begin_date" %\
+                (', '.join(col_list_query), db_start_date, db_end_date)
+    elif by in ('bed', 'rosette'):
+        col_list = list()
+        col_list_query = list()
+        col_list.append('rosette')
+        col_list_query.append('rosette')
+        if by == 'bed':
+            col_list.append('bed')
+            col_list_query.append('bed')
+            query_by = 'rosette, bed'
+        elif by == 'rosette':
+            query_by = 'rosette'
+        else:
+            assert False, "Unknown by parameter %s." % by
+        col_list.append('FILE_COUNT')
+        col_list_query.append('COUNT(file_basename)')
+        col_list.append('TOTAL_COUNT')
+        col_list_query.append('SUM(TOTAL_COUNT)')
+        for val in table_val_list['summary_by_file']:
+            col_list.append('%s_%s' % (val[0], val[1]))
+            if val[1] in ('MAX', 'MIN'):
+                col_list_query.append('%s(%s_%s) %s_%s' % (val[1], val[0], val[1], val[0], val[1]))
+            elif val[1] == 'COUNT':
+                col_list_query.append('SUM(%s_%s) %s_%s' % (val[0], val[1], val[0], val[1]))
+            elif val[1] == 'AVG':
+                col_list_query.append('SUM(%s_%s * %s_COUNT)/SUM(%s_COUNT) %s_%s' % (val[0], val[1], val[0], val[0], val[0], val[1]))
+            else:
+                assert False, "Unknown mysql function %s was used." % val[1]
+
+        query = "SELECT %s FROM summary_by_file WHERE begin_date BETWEEN '%s' AND '%s'" % (', '.join(col_list_query), db_start_date, db_end_date)
+        query += " GROUP BY %s ORDER BY %s" % (query_by, query_by)
+    else:
+        assert False
+
+    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+
+    print(query)
+    cursor = db.cursor()
+    cursor.execute(query)
+    result_table = cursor.fetchall()
+    db.close()
+
+    template = loader.get_template('summary.html')
+    context = {
+        'title': col_list,
+        'result_table': result_table
+    }
+
+    return HttpResponse(template.render(context, request))
+
+
+@csrf_exempt
 def summary_bed(request):
 
     start_date = request.GET.get("start_date")
@@ -308,7 +444,6 @@ def summary_bed(request):
 
     col_list_ph = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
     col_list_ge = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
-    agg_list = ['MIN', 'MAX', 'AVG', 'COUNT']
     val_list_ph = product(col_list_ph, agg_list)
     val_list_ge = product(col_list_ge, agg_list)
 
@@ -908,6 +1043,7 @@ def recording_info_body(request):
                                 r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
                             except Exception as e:
                                 r_dict['success'] = True
+                                r_dict['exception'] = str(e)
                                 r_dict['message'] = 'Recording info was added and file was uploaded correctly. But DB upload was failed.'
                     except Exception as e:
                         r_dict['success'] = False
