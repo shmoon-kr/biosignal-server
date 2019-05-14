@@ -19,7 +19,6 @@ from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
-
 def get_table_name_info():
     return {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
 
@@ -324,6 +323,12 @@ def summary_file(request):
     end_date = request.GET.get("end_date")
     by = request.GET.get("by")
 
+    params_list = list()
+    if start_date is not None:
+        params_list.append('start_date=%s' % start_date)
+    if end_date is not None:
+        params_list.append('end_date=%s' % end_date)
+
     log_dict = dict()
     log_dict['REMOTE_ADDR'] = request.META['REMOTE_ADDR']
     log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
@@ -413,9 +418,29 @@ def summary_file(request):
     result_table = cursor.fetchall()
     db.close()
 
+    page_title = '%s, Summary of Collected Vital Data' % str(start_date.date())
+    by_selector = ''
+
+    if by == 'rosette':
+        by_selector += 'by rosette'
+    else:
+        by_selector += '<a href="/summary_file?%s">by rosette</a>' % '&'.join(params_list+['by=rosette'])
+
+    if by == 'bed':
+        by_selector += ', by bed'
+    else:
+        by_selector += '<a href="/summary_file?%s">, by bed</a>' % '&'.join(params_list+['by=bed'])
+
+    if by in ('file', None):
+        by_selector += ', by file'
+    else:
+        by_selector += '<a href="/summary_file?%s">, by file</a>' % '&'.join(params_list+['by=file'])
+
     template = loader.get_template('summary.html')
     context = {
-        'title': col_list,
+        'col_title': col_list,
+        'page_title': page_title,
+        'by_selector': by_selector,
         'result_table': result_table
     }
 
@@ -523,9 +548,12 @@ def summary_bed(request):
 
     title = ['bed', 'rosette', 'files_total', 'files_effective', 'duration_effective', 'total count'] + field_list_ph
 
+    page_title = 'Summary of Collected Vital Data, %s' % str(start_date.date())
+
     template = loader.get_template('summary.html')
     context = {
-        'title': title,
+        'page_title': page_title,
+        'col_title': title,
         'result_table': result_table
     }
 

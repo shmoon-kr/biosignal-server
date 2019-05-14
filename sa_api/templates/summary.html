@@ -1,8 +1,13 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Stat</title>
+    <title>Statistics</title>
+    <link rel="stylesheet" href="{% static "jquery-ui-themes-1.12.1/themes/base/jquery-ui.css" %}">
+    <script type="text/javascript" src="{% static "jquery-3.4.1.min.js" %}"></script>
+    <script type="text/javascript" src="{% static "jquery-ui-1.12.1/jquery-ui.js" %}"></script>
     <link rel="stylesheet" type="text/css" href="/static/admin/css/base.css">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/changelists.css">
     <script type="text/javascript" src="/admin/jsi18n/"></script>
@@ -14,19 +19,40 @@
     <script type="text/javascript" src="/static/admin/js/urlify.js"></script>
     <script type="text/javascript" src="/static/admin/js/prepopulate.js"></script>
     <script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.js"></script>
-
+    <script>
+    $( function() {
+        $( "#datepicker" ).datepicker();
+    } );
+    $( function() {
+        $("#by").selectmenu();
+    } );
+    </script>
     <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/responsive.css">
     <meta name="robots" content="NONE,NOARCHIVE">
 </head>
 <body>
 
+<h1 align="center">{{ page_title }}</h1>
+
+Date: <input type="text" id="datepicker">
+<label for="by">grouping by</label>
+<select name="by" id="by">
+  <option>rosette</option>
+  <option>bed</option>
+  <option selected="selected">file</option>
+</select>
+
+
+
+{{ by_selector | safe }}
+
 <div class="results">
 <table id="result_list">
 <thead>
 <tr>
 
-    {% for col in title %}
+    {% for col in col_title %}
     <th scope="col"  class="column-bed_name">
     <div class="text"><span>{{ col }}</span></div>
     <div class="clear"></div>
