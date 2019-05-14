@@ -21,10 +21,17 @@
     <script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.js"></script>
     <script>
     $( function() {
-        $( "#datepicker" ).datepicker();
+        $( "#datepicker" ).datepicker({
+            dateFormat: "yy-mm-dd",
+            altField: "#actualDate"
+        });
     } );
     $( function() {
-        $("#by").selectmenu();
+        $("#by").selectmenu({
+            change: function( event, ui ) {
+                window.location.href = window.location.pathname + "?start_date=" + document.getElementById("datepicker").value  + '&by=' + document.getElementById("by").value;
+            }
+        });
     } );
     </script>
     <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -35,17 +42,26 @@
 
 <h1 align="center">{{ page_title }}</h1>
 
-Date: <input type="text" id="datepicker">
-<label for="by">grouping by</label>
-<select name="by" id="by">
-  <option>rosette</option>
-  <option>bed</option>
-  <option selected="selected">file</option>
-</select>
+<p>
+    Date: <input type="text" id="datepicker" value="{{ start_date }}">
+</p>
+
+<label for="by">Aggregate by</label>
+
+<form>
+    <select class="target" id="by">
+      <option{% if by_val == 'rosette' %} selected="selected"{% endif %}>rosette</option>
+      <option{% if by_val == 'bed' %} selected="selected"{% endif %}>bed</option>
+      <option{% if by_val == 'file' %} selected="selected"{% endif %}>file</option>
+    </select>
+</form>
 
 
-
-{{ by_selector | safe }}
+<script>
+    $( "#datepicker" ).change(function() {
+        window.location.href = window.location.pathname + "?start_date=" + document.getElementById("datepicker").value  + '&by=' + document.getElementById("by").value;
+    });
+</script>
 
 <div class="results">
 <table id="result_list">

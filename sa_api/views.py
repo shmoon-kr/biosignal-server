@@ -419,28 +419,13 @@ def summary_file(request):
     db.close()
 
     page_title = '%s, Summary of Collected Vital Data' % str(start_date.date())
-    by_selector = ''
-
-    if by == 'rosette':
-        by_selector += 'by rosette'
-    else:
-        by_selector += '<a href="/summary_file?%s">by rosette</a>' % '&'.join(params_list+['by=rosette'])
-
-    if by == 'bed':
-        by_selector += ', by bed'
-    else:
-        by_selector += '<a href="/summary_file?%s">, by bed</a>' % '&'.join(params_list+['by=bed'])
-
-    if by in ('file', None):
-        by_selector += ', by file'
-    else:
-        by_selector += '<a href="/summary_file?%s">, by file</a>' % '&'.join(params_list+['by=file'])
 
     template = loader.get_template('summary.html')
     context = {
+        'by_val': by,
+        'start_date': str(start_date.date()),
         'col_title': col_list,
         'page_title': page_title,
-        'by_selector': by_selector,
         'result_table': result_table
     }
 
