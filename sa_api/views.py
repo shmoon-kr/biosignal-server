@@ -863,7 +863,6 @@ def channel_list_body(request, api_type):
             r_dict['dt_update'] = channel_dt_update
             r_dict['success'] = True
             r_dict['message'] = 'Last updated dates of the requested device channels were returned successfully.'
-
         except Device.DoesNotExist:
             r_dict['success'] = False
             r_dict['message'] = 'Requested device type does not exists.'
@@ -1034,9 +1033,11 @@ def recording_info_body(request):
                 form = UploadFileForm(request.POST, request.FILES)
                 if form.is_valid():
                     try:
+                        begin = datetime.datetime.strptime(begin, "%Y-%m-%dT%H:%M:%S%z")
+                        end = datetime.datetime.strptime(end, "%Y-%m-%dT%H:%M:%S%z")
                         recorded = FileRecorded.objects.create(client=target_client, bed=target_client.bed, begin_date=begin, end_date=end)
-                        date_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%y%m%d")
-                        time_str = datetime.datetime.strptime(recorded.begin_date, "%Y-%m-%dT%H:%M:%S%z").strftime("%H%M%S")
+                        date_str = begin.strftime("%y%m%d")
+                        time_str = begin.strftime("%H%M%S")
                         pathname = '%s/%s' % (settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
                         if not os.path.exists(pathname):
                             os.makedirs(pathname)
