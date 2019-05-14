@@ -4,7 +4,6 @@ from sa_api import views
 
 urlpatterns = [
     path('dashboard', views.dashboard),
-    path('summary_bed', views.summary_bed),
     path('summary_file', views.summary_file),
     path('upload_review', views.upload_review),
     path('server/device_info', views.device_info_server),
