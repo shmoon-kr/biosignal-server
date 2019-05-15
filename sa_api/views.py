@@ -19,6 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
+
 def get_table_name_info():
     return {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
 
@@ -62,6 +63,7 @@ def convert_summary_data(col_list, data):
         r.append(tmp_row)
 
     return r
+
 
 # Create your views here.
 
@@ -293,6 +295,8 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
 @csrf_exempt
 def dashboard(request):
 
+    since = datetime.date(2019, 5, 7)
+
     beds_red = list()
     beds_green = list()
     beds_yellow = list()
@@ -311,8 +315,47 @@ def dashboard(request):
             else:
                 beds_green.append("'%s'" % tmp_bed_name)
 
+    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+    cursor = db.cursor()
+    query = 'SELECT COUNT(*) files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) DUR, SUM(TOTAL_COUNT) TOTAL_COUNT'
+    query += ' FROM summary_by_file'
+    cursor.execute(query)
+    total_stat = cursor.fetchall()[0]
+    total_files = '{:,}'.format(total_stat[0], ',')
+    total_duration = '{:,}'.format(int(total_stat[1] / 3600), ',')
+    total_records = '{:,}'.format(total_stat[2], ',')
+
+    query = 'SELECT DATE(begin_date) d, COUNT(*) files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) DUR,'
+    query += ' SUM(TOTAL_COUNT) TOTAL_COUNT FROM summary_by_file WHERE'
+    query += " begin_date >= '%s' GROUP BY DATE(begin_date) ORDER BY DATE(begin_date)" %\
+             str(datetime.date.today() + datetime.timedelta(days=-7))
+    cursor.execute(query)
+    recent_stat = cursor.fetchall()
+    db.close()
+
+    recent_dates = list()
+    recent_files = list()
+    recent_duration = list()
+    recent_records = list()
+
+    for row in recent_stat:
+        recent_dates.append('"%s"' % str(row[0]))
+        recent_files.append('%d' % row[1])
+        recent_duration.append('%f' % (row[2]/3600))
+        recent_records.append(row[3])
+
     template = loader.get_template('dashboard.html')
     context = {
+        'since': str(since),
+        'total_files': total_files,
+        'total_records': total_records,
+        'total_duration': total_duration,
+        'recent_dates': ','.join(recent_dates),
+        'recent_files': ','.join(recent_files),
+        'recent_dutation': ','.join(recent_duration),
         'beds_red': ','.join(beds_red),
         'beds_green': ','.join(beds_green),
         'beds_yellow': ','.join(beds_yellow),

@@ -2,235 +2,276 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    /* Create two unequal columns that floats next to each other */
+    .column {
+      float: left;
+      padding: 10px;
+      height: 300px; /* Should be removed. Only for demonstration */
+    }
+
+    .left {
+      width: 30%;
+    }
+
+    .right {
+      width: 70%;
+    }
+
+    /* Clear floats after the columns */
+    .row:after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+    </style>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.css">
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.js"></script>
-    <title> Sig Analytics Vital Data Acquisition System </title>
+    <title> Dashboard </title>
 </head>
 <body>
 
 <h1 align="center"> Sig Analytics Vital Data Acquisition System </h1>
 
-<h3 align="center"> in total since 2019-05-07 </h3>
+<h3 align="center"> {{ total_files }} files, {{ total_records }} records, {{ total_duration }} hours of data were gathered in total since {{ since }} </h3>
 
-<section class="container">
-  <div class="row layer">
-    <div class="col-lg-4 col-md-4 col-sm-12">
-     <svg version="1.1" class="map" id="레이어_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="100%" height="539.397px" viewBox="0 0 381.86 539.397" enable-background="new 0 0 381.86 539.397" xml:space="preserve">
-      <rect x="0.08" y="0.279" fill="#ecf0f5" width="100%" height="539.119"/>
-      <path fill="#2D4F28" d="M361.818,58.898c0,5.403-4.346,9.783-9.709,9.783H30.019c-5.363,0-9.711-4.379-9.711-9.783V29.554
-        c0-5.402,4.348-9.782,9.711-9.782h322.09c5.363,0,9.709,4.38,9.709,9.782V58.898z"/>
-
-      <rect x="19.801" y="95.994" fill="#AABF8E" stroke="#000000" stroke-miterlimit="10" width="200.63" height="124.36"/>
-      <rect x="241.441" y="95.994" fill="#AABF8E" stroke="#000000" stroke-miterlimit="10" width="120.377" height="124.36"/>
-      <rect x="241.23" y="244.344" fill="#AABF8E" stroke="#000000" stroke-miterlimit="10" width="120.029" height="124.36"/>
-      <rect x="241.23" y="395.036" fill="#AABF8E" stroke="#000000" stroke-miterlimit="10" width="120.029" height="124.361"/>
-
-      <rect id="e06r" x="19.695" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
-      <rect id="e07r"  x="59.822" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-      <rect id="e08r"  x="99.947" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-      <rect id="e09r"  x="140.073" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"/>
-      <rect id="e10r"  x="180.199" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-      <rect id="e05r"  x="19.695" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
-      <rect id="e04r"  x="59.822" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-      <rect id="e03r"  x="99.947" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-      <rect id="e02r" x="140.073" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"/>
-      <rect id="e01r" x="180.199" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-
-      <rect id="d01r" x="241.057" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
-      <rect id="d02r"  x="281.184" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-      <rect id="d03r"  x="321.309" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-      <rect id="d04r"  x="241.057" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
-      <rect id="d05r"  x="281.184" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-      <rect id="d06r"  x="321.309" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
-
-      <rect id="c01r" x="241.057" y="244.292" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.382"/>
-      <rect id="c02r"  x="281.184" y="244.292" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.382"/>
-      <rect id="c03r"  x="321.309" y="244.292" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.382"/>
-      <rect id="c04r"  x="241.057" y="327.323" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.381"/>
-      <rect id="c05r"  x="281.184" y="327.323" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
-      <rect id="c06r"  x="321.309" y="327.323" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
-
-      <rect id="b01r"  x="241.057" y="395.036" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.381"/>
-      <rect id="b02r"  x="321.309" y="395.036" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
-      <rect id="b03r"  x="281.184" y="478.069" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.379"/>
-      <rect id="b04r"  x="241.057" y="478.069" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.379"/>
-
-
-      <text transform="matrix(1 0 0 1 157.8516 56.5503)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1288">서관</text>
-
-      <text id="e01t" class="west" transform="matrix(1 0 0 1 186.4702 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E01</text>
-      <text id="e02t" class="west"  transform="matrix(1 0 0 1 146.7988 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E02</text>
-      <text id="e03t" class="west"  transform="matrix(1 0 0 1 105.7671 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E03</text>
-      <text id="e04t" class="west"  transform="matrix(1 0 0 1 66.6377 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E04</text>
-      <text id="e05t" class="west"  transform="matrix(1 0 0 1 25.6079 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E05</text>
-      <text id="e06t" class="west"  transform="matrix(1 0 0 1 25.6079 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E06</text>
-      <text id="e07t" class="west"  transform="matrix(1 0 0 1 66.6377 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E07</text>
-      <text id="e08t" class="west"  transform="matrix(1 0 0 1 105.7671 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E08</text>
-      <text id="e09t" class="west"  transform="matrix(1 0 0 1 146.7988 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E09</text>
-      <text id="e10t" class="west"  transform="matrix(1 0 0 1 186.4702 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E10</text>
-
-
-      <text id="d01t" class="west"  transform="matrix(1 0 0 1 246.7178 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">D01</text>
-      <text id="d02t" class="west"  transform="matrix(1 0 0 1 287.2051 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">D02</text>
-      <text id="d03t" class="west"  transform="matrix(1 0 0 1 325.791 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">D03</text>
-      <text id="d04t" class="west"  transform="matrix(1 0 0 1 246.7178 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">D04</text>
-      <text id="d05t" class="west"  transform="matrix(1 0 0 1 286.3896 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">D05</text>
-      <text id="d06t" class="west"  transform="matrix(1 0 0 1 325.791 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">D06</text>
-
-      <text id="c01t" class="west"  transform="matrix(1 0 0 1 246.7178 270.0029)" font-family="'MalgunGothicRegular'" font-size="17.1189">C01</text>
-      <text id="c02t" class="west"  transform="matrix(1 0 0 1 287.2051 270.0029)" font-family="'MalgunGothicRegular'" font-size="17.1189">C02</text>
-      <text id="c03t" class="west"  transform="matrix(1 0 0 1 325.791 270.0029)" font-family="'MalgunGothicRegular'" font-size="17.1189">C03</text>
-      <text id="c04t" class="west"  transform="matrix(1 0 0 1 246.7178 353.1523)" font-family="'MalgunGothicRegular'" font-size="17.1189">C04</text>
-      <text id="c05t" class="west"  transform="matrix(1 0 0 1 286.3896 353.1523)" font-family="'MalgunGothicRegular'" font-size="17.1189">C05</text>
-      <text id="c06t" class="west"  transform="matrix(1 0 0 1 325.791 353.1523)" font-family="'MalgunGothicRegular'" font-size="17.1189">C06</text>
-
-      <text id="b01t" class="west"  transform="matrix(1 0 0 1 246.7178 421.627)" font-family="'MalgunGothicRegular'" font-size="17.1189">B01</text>
-      <text id="b02t" class="west"  transform="matrix(1 0 0 1 327.4219 421.627)" font-family="'MalgunGothicRegular'" font-size="17.1189">B02</text>
-      <text id="b03t" class="west"  transform="matrix(1 0 0 1 287.2051 504.7764)" font-family="'MalgunGothicRegular'" font-size="17.1189">B03</text>
-      <text id="b04t" class="west"  transform="matrix(1 0 0 1 246.7178 504.7764)" font-family="'MalgunGothicRegular'" font-size="17.1189">B04</text>
-
-
-
-      <text transform="matrix(1 0 0 1 275.3633 165.6597)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">D 로젯</text>
-      <text transform="matrix(1 0 0 1 275.3633 311.5771)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">C 로젯</text>
-      <text transform="matrix(1 0 0 1 275.3633 463.2002)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">B 로젯</text>
-      <text transform="matrix(1 0 0 1 95.562 165.6597)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">E 로젯</text>
-      </svg>
-
+<div class="row">
+    <div class="column">
+        <h4 align="center"> Files Collected </h4>
+        <canvas id="files-collected" class="chartjs" width="400" height="200"></canvas>
+        <h4 align="center"> Hours Collected </h4>
+        <canvas id="hours-collected" class="chartjs" width="400" height="200"></canvas>
     </div>
-    <div class="col-lg-4 col-md-4 col-sm-12">
-      <svg version="1.1" class="map" id="레이어_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="100%" height="512.868px" viewBox="0 0 381.86 512.868" enable-background="new 0 0 381.86 512.868" xml:space="preserve">
-      <rect x="0.08" y="0.279" fill="#ecf0f5" width="100%" height="512.588"/>
-      <path fill="#0A6886" d="M361.766,59.338c0,5.409-4.354,9.793-9.721,9.793H29.574c-5.37,0-9.723-4.384-9.723-9.793V29.959
-        c0-5.408,4.353-9.794,9.723-9.794h322.471c5.367,0,9.721,4.386,9.721,9.794V59.338z"/>
-
-      <rect x="19.597" y="96.478" fill="#8AB8C0" stroke="#000000" stroke-miterlimit="10" width="120.52" height="124.506"/>
-      <rect x="161.237" y="96.478" fill="#8AB8C0" stroke="#000000" stroke-miterlimit="10" width="200.166" height="124.506"/>
-      <rect x="241.76" y="245.002" fill="#8AB8C0" stroke="#000000" stroke-miterlimit="10" width="120.168" height="124.508"/>
-      <rect x="19.771" y="245.002" fill="#8AB8C0" stroke="#000000" stroke-miterlimit="10" width="120.171" height="247.866"/>
-
-      <rect id="h01r" x="161.237" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
-      <rect id="h02r" x="201.41" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.172" height="41.429"/>
-      <rect id="h03r" x="241.582" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
-      <rect id="h04r" x="281.756" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
-      <rect id="h05r" x="321.93" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
-      <rect id="h06r" x="321.93" y="137.608" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
-      <rect id="h07r" x="281.756" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="80.348" height="41.429"/>
-      <rect id="h08r" x="201.41" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.172" height="41.429"/>
-      <rect id="h09r" x="161.237" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+    <div class="column">
 
 
-      <rect id="i01r" x="321.93" y="244.951" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"/>
-      <rect id="i02r" x="321.93" y="286.081" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"/>
-      <rect id="i03r" x="321.93" y="327.264" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
-      <rect id="i04r" x="241.582" y="244.951" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"/>
 
-      <rect id="g01r" x="19.597" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
-      <rect id="g02r" x="59.771" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
-      <rect id="g03r" x="99.944" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
-      <rect id="g04r" x="19.597" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
-      <rect id="g05r" x="59.771" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
-      <rect id="g06r" x="99.944" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+        <section class="container">
+          <div class="row layer">
+            <div class="col-lg-4 col-md-4 col-sm-12">
+             <svg version="1.1" class="map" id="레이어_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="100%" height="539.397px" viewBox="0 0 381.86 539.397" enable-background="new 0 0 381.86 539.397" xml:space="preserve">
+              <rect x="0.08" y="0.279" fill="#ecf0f5" width="100%" height="539.119"/>
+              <path fill="#2D4F28" d="M361.818,58.898c0,5.403-4.346,9.783-9.709,9.783H30.019c-5.363,0-9.711-4.379-9.711-9.783V29.554
+                c0-5.402,4.348-9.782,9.711-9.782h322.09c5.363,0,9.709,4.38,9.709,9.782V58.898z"/>
 
-      <rect id="f01r" x="99.944" y="244.951" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"/>
-      <rect id="f02r" x="99.944" y="286.541" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
-      <rect id="f03r" x="99.944" y="327.698" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.427"/>
-      <rect id="f04r" x="99.944" y="369.129" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"/>
-      <rect id="f05r" x="19.597" y="451.442" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.426"/>
-      <rect id="f06r" x="19.597" y="410.284" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"/>
-      <rect id="f07r" x="19.597" y="369.129" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"/>
-      <rect id="f08r" x="19.597" y="327.698" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.427"/>
-      <rect id="f09r" x="19.597" y="286.541" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
-      <rect id="f10r" x="19.597" y="244.951" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"/>
+              <rect x="19.801" y="95.994" fill="#AABF8E" stroke="#000000" stroke-miterlimit="10" width="200.63" height="124.36"/>
+              <rect x="241.441" y="95.994" fill="#AABF8E" stroke="#000000" stroke-miterlimit="10" width="120.377" height="124.36"/>
+              <rect x="241.23" y="244.344" fill="#AABF8E" stroke="#000000" stroke-miterlimit="10" width="120.029" height="124.36"/>
+              <rect x="241.23" y="395.036" fill="#AABF8E" stroke="#000000" stroke-miterlimit="10" width="120.029" height="124.361"/>
 
-      <text transform="matrix(1 0 0 1 159.3047 56.9868)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1749">동관</text>
+              <rect id="e06r" x="19.695" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
+              <rect id="e07r"  x="59.822" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
+              <rect id="e08r"  x="99.947" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
+              <rect id="e09r"  x="140.073" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"/>
+              <rect id="e10r"  x="180.199" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
+              <rect id="e05r"  x="19.695" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
+              <rect id="e04r"  x="59.822" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
+              <rect id="e03r"  x="99.947" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
+              <rect id="e02r" x="140.073" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"/>
+              <rect id="e01r" x="180.199" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
 
-      <text id="g01t" class="east" transform="matrix(1 0 0 1 24.7515 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">G01</text>
-      <text id="g02t" class="east"  transform="matrix(1 0 0 1 65.2866 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">G02</text>
-      <text id="g03t" class="east"  transform="matrix(1 0 0 1 103.918 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">G03</text>
-      <text id="g04t" class="east"  transform="matrix(1 0 0 1 24.7515 206.2158)" font-family="'MalgunGothicRegular'" font-size="17.139">G04</text>
-      <text id="g05t" class="east"  transform="matrix(1 0 0 1 64.4707 206.2158)" font-family="'MalgunGothicRegular'" font-size="17.139">G05</text>
-      <text id="g06t" class="east"  transform="matrix(1 0 0 1 103.918 206.2158)" font-family="'MalgunGothicRegular'" font-size="17.139">G06</text>
+              <rect id="d01r" x="241.057" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
+              <rect id="d02r"  x="281.184" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
+              <rect id="d03r"  x="321.309" y="95.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
+              <rect id="d04r"  x="241.057" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
+              <rect id="d05r"  x="281.184" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
+              <rect id="d06r"  x="321.309" y="178.158" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
 
-      <text id="h01t" class="east"  transform="matrix(1 0 0 1 165.6333 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H01</text>
-      <text id="h02t" class="east"  transform="matrix(1 0 0 1 206.0293 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H02</text>
-      <text id="h03t" class="east"  transform="matrix(1 0 0 1 246.0195 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H03</text>
-      <text id="h04t" class="east"  transform="matrix(1 0 0 1 286.1992 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H04</text>
-      <text id="h05t" class="east"  transform="matrix(1 0 0 1 326.1875 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H05</text>
-      <text id="h06t" class="east"  transform="matrix(1 0 0 1 326.1875 164.5928)" font-family="'MalgunGothicRegular'" font-size="17.139">H06</text>
-      <text id="h07t" class="east"  transform="matrix(1 0 0 1 308.9121 205.9438)" font-family="'MalgunGothicRegular'" font-size="17.139">H07</text>
-      <text id="h08t" class="east"  transform="matrix(1 0 0 1 206.0293 205.9438)" font-family="'MalgunGothicRegular'" font-size="17.139">H08</text>
-      <text id="h09t" class="east"  transform="matrix(1 0 0 1 165.6333 205.9438)" font-family="'MalgunGothicRegular'" font-size="17.139">H09</text>
+              <rect id="c01r" x="241.057" y="244.292" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.382"/>
+              <rect id="c02r"  x="281.184" y="244.292" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.382"/>
+              <rect id="c03r"  x="321.309" y="244.292" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.382"/>
+              <rect id="c04r"  x="241.057" y="327.323" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.381"/>
+              <rect id="c05r"  x="281.184" y="327.323" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
+              <rect id="c06r"  x="321.309" y="327.323" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
 
-      <text id="i01t" class="east"  transform="matrix(1 0 0 1 329.5898 271.4438)" font-family="'MalgunGothicRegular'" font-size="17.139">I01</text>
-      <text id="i02t" class="east"  transform="matrix(1 0 0 1 329.5898 312.7153)" font-family="'MalgunGothicRegular'" font-size="17.139">I02</text>
-      <text id="i03t" class="east"  transform="matrix(1 0 0 1 329.5898 353.9395)" font-family="'MalgunGothicRegular'" font-size="17.139">I03</text>
-      <text id="i04t" class="east"  transform="matrix(1 0 0 1 249.8066 271.4438)" font-family="'MalgunGothicRegular'" font-size="17.139">I04</text>
+              <rect id="b01r"  x="241.057" y="395.036" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.381"/>
+              <rect id="b02r"  x="321.309" y="395.036" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
+              <rect id="b03r"  x="281.184" y="478.069" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.379"/>
+              <rect id="b04r"  x="241.057" y="478.069" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.379"/>
 
 
-      <text id="f01t" class="east"  transform="matrix(1 0 0 1 105.4663 271.4438)" font-family="'MalgunGothicRegular'" font-size="17.139">F01</text>
-      <text id="f02t" class="east"  transform="matrix(1 0 0 1 105.4663 312.7153)" font-family="'MalgunGothicRegular'" font-size="17.139">F02</text>
-      <text id="f03t" class="east"  transform="matrix(1 0 0 1 105.4663 353.9395)" font-family="'MalgunGothicRegular'" font-size="17.139">F03</text>
-      <text id="f04t" class="east"  transform="matrix(1 0 0 1 105.4663 395.0566)" font-family="'MalgunGothicRegular'" font-size="17.139">F04</text>
-      <text id="f05t" class="east"  transform="matrix(1 0 0 1 25.1187 477.8672)" font-family="'MalgunGothicRegular'" font-size="17.139">F05</text>
-      <text id="f06t" class="east"  transform="matrix(1 0 0 1 25.1187 436.751)" font-family="'MalgunGothicRegular'" font-size="17.139">F06</text>
-      <text id="f07t" class="east"  transform="matrix(1 0 0 1 25.1187 395.0566)" font-family="'MalgunGothicRegular'" font-size="17.139">F07</text>
-      <text id="f08t" class="east"  transform="matrix(1 0 0 1 25.1187 353.9395)" font-family="'MalgunGothicRegular'" font-size="17.139">F08</text>
-      <text id="f09t" class="east"  transform="matrix(1 0 0 1 25.1187 312.7153)" font-family="'MalgunGothicRegular'" font-size="17.139">F09</text>
-      <text id="f10t" class="east"  transform="matrix(1 0 0 1 25.1187 271.4438)" font-family="'MalgunGothicRegular'" font-size="17.139">F10</text>
+              <text transform="matrix(1 0 0 1 157.8516 56.5503)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1288">서관</text>
 
-      <text transform="matrix(1 0 0 1 53.4302 164.5928)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">G 로젯</text>
-      <text transform="matrix(1 0 0 1 234.3008 164.5928)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">H 로젯</text>
-      <text transform="matrix(1 0 0 1 253.8867 333.1191)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">I 로젯</text>
-      <text transform="matrix(1 0 0 1 75.0571 458.125)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">F 로젯</text>
-      </svg>
+              <text id="e01t" class="west" transform="matrix(1 0 0 1 186.4702 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E01</text>
+              <text id="e02t" class="west"  transform="matrix(1 0 0 1 146.7988 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E02</text>
+              <text id="e03t" class="west"  transform="matrix(1 0 0 1 105.7671 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E03</text>
+              <text id="e04t" class="west"  transform="matrix(1 0 0 1 66.6377 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E04</text>
+              <text id="e05t" class="west"  transform="matrix(1 0 0 1 25.6079 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">E05</text>
+              <text id="e06t" class="west"  transform="matrix(1 0 0 1 25.6079 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E06</text>
+              <text id="e07t" class="west"  transform="matrix(1 0 0 1 66.6377 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E07</text>
+              <text id="e08t" class="west"  transform="matrix(1 0 0 1 105.7671 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E08</text>
+              <text id="e09t" class="west"  transform="matrix(1 0 0 1 146.7988 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E09</text>
+              <text id="e10t" class="west"  transform="matrix(1 0 0 1 186.4702 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">E10</text>
 
+
+              <text id="d01t" class="west"  transform="matrix(1 0 0 1 246.7178 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">D01</text>
+              <text id="d02t" class="west"  transform="matrix(1 0 0 1 287.2051 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">D02</text>
+              <text id="d03t" class="west"  transform="matrix(1 0 0 1 325.791 122.1831)" font-family="'MalgunGothicRegular'" font-size="17.1189">D03</text>
+              <text id="d04t" class="west"  transform="matrix(1 0 0 1 246.7178 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">D04</text>
+              <text id="d05t" class="west"  transform="matrix(1 0 0 1 286.3896 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">D05</text>
+              <text id="d06t" class="west"  transform="matrix(1 0 0 1 325.791 205.332)" font-family="'MalgunGothicRegular'" font-size="17.1189">D06</text>
+
+              <text id="c01t" class="west"  transform="matrix(1 0 0 1 246.7178 270.0029)" font-family="'MalgunGothicRegular'" font-size="17.1189">C01</text>
+              <text id="c02t" class="west"  transform="matrix(1 0 0 1 287.2051 270.0029)" font-family="'MalgunGothicRegular'" font-size="17.1189">C02</text>
+              <text id="c03t" class="west"  transform="matrix(1 0 0 1 325.791 270.0029)" font-family="'MalgunGothicRegular'" font-size="17.1189">C03</text>
+              <text id="c04t" class="west"  transform="matrix(1 0 0 1 246.7178 353.1523)" font-family="'MalgunGothicRegular'" font-size="17.1189">C04</text>
+              <text id="c05t" class="west"  transform="matrix(1 0 0 1 286.3896 353.1523)" font-family="'MalgunGothicRegular'" font-size="17.1189">C05</text>
+              <text id="c06t" class="west"  transform="matrix(1 0 0 1 325.791 353.1523)" font-family="'MalgunGothicRegular'" font-size="17.1189">C06</text>
+
+              <text id="b01t" class="west"  transform="matrix(1 0 0 1 246.7178 421.627)" font-family="'MalgunGothicRegular'" font-size="17.1189">B01</text>
+              <text id="b02t" class="west"  transform="matrix(1 0 0 1 327.4219 421.627)" font-family="'MalgunGothicRegular'" font-size="17.1189">B02</text>
+              <text id="b03t" class="west"  transform="matrix(1 0 0 1 287.2051 504.7764)" font-family="'MalgunGothicRegular'" font-size="17.1189">B03</text>
+              <text id="b04t" class="west"  transform="matrix(1 0 0 1 246.7178 504.7764)" font-family="'MalgunGothicRegular'" font-size="17.1189">B04</text>
+
+
+
+              <text transform="matrix(1 0 0 1 275.3633 165.6597)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">D 로젯</text>
+              <text transform="matrix(1 0 0 1 275.3633 311.5771)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">C 로젯</text>
+              <text transform="matrix(1 0 0 1 275.3633 463.2002)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">B 로젯</text>
+              <text transform="matrix(1 0 0 1 95.562 165.6597)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">E 로젯</text>
+              </svg>
+
+            </div>
+            <div class="col-lg-4 col-md-4 col-sm-12">
+              <svg version="1.1" class="map" id="레이어_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="100%" height="512.868px" viewBox="0 0 381.86 512.868" enable-background="new 0 0 381.86 512.868" xml:space="preserve">
+              <rect x="0.08" y="0.279" fill="#ecf0f5" width="100%" height="512.588"/>
+              <path fill="#0A6886" d="M361.766,59.338c0,5.409-4.354,9.793-9.721,9.793H29.574c-5.37,0-9.723-4.384-9.723-9.793V29.959
+                c0-5.408,4.353-9.794,9.723-9.794h322.471c5.367,0,9.721,4.386,9.721,9.794V59.338z"/>
+
+              <rect x="19.597" y="96.478" fill="#8AB8C0" stroke="#000000" stroke-miterlimit="10" width="120.52" height="124.506"/>
+              <rect x="161.237" y="96.478" fill="#8AB8C0" stroke="#000000" stroke-miterlimit="10" width="200.166" height="124.506"/>
+              <rect x="241.76" y="245.002" fill="#8AB8C0" stroke="#000000" stroke-miterlimit="10" width="120.168" height="124.508"/>
+              <rect x="19.771" y="245.002" fill="#8AB8C0" stroke="#000000" stroke-miterlimit="10" width="120.171" height="247.866"/>
+
+              <rect id="h01r" x="161.237" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+              <rect id="h02r" x="201.41" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.172" height="41.429"/>
+              <rect id="h03r" x="241.582" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
+              <rect id="h04r" x="281.756" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
+              <rect id="h05r" x="321.93" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
+              <rect id="h06r" x="321.93" y="137.608" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
+              <rect id="h07r" x="281.756" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="80.348" height="41.429"/>
+              <rect id="h08r" x="201.41" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.172" height="41.429"/>
+              <rect id="h09r" x="161.237" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+
+
+              <rect id="i01r" x="321.93" y="244.951" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"/>
+              <rect id="i02r" x="321.93" y="286.081" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"/>
+              <rect id="i03r" x="321.93" y="327.264" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
+              <rect id="i04r" x="241.582" y="244.951" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"/>
+
+              <rect id="g01r" x="19.597" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
+              <rect id="g02r" x="59.771" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+              <rect id="g03r" x="99.944" y="96.478" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+              <rect id="g04r" x="19.597" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
+              <rect id="g05r" x="59.771" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+              <rect id="g06r" x="99.944" y="178.739" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+
+              <rect id="f01r" x="99.944" y="244.951" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"/>
+              <rect id="f02r" x="99.944" y="286.541" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"/>
+              <rect id="f03r" x="99.944" y="327.698" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.427"/>
+              <rect id="f04r" x="99.944" y="369.129" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"/>
+              <rect id="f05r" x="19.597" y="451.442" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.426"/>
+              <rect id="f06r" x="19.597" y="410.284" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"/>
+              <rect id="f07r" x="19.597" y="369.129" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"/>
+              <rect id="f08r" x="19.597" y="327.698" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.427"/>
+              <rect id="f09r" x="19.597" y="286.541" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"/>
+              <rect id="f10r" x="19.597" y="244.951" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"/>
+
+              <text transform="matrix(1 0 0 1 159.3047 56.9868)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1749">동관</text>
+
+              <text id="g01t" class="east" transform="matrix(1 0 0 1 24.7515 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">G01</text>
+              <text id="g02t" class="east"  transform="matrix(1 0 0 1 65.2866 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">G02</text>
+              <text id="g03t" class="east"  transform="matrix(1 0 0 1 103.918 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">G03</text>
+              <text id="g04t" class="east"  transform="matrix(1 0 0 1 24.7515 206.2158)" font-family="'MalgunGothicRegular'" font-size="17.139">G04</text>
+              <text id="g05t" class="east"  transform="matrix(1 0 0 1 64.4707 206.2158)" font-family="'MalgunGothicRegular'" font-size="17.139">G05</text>
+              <text id="g06t" class="east"  transform="matrix(1 0 0 1 103.918 206.2158)" font-family="'MalgunGothicRegular'" font-size="17.139">G06</text>
+
+              <text id="h01t" class="east"  transform="matrix(1 0 0 1 165.6333 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H01</text>
+              <text id="h02t" class="east"  transform="matrix(1 0 0 1 206.0293 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H02</text>
+              <text id="h03t" class="east"  transform="matrix(1 0 0 1 246.0195 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H03</text>
+              <text id="h04t" class="east"  transform="matrix(1 0 0 1 286.1992 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H04</text>
+              <text id="h05t" class="east"  transform="matrix(1 0 0 1 326.1875 122.9697)" font-family="'MalgunGothicRegular'" font-size="17.139">H05</text>
+              <text id="h06t" class="east"  transform="matrix(1 0 0 1 326.1875 164.5928)" font-family="'MalgunGothicRegular'" font-size="17.139">H06</text>
+              <text id="h07t" class="east"  transform="matrix(1 0 0 1 308.9121 205.9438)" font-family="'MalgunGothicRegular'" font-size="17.139">H07</text>
+              <text id="h08t" class="east"  transform="matrix(1 0 0 1 206.0293 205.9438)" font-family="'MalgunGothicRegular'" font-size="17.139">H08</text>
+              <text id="h09t" class="east"  transform="matrix(1 0 0 1 165.6333 205.9438)" font-family="'MalgunGothicRegular'" font-size="17.139">H09</text>
+
+              <text id="i01t" class="east"  transform="matrix(1 0 0 1 329.5898 271.4438)" font-family="'MalgunGothicRegular'" font-size="17.139">I01</text>
+              <text id="i02t" class="east"  transform="matrix(1 0 0 1 329.5898 312.7153)" font-family="'MalgunGothicRegular'" font-size="17.139">I02</text>
+              <text id="i03t" class="east"  transform="matrix(1 0 0 1 329.5898 353.9395)" font-family="'MalgunGothicRegular'" font-size="17.139">I03</text>
+              <text id="i04t" class="east"  transform="matrix(1 0 0 1 249.8066 271.4438)" font-family="'MalgunGothicRegular'" font-size="17.139">I04</text>
+
+
+              <text id="f01t" class="east"  transform="matrix(1 0 0 1 105.4663 271.4438)" font-family="'MalgunGothicRegular'" font-size="17.139">F01</text>
+              <text id="f02t" class="east"  transform="matrix(1 0 0 1 105.4663 312.7153)" font-family="'MalgunGothicRegular'" font-size="17.139">F02</text>
+              <text id="f03t" class="east"  transform="matrix(1 0 0 1 105.4663 353.9395)" font-family="'MalgunGothicRegular'" font-size="17.139">F03</text>
+              <text id="f04t" class="east"  transform="matrix(1 0 0 1 105.4663 395.0566)" font-family="'MalgunGothicRegular'" font-size="17.139">F04</text>
+              <text id="f05t" class="east"  transform="matrix(1 0 0 1 25.1187 477.8672)" font-family="'MalgunGothicRegular'" font-size="17.139">F05</text>
+              <text id="f06t" class="east"  transform="matrix(1 0 0 1 25.1187 436.751)" font-family="'MalgunGothicRegular'" font-size="17.139">F06</text>
+              <text id="f07t" class="east"  transform="matrix(1 0 0 1 25.1187 395.0566)" font-family="'MalgunGothicRegular'" font-size="17.139">F07</text>
+              <text id="f08t" class="east"  transform="matrix(1 0 0 1 25.1187 353.9395)" font-family="'MalgunGothicRegular'" font-size="17.139">F08</text>
+              <text id="f09t" class="east"  transform="matrix(1 0 0 1 25.1187 312.7153)" font-family="'MalgunGothicRegular'" font-size="17.139">F09</text>
+              <text id="f10t" class="east"  transform="matrix(1 0 0 1 25.1187 271.4438)" font-family="'MalgunGothicRegular'" font-size="17.139">F10</text>
+
+              <text transform="matrix(1 0 0 1 53.4302 164.5928)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">G 로젯</text>
+              <text transform="matrix(1 0 0 1 234.3008 164.5928)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">H 로젯</text>
+              <text transform="matrix(1 0 0 1 253.8867 333.1191)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">I 로젯</text>
+              <text transform="matrix(1 0 0 1 75.0571 458.125)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">F 로젯</text>
+              </svg>
+
+            </div>
+            <div class="col-lg-4 col-md-4 col-sm-12">
+              <svg version="1.1" id="레이어_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px"y="0px" width="100%" height="512.868px" viewBox="0 0 381.86 512.868" enable-background="new 0 0 381.86 512.868" xml:space="preserve" class="map" >
+
+              <rect x="0.08" y="0.279" fill="#ecf0f5" width="100%" height="512.588"/>
+              <path fill="#422C62" d="M361.766,59.338c0,5.409-4.354,9.793-9.721,9.793H29.574c-5.37,0-9.723-4.384-9.723-9.793V29.959
+                c0-5.408,4.353-9.794,9.723-9.794h322.471c5.367,0,9.721,4.386,9.721,9.794V59.338z"/>
+              <rect x="20.939" y="96.222" fill="#BFB3CD" stroke="#000000" stroke-miterlimit="10" width="120.027" height="124.36"/>
+              <rect x="241.897" y="96.222" fill="#BFB3CD" stroke="#000000" stroke-miterlimit="10" width="120.028" height="124.36"/>
+
+              <rect id="j01r" x="100.841" y="178.387" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
+              <rect id="j02r" x="60.716" y="178.387" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
+              <rect id="j03r" x="20.59" y="157.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"/>
+              <rect id="j04r" x="20.59" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"/>
+              <rect id="j05r" x="60.716" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
+              <rect id="j06r" x="100.841" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
+
+              <rect id="k01r" x="241.724" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
+              <rect id="k02r" x="281.85" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
+              <rect id="k03r" x="321.975" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="61.773"/>
+              <rect id="k04r" x="321.975" y="157.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="61.773"/>
+              <rect id="k05r" x="281.85" y="178.387" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
+              <rect id="k06r" x="241.724" y="178.387" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
+
+              <text transform="matrix(1 0 0 1 159.3047 56.9868)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1749">신관</text>
+
+              <text id="k01t" class="sin" transform="matrix(1 0 0 1 248.4658 122.6831)" font-family="'MalgunGothicRegular'" font-size="17.1189">K01</text>
+              <text id="k02t" class="sin"  transform="matrix(1 0 0 1 288.8154 122.6831)" font-family="'MalgunGothicRegular'" font-size="17.1189">K02</text>
+              <text id="k03t" class="sin"  transform="matrix(1 0 0 1 327.1289 132.4648)" font-family="'MalgunGothicRegular'" font-size="17.1189">K03</text>
+              <text id="k04t" class="sin"  transform="matrix(1 0 0 1 327.1289 193.3325)" font-family="'MalgunGothicRegular'" font-size="17.1189">K04</text>
+              <text id="k05t" class="sin"  transform="matrix(1 0 0 1 288.8154 205.5596)" font-family="'MalgunGothicRegular'" font-size="17.1189">K05</text>
+              <text id="k06t" class="sin"  transform="matrix(1 0 0 1 248.4658 205.5596)" font-family="'MalgunGothicRegular'" font-size="17.1189">K06</text>
+
+              <text id="j01t" class="sin" transform="matrix(1 0 0 1 108.6982 205.8311)" font-family="'MalgunGothicRegular'" font-size="17.1189">J01</text>
+              <text id="j02t" class="sin"  transform="matrix(1 0 0 1 69.2969 205.8311)" font-family="'MalgunGothicRegular'" font-size="17.1189">J02</text>
+              <text id="j03t" class="sin"  transform="matrix(1 0 0 1 27.7236 193.604)" font-family="'MalgunGothicRegular'" font-size="17.1189">J03</text>
+              <text id="j04t" class="sin"  transform="matrix(1 0 0 1 28.5391 132.4648)" font-family="'MalgunGothicRegular'" font-size="17.1189">J04</text>
+              <text id="j05t" class="sin"  transform="matrix(1 0 0 1 70.1133 122.6831)" font-family="'MalgunGothicRegular'" font-size="17.1189">J05</text>
+              <text id="j06t" class="sin"  transform="matrix(1 0 0 1 108.6982 122.6831)" font-family="'MalgunGothicRegular'" font-size="17.1189">J06</text>
+
+              <text transform="matrix(1 0 0 1 73.7588 164.2573)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">J 로젯</text>
+              <text transform="matrix(1 0 0 1 257.1465 164.2573)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">K 로젯</text>
+              </svg>
+            </div>
+          </div>
+        </section>
     </div>
-    <div class="col-lg-4 col-md-4 col-sm-12">
-      <svg version="1.1" id="레이어_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px"y="0px" width="100%" height="512.868px" viewBox="0 0 381.86 512.868" enable-background="new 0 0 381.86 512.868" xml:space="preserve" class="map" >
-
-      <rect x="0.08" y="0.279" fill="#ecf0f5" width="100%" height="512.588"/>
-      <path fill="#422C62" d="M361.766,59.338c0,5.409-4.354,9.793-9.721,9.793H29.574c-5.37,0-9.723-4.384-9.723-9.793V29.959
-        c0-5.408,4.353-9.794,9.723-9.794h322.471c5.367,0,9.721,4.386,9.721,9.794V59.338z"/>
-      <rect x="20.939" y="96.222" fill="#BFB3CD" stroke="#000000" stroke-miterlimit="10" width="120.027" height="124.36"/>
-      <rect x="241.897" y="96.222" fill="#BFB3CD" stroke="#000000" stroke-miterlimit="10" width="120.028" height="124.36"/>
-
-      <rect id="j01r" x="100.841" y="178.387" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
-      <rect id="j02r" x="60.716" y="178.387" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
-      <rect id="j03r" x="20.59" y="157.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"/>
-      <rect id="j04r" x="20.59" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"/>
-      <rect id="j05r" x="60.716" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
-      <rect id="j06r" x="100.841" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
-
-      <rect id="k01r" x="241.724" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
-      <rect id="k02r" x="281.85" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
-      <rect id="k03r" x="321.975" y="96.222" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="61.773"/>
-      <rect id="k04r" x="321.975" y="157.994" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="61.773"/>
-      <rect id="k05r" x="281.85" y="178.387" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
-      <rect id="k06r" x="241.724" y="178.387" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
-
-      <text transform="matrix(1 0 0 1 159.3047 56.9868)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1749">신관</text>
-
-      <text id="k01t" class="sin" transform="matrix(1 0 0 1 248.4658 122.6831)" font-family="'MalgunGothicRegular'" font-size="17.1189">K01</text>
-      <text id="k02t" class="sin"  transform="matrix(1 0 0 1 288.8154 122.6831)" font-family="'MalgunGothicRegular'" font-size="17.1189">K02</text>
-      <text id="k03t" class="sin"  transform="matrix(1 0 0 1 327.1289 132.4648)" font-family="'MalgunGothicRegular'" font-size="17.1189">K03</text>
-      <text id="k04t" class="sin"  transform="matrix(1 0 0 1 327.1289 193.3325)" font-family="'MalgunGothicRegular'" font-size="17.1189">K04</text>
-      <text id="k05t" class="sin"  transform="matrix(1 0 0 1 288.8154 205.5596)" font-family="'MalgunGothicRegular'" font-size="17.1189">K05</text>
-      <text id="k06t" class="sin"  transform="matrix(1 0 0 1 248.4658 205.5596)" font-family="'MalgunGothicRegular'" font-size="17.1189">K06</text>
-
-      <text id="j01t" class="sin" transform="matrix(1 0 0 1 108.6982 205.8311)" font-family="'MalgunGothicRegular'" font-size="17.1189">J01</text>
-      <text id="j02t" class="sin"  transform="matrix(1 0 0 1 69.2969 205.8311)" font-family="'MalgunGothicRegular'" font-size="17.1189">J02</text>
-      <text id="j03t" class="sin"  transform="matrix(1 0 0 1 27.7236 193.604)" font-family="'MalgunGothicRegular'" font-size="17.1189">J03</text>
-      <text id="j04t" class="sin"  transform="matrix(1 0 0 1 28.5391 132.4648)" font-family="'MalgunGothicRegular'" font-size="17.1189">J04</text>
-      <text id="j05t" class="sin"  transform="matrix(1 0 0 1 70.1133 122.6831)" font-family="'MalgunGothicRegular'" font-size="17.1189">J05</text>
-      <text id="j06t" class="sin"  transform="matrix(1 0 0 1 108.6982 122.6831)" font-family="'MalgunGothicRegular'" font-size="17.1189">J06</text>
-
-      <text transform="matrix(1 0 0 1 73.7588 164.2573)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">J 로젯</text>
-      <text transform="matrix(1 0 0 1 257.1465 164.2573)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">K 로젯</text>
-      </svg>
-    </div>
-  </div>
-</section>
+</div>
 
 <script type="text/javascript">
 
@@ -272,47 +313,12 @@
       alert(this.id);
   });
 
+
 </script>
 
-<canvas id="myChart" width="400" height="400"></canvas>
 <script>
-var ctx = document.getElementById('myChart');
-var myChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-        datasets: [{
-            label: '# of Votes',
-            data: [12, 19, 3, 5, 2, 3],
-            backgroundColor: [
-                'rgba(255, 99, 132, 0.2)',
-                'rgba(54, 162, 235, 0.2)',
-                'rgba(255, 206, 86, 0.2)',
-                'rgba(75, 192, 192, 0.2)',
-                'rgba(153, 102, 255, 0.2)',
-                'rgba(255, 159, 64, 0.2)'
-            ],
-            borderColor: [
-                'rgba(255, 99, 132, 1)',
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(153, 102, 255, 1)',
-                'rgba(255, 159, 64, 1)'
-            ],
-            borderWidth: 1
-        }]
-    },
-    options: {
-        scales: {
-            yAxes: [{
-                ticks: {
-                    beginAtZero: true
-                }
-            }]
-        }
-    }
-});
+  new Chart(document.getElementById("files-collected"),{"type":"line","data":{"labels":[{{ recent_dates | safe }}],"datasets":[{"label":"overall","data":[{{ recent_files }}],"fill":false,"borderColor":"rgb(75, 192, 192)","lineTension":0.1}]},"options":{}});
+  new Chart(document.getElementById("hours-collected"),{"type":"line","data":{"labels":[{{ recent_dates | safe }}],"datasets":[{"label":"overall","data":[{{ recent_dutation }}],"fill":false,"borderColor":"rgb(75, 192, 192)","lineTension":0.1}]},"options":{}});
 </script>
 
 </body>
