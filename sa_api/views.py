@@ -42,6 +42,27 @@ def get_table_col_val_list():
     return table_col_list, table_val_list
 
 
+def convert_summary_data(col_list, data):
+    r = list()
+    for row in data:
+        tmp_row = list()
+        for i, col in enumerate(row):
+            if col is None:
+                tmp_row.append(None)
+            elif col_list[i].endswith('_COUNT'):
+                tmp_row.append('{:,}'.format(col, ','))
+            elif col_list[i].endswith('_AVG'):
+                tmp_row.append("{0:.2f}".format(col))
+            elif col_list[i] == 'TOTAL_DURATION':
+                hours, remainder = divmod(col, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                tmp_row.append("{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds)))
+            else:
+                tmp_row.append(col)
+        r.append(tmp_row)
+
+    return r
+
 # Create your views here.
 
 def file_upload_storage(date_string, bed_name, filepath):
@@ -415,6 +436,7 @@ def summary_file(request):
     db.close()
 
     page_title = '%s, Summary of Collected Vital Data' % str(start_date.date())
+    result_table = convert_summary_data(col_list, result_table)
 
     template = loader.get_template('summary.html')
     context = {
