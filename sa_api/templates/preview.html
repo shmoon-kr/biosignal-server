@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.css">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.js"></script>
+
+    <title>Title</title>
+</head>
+<body>
+
+<h1 align="center"> {{ bed }}, {{ date }} </h1>
+
+{% for device in data %}
+
+    <h4 align="center"> {{ device }} </h4>
+
+<canvas id="{{ device }}" class="chartjs" width="400" height="200"></canvas>
+
+{% endfor %}
+
+<script>
+
+      {% for device, val in data.items %}
+
+          new Chart(document.getElementById("{{ device }}"), {
+              "type": "line",
+              "data": {
+                  "labels": [{{ val.timestamp | safe }}],
+                  "datasets": [{{ val.dataset | safe }}]
+              },
+              "options": {
+                  "scales": {
+                      "xAxes": [{
+                          "type": "time",
+                          "time": {
+                              "unit": "hour"
+                          }
+                      }]
+                  },
+                  "color": [
+                      'red',    // color for data at index 0
+                      'blue',   // color for data at index 1
+                      'green',  // color for data at index 2
+                      'black',  // color for data at index 3
+                  ]
+              }
+          });
+
+      {% endfor %}
+
+</script>
+
+</body>
+</html>

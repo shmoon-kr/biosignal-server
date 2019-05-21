@@ -293,6 +293,67 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
 
 
 @csrf_exempt
+def preview(request):
+
+    bed = request.GET.get("bed")
+    rosette = request.GET.get("rosette")
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    table_name_info = get_table_name_info()
+    table_col_list, table_val_list = get_table_col_val_list()
+
+    color_preview = ['blue', 'red', 'orange', 'green']
+
+    chart_data = dict()
+
+    if rosette is not None and bed is not None and start_date is not None and end_date is not None:
+
+        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+        cursor = db.cursor()
+
+        for device, table in table_name_info.items():
+            query = "SELECT dt, %s FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
+                    (', '.join(table_col_list[device]), table, rosette, bed, start_date, end_date)
+            cursor.execute(query)
+            query_results = cursor.fetchall()
+            if len(query_results):
+                chart_data[device] = dict()
+                chart_data[device]['timestamp'] = list()
+                for col in table_col_list[device]:
+                    chart_data[device][col] = list()
+                for row in query_results:
+                    chart_data[device]['timestamp'].append('"%s"' % str(row[0]))
+                    for i, val in enumerate(row[1:]):
+                        chart_data[device][table_col_list[device][i]].append('Number.NaN' if val is None else '%f' % val)
+                chart_data[device]['timestamp'] = ', '.join(chart_data[device]['timestamp'])
+                dataset = list()
+                for i, col in enumerate(table_col_list[device]): # rgb(75, 192, 192)
+                    dataset.append('{"label":"%s","data":[%s],"fill":false,"pointRadius": 0,"borderColor":"%s","lineTension":0}' % (col, ', '.join(chart_data[device][col]), color_preview[i]))
+                chart_data[device]['dataset'] = ', '.join(dataset)
+        db.close()
+
+        context = dict()
+        context['data'] = chart_data
+        context['bed'] = bed
+        context['date'] = datetime.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        context['timestamp'] = context['data']['Philips/IntelliVue']['timestamp']
+        #print(context['data']['Philips/IntelliVue']['timestamp'])
+        template = loader.get_template('preview.html')
+        return HttpResponse(template.render(context, request))
+    else:
+        r_dict = dict()
+        r_dict['REQUEST_PATH'] = request.path
+        r_dict['METHOD'] = request.method
+        r_dict['PARAM'] = request.GET
+        r_dict['MESSAGE'] = 'Invalid parameters.'
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
+
+
+@csrf_exempt
 def dashboard(request):
 
     since = datetime.date(2019, 5, 7)

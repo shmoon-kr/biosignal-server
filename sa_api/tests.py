@@ -451,3 +451,12 @@ class UnitTestLocalServerAPI(TestCase):
         r = json.loads(response.content.decode('utf-8'))
         self.assertTrue(r['success'])
         self.assertEqual(r['message'], 'Last updated dates of the requested device channels were returned successfully.')
+
+    def test_preview(self):
+        get_params = dict()
+        get_params['bed'] = 'H-01'
+        get_params['rosette'] = 'H'
+        get_params['start_date'] = '2019-05-13 09:35:00'
+        get_params['end_date'] = '2019-05-13 12:44:00'
+
+        self.client.get('/preview', get_params)
