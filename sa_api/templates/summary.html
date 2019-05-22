@@ -70,7 +70,7 @@
 
     {% for col in col_title %}
     <th scope="col"  class="column-bed_name">
-    <div class="text"><span>{{ col }}</span></div>
+    <div class="text"><span>{{ col | safe }}</span></div>
     <div class="clear"></div>
     </th>
     {% endfor %}
@@ -88,7 +88,7 @@
     {% endif %}
 
     {% for col in row %}
-        <td class="field-bed_name">{{ col }}</td>
+        <td class="field-bed_name">{{ col | safe }}</td>
     {% endfor %}
 
     </tr>

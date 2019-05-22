@@ -11,9 +11,9 @@
 
 <h1 align="center"> {{ bed }}, {{ date }} </h1>
 
-{% for device in data %}
+{% for device, val in data.items %}
 
-    <h4 align="center"> {{ device }} </h4>
+    <h4 align="center"> {{ device }}, <a href="/download_csv_device?{{ val.csv_download_params | safe }}">Download CSV</a> </h4>
 
 <canvas id="{{ device }}" class="chartjs" width="400" height="200"></canvas>
 

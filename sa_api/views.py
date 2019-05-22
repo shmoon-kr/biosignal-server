@@ -45,8 +45,15 @@ def get_table_col_val_list():
     return table_col_list, table_val_list
 
 
-def convert_summary_data(col_list, data):
-    r = list()
+def convert_summary_data(col_list, data, by):
+    new_col_list = list()
+    table_col_list, table_val_list = get_table_col_val_list()
+    tmp_r = list()
+
+    col_dict = dict()
+    for i, col in enumerate(col_list):
+        col_dict[col] = i
+
     for row in data:
         tmp_row = list()
         for i, col in enumerate(row):
@@ -62,9 +69,60 @@ def convert_summary_data(col_list, data):
                 tmp_row.append("{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds)))
             else:
                 tmp_row.append(col)
+        tmp_r.append(tmp_row)
+
+    if by == 'rosette':
+        new_col_list.append("rosette")
+    elif by == 'file':
+        new_col_list.append("rosette <br /> bed")
+
+    if by == 'roestte' or by == 'bed':
+        new_col_list.append("FILE_COUNT")
+    elif by == 'file':
+        new_col_list.append("begin_date </br> end_date")
+
+    if by == 'file':
+        new_col_list.append("action")
+
+    if by == 'rosette' or by == 'bed':
+        new_col_list.append("TOTAL_DURATION </br> TOTAL_COUNT")
+    elif by == 'file':
+        new_col_list.append("DURATION </br> TOTAL_COUNT")
+
+    for col in table_col_list['summary_by_file']:
+        new_col_list.append("MAX(%s) </br> MIN(%s)" % (col, col))
+        new_col_list.append("AVG(%s) </br> COUNT(%s)" % (col, col))
+
+    r = list()
+
+    for row in tmp_r:
+        tmp_row = list()
+        if by == 'rosette':
+            tmp_row.append(row[col_dict["rosette"]])
+        else:
+            tmp_row.append("%s </br> %s" % (row[col_dict["rosette"]], row[col_dict["bed"]]))
+
+        if by == 'rosette' or by == 'bed':
+            tmp_row.append("%s" % row[col_dict["FILE_COUNT"]])
+        else:
+            tmp_row.append("%s </br> %s" % (row[col_dict["begin_date"]], row[col_dict["end_date"]]))
+
+        if by == 'file':
+            tmp_row.append('<a href="/preview?rosette=%s&bed=%s&begin_date=%s&end_date=%s">Preview</a>' % (
+                row[col_dict["rosette"]], row[col_dict["bed"]], row[col_dict["begin_date"]], row[col_dict["end_date"]]
+            ))
+
+        if by == 'rosette' or by == 'bed':
+            tmp_row.append("%s </br> %s" % (row[col_dict["TOTAL_DURATION"]], row[col_dict["TOTAL_COUNT"]]))
+        else:
+            tmp_row.append("%s </br> %s" % (row[col_dict["DURATION"]], row[col_dict["TOTAL_COUNT"]]))
+
+        for col in table_col_list['summary_by_file']:
+            tmp_row.append("%s </br> %s" % (row[col_dict["%s_MAX" % col]], row[col_dict["%s_MIN" % col]]))
+            tmp_row.append("%s </br> %s" % (row[col_dict["%s_AVG" % col]], row[col_dict["%s_COUNT" % col]]))
         r.append(tmp_row)
 
-    return r
+    return new_col_list, r
 
 
 # Create your views here.
@@ -300,13 +358,12 @@ def download_csv_device(request):
     bed = request.GET.get("bed")
     rosette = request.GET.get("rosette")
     device = request.GET.get("device")
-    start_date = request.GET.get("start_date")
+    begin_date = request.GET.get("begin_date")
     end_date = request.GET.get("end_date")
 
     table_name_info = get_table_name_info()
-    table_col_list, table_val_list = get_table_col_val_list()
 
-    if rosette is None or bed is None or start_date is None or end_date is None:
+    if rosette is None or bed is None or begin_date is None or end_date is None:
         r_dict = dict()
         r_dict['REQUEST_PATH'] = request.path
         r_dict['METHOD'] = request.method
@@ -321,7 +378,7 @@ def download_csv_device(request):
         cursor = db.cursor()
 
         query = "SELECT * FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
-                (table_name_info[device], rosette, bed, start_date, end_date)
+                (table_name_info[device], rosette, bed, begin_date, end_date)
         cursor.execute(query)
         title = list()
         for col in cursor.description:
@@ -336,7 +393,7 @@ def download_csv_device(request):
             cyclewriter.writerow(r)
         csvfile.seek(0)
 
-        start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+        start_dt = datetime.datetime.strptime(begin_date, '%Y-%m-%d %H:%M:%S')
 
         filename = '%s_%s_%s.csv' % (bed, start_dt.strftime('%y%m%d_%H%M%S'), device.replace('/', '_'))
 
@@ -351,7 +408,7 @@ def preview(request):
 
     bed = request.GET.get("bed")
     rosette = request.GET.get("rosette")
-    start_date = request.GET.get("start_date")
+    begin_date = request.GET.get("begin_date")
     end_date = request.GET.get("end_date")
 
     table_name_info = get_table_name_info()
@@ -361,7 +418,7 @@ def preview(request):
 
     chart_data = dict()
 
-    if rosette is not None and bed is not None and start_date is not None and end_date is not None:
+    if rosette is not None and bed is not None and begin_date is not None and end_date is not None:
 
         db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
                              user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
@@ -371,11 +428,14 @@ def preview(request):
 
         for device, table in table_name_info.items():
             query = "SELECT dt, %s FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
-                    (', '.join(table_col_list[device]), table, rosette, bed, start_date, end_date)
+                    (', '.join(table_col_list[device]), table, rosette, bed, begin_date, end_date)
             cursor.execute(query)
             query_results = cursor.fetchall()
             if len(query_results):
                 chart_data[device] = dict()
+                chart_data[device]['csv_download_params'] = 'rosette=%s&bed=%s&begin_date=%s&end_date=%s&device=%s' % (
+                    rosette, bed, begin_date, end_date, device
+                )
                 chart_data[device]['timestamp'] = list()
                 for col in table_col_list[device]:
                     chart_data[device][col] = list()
@@ -393,8 +453,8 @@ def preview(request):
         context = dict()
         context['data'] = chart_data
         context['bed'] = bed
-        context['date'] = datetime.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
-        context['timestamp'] = context['data']['Philips/IntelliVue']['timestamp']
+        context['date'] = datetime.datetime.strptime(begin_date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+#        context['timestamp'] = context['data']['Philips/IntelliVue']['timestamp']
         template = loader.get_template('preview.html')
         return HttpResponse(template.render(context, request))
     else:
@@ -593,7 +653,7 @@ def summary_file(request):
     db.close()
 
     page_title = '%s, Summary of Collected Vital Data' % str(start_date.date())
-    result_table = convert_summary_data(col_list, result_table)
+    col_list, result_table = convert_summary_data(col_list, result_table, by)
 
     template = loader.get_template('summary.html')
     context = {
