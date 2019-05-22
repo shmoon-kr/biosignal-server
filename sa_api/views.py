@@ -1,10 +1,12 @@
 import re
+import csv
 import json
 import pytz
 import os.path
 import datetime
 import requests
 import MySQLdb
+import tempfile
 import sa_api.AMCVitalReader as vr
 from .forms import UploadFileForm, UploadReviewForm
 from pyfluent.client import FluentSender
@@ -293,6 +295,58 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
 
 
 @csrf_exempt
+def download_csv_device(request):
+
+    bed = request.GET.get("bed")
+    rosette = request.GET.get("rosette")
+    device = request.GET.get("device")
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    table_name_info = get_table_name_info()
+    table_col_list, table_val_list = get_table_col_val_list()
+
+    if rosette is None or bed is None or start_date is None or end_date is None:
+        r_dict = dict()
+        r_dict['REQUEST_PATH'] = request.path
+        r_dict['METHOD'] = request.method
+        r_dict['PARAM'] = request.GET
+        r_dict['MESSAGE'] = 'Invalid parameters.'
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
+    else:
+        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+        cursor = db.cursor()
+
+        query = "SELECT * FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
+                (table_name_info[device], rosette, bed, start_date, end_date)
+        cursor.execute(query)
+        title = list()
+        for col in cursor.description:
+            title.append(col[0])
+        query_results = cursor.fetchall()
+        db.close()
+
+        csvfile = tempfile.TemporaryFile(mode='w+')
+        cyclewriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        cyclewriter.writerow(title)
+        for r in query_results:
+            cyclewriter.writerow(r)
+        csvfile.seek(0)
+
+        start_dt = datetime.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+
+        filename = '%s_%s_%s.csv' % (bed, start_dt.strftime('%y%m%d_%H%M%S'), device.replace('/', '_'))
+
+        response = HttpResponse(csvfile, content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename=%s' % filename
+
+        return response
+
+
+@csrf_exempt
 def preview(request):
 
     bed = request.GET.get("bed")
@@ -341,7 +395,6 @@ def preview(request):
         context['bed'] = bed
         context['date'] = datetime.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
         context['timestamp'] = context['data']['Philips/IntelliVue']['timestamp']
-        #print(context['data']['Philips/IntelliVue']['timestamp'])
         template = loader.get_template('preview.html')
         return HttpResponse(template.render(context, request))
     else:

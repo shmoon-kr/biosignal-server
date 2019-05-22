@@ -460,3 +460,13 @@ class UnitTestLocalServerAPI(TestCase):
         get_params['end_date'] = '2019-05-13 12:44:00'
 
         self.client.get('/preview', get_params)
+
+    def test_download_csv_device(self):
+        get_params = dict()
+        get_params['bed'] = 'H-01'
+        get_params['rosette'] = 'H'
+        get_params['device'] = 'Philips/IntelliVue'
+        get_params['start_date'] = '2019-05-13 09:35:00'
+        get_params['end_date'] = '2019-05-13 12:44:00'
+
+        self.client.get('/download_csv_device', get_params)
