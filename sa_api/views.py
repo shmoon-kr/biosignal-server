@@ -482,7 +482,7 @@ def dashboard(request):
     for client in clients_all:
         if bed_re.match(client.bed.name):
             tmp_bed_name = client.bed.name.replace('-', '').lower()
-            if client.color_info() == 'red':
+            if client.color_info()[1] == 'red':
                 beds_red.append("'%s'" % tmp_bed_name)
             elif client.status == Client.STATUS_RECORDING:
                 beds_yellow.append("'%s'" % tmp_bed_name)
