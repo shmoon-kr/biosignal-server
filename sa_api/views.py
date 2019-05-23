@@ -63,7 +63,7 @@ def convert_summary_data(col_list, data, by):
                 tmp_row.append('{:,}'.format(col, ','))
             elif col_list[i].endswith('_AVG'):
                 tmp_row.append("{0:.2f}".format(col))
-            elif col_list[i] == 'TOTAL_DURATION':
+            elif col_list[i] in ('TOTAL_DURATION', 'DURATION'):
                 hours, remainder = divmod(col, 3600)
                 minutes, seconds = divmod(remainder, 60)
                 tmp_row.append("{:02}:{:02}:{:02}".format(int(hours), int(minutes), int(seconds)))
@@ -73,7 +73,7 @@ def convert_summary_data(col_list, data, by):
 
     if by == 'rosette':
         new_col_list.append("rosette")
-    elif by == 'file':
+    else:
         new_col_list.append("rosette <br /> bed")
 
     if by == 'roestte' or by == 'bed':
