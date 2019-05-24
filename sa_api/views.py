@@ -13,7 +13,7 @@ from pyfluent.client import FluentSender
 from ftplib import FTP
 from itertools import product
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review
@@ -111,6 +111,14 @@ def convert_summary_data(col_list, data, by):
             tmp_row.append('<a href="/preview?rosette=%s&bed=%s&begin_date=%s&end_date=%s">Preview</a>' % (
                 row[col_dict["rosette"]], row[col_dict["bed"]], row[col_dict["begin_date"]], row[col_dict["end_date"]]
             ))
+            if settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME'] == 'AMC_Anesthesiology':
+                begin_date = row[col_dict["begin_date"]]
+                file_path = os.path.join('/mnt/Data/CloudStation', row[col_dict["bed"]], begin_date.strftime('%y%m%d'))
+                file_name = '%s_%s.vital' % (row[col_dict["bed"]], begin_date.strftime('%y%m%d_%H%M%S'))
+                if os.path.isfile(os.path.join(file_path, file_name)):
+                    tmp_row[-1] += ' </br> <a href="/download_vital_file?bed=%s&begin_date=%s"> vital </a>' % (
+                        row[col_dict["bed"]], str(begin_date)
+                    )
 
         if by == 'rosette' or by == 'bed':
             tmp_row.append("%s </br> %s" % (row[col_dict["TOTAL_DURATION"]], row[col_dict["TOTAL_COUNT"]]))
@@ -350,6 +358,33 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
     db.close()
 
     return
+
+
+@csrf_exempt
+def download_vital_file(request):
+    bed = request.GET.get("bed")
+    begin_date = request.GET.get("begin_date")
+
+    if bed is not None and begin_date is not None:
+        if settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME'] == 'AMC_Anesthesiology':
+            begin_date = datetime.datetime.strptime(begin_date, '%Y-%m-%d %H:%M:%S')
+            file_path = os.path.join('/mnt/Data/CloudStation', bed, begin_date.strftime('%y%m%d'))
+            file_name = os.path.join('%s_%s.vital' % (bed, begin_date.strftime('%y%m%d_%H%M%S')))
+            if os.path.isfile(os.path.join(file_path, file_name)):
+                response = HttpResponse(open(os.path.join(file_path, file_name), 'rb'), content_type='application/vitalrecorder')
+                response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
+                return response
+            else:
+                return HttpResponseNotFound('File Not Found.')
+        else:
+            return HttpResponseNotFound('The function is not allowed in this site.')
+    else:
+        r_dict = dict()
+        r_dict['REQUEST_PATH'] = request.path
+        r_dict['METHOD'] = request.method
+        r_dict['PARAM'] = request.GET
+        r_dict['MESSAGE'] = 'Invalid parameters.'
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
 
 
 @csrf_exempt
