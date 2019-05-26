@@ -33,9 +33,9 @@ def get_agg_list():
 def get_table_col_val_list():
 
     table_col_list = dict()
-    table_col_list['summary_by_file'] = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
-    table_col_list['Philips/IntelliVue'] = table_col_list['summary_by_file']
-    table_col_list['GE/Carescape'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA']
+    table_col_list['summary_by_file'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
+    table_col_list['Philips/IntelliVue'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SAT_O2']
+    table_col_list['GE/Carescape'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
 
     table_val_list = dict()
     table_val_list['summary_by_file'] = product(table_col_list['summary_by_file'], get_agg_list())
@@ -169,7 +169,7 @@ def db_upload_summary(record):
             field_list.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
 
         query = 'SELECT COUNT(*) TOTAL_COUNT, %s' % ', '.join(field_list)
-        query += " FROM %s WHERE bed = '%s' AND" % (table, record.bed.name)
+        query += " FROM %s WHERE rosette = '%s' AND bed = '%s' AND" % (table, record.bed.room.name, record.bed.name)
         query += " dt BETWEEN '%s' and '%s'" % (record.begin_date.astimezone(tz), record.end_date.astimezone(tz))
 
         cursor.execute(query)
@@ -371,20 +371,15 @@ def download_vital_file(request):
             file_path = os.path.join('/mnt/Data/CloudStation', bed, begin_date.strftime('%y%m%d'))
             file_name = os.path.join('%s_%s.vital' % (bed, begin_date.strftime('%y%m%d_%H%M%S')))
             if os.path.isfile(os.path.join(file_path, file_name)):
-                response = HttpResponse(open(os.path.join(file_path, file_name), 'rb'), content_type='application/vitalrecorder')
+                response = HttpResponse(open(os.path.join(file_path, file_name), 'rb'), content_type='application/x-vitalrecorder+gzip')
                 response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
                 return response
             else:
                 return HttpResponseNotFound('File Not Found.')
         else:
-            return HttpResponseNotFound('The function is not allowed in this site.')
+            return HttpResponseBadRequest('The function is not allowed in this site.')
     else:
-        r_dict = dict()
-        r_dict['REQUEST_PATH'] = request.path
-        r_dict['METHOD'] = request.method
-        r_dict['PARAM'] = request.GET
-        r_dict['MESSAGE'] = 'Invalid parameters.'
-        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
+        return HttpResponseBadRequest('Invalid parameters.')
 
 
 @csrf_exempt
@@ -449,7 +444,8 @@ def preview(request):
     table_name_info = get_table_name_info()
     table_col_list, table_val_list = get_table_col_val_list()
 
-    color_preview = ['blue', 'red', 'orange', 'green']
+    color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
+    #['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
 
     chart_data = dict()
 
