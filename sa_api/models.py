@@ -212,3 +212,16 @@ class Review(models.Model):
 
     class Meta:
         unique_together = ("name", "local_server_name")
+
+
+class AnesthesiaRecordEvent(models.Model):
+    dt = models.DateTimeField(default=timezone.now)
+    record = models.ForeignKey('AnesthesiaRecord', on_delete=models.CASCADE)
+    category = models.CharField(max_length=255, blank=True, null=True)
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+
+class AnesthesiaRecord(models.Model):
+    dt_operation = models.DateField(default=timezone.now)
+    bed = models.ForeignKey('Bed', on_delete=models.CASCADE)
+    raw_record = models.TextField(blank=True)

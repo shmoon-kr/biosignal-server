@@ -445,7 +445,6 @@ def preview(request):
     table_col_list, table_val_list = get_table_col_val_list()
 
     color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
-    #['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
 
     chart_data = dict()
 

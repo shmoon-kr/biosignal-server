@@ -1,8 +1,66 @@
+import datetime
 from django.contrib.admin.widgets import AdminFileWidget
 from django.utils.translation import ugettext as _
 from django.utils.safestring import mark_safe
 from django.contrib import admin
-from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review
+from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord
+
+
+def parse_anesthesia_record(text):
+    event_cat = list()
+    event_cat.append('')
+    event_cat.append('')
+    event_cat.append('')
+
+    events = list()
+
+    eventnum = 0
+
+    for l in text.splitlines():
+        line = l.rstrip().lstrip()
+        if '■ 마취제(Anesthetics) 포함 약물 정보' in line:
+            event_cat[0] = 'GasDrug'
+        elif '■ Input' in line:
+            event_cat[0] = 'I'
+            event_cat[1] = 'I'
+        elif '■ Output' in line:
+            event_cat[0] = 'O'
+        elif '■ 마취 기록 이벤트 내용' in line:
+            event_cat[0] = 'E'
+            event_cat[1] = 'E'
+            event_cat[2] = 'E'
+        elif line == 'U/O':
+            event_cat[1] = 'U/O'
+            event_cat[2] = 'U/O'
+        elif line == 'Gas':
+            event_cat[1] = 'Gas'
+        elif line == 'Drug':
+            event_cat[1] = 'Drug'
+        elif line == 'O2':
+            event_cat[2] = 'O2'
+        elif line.startswith('ⓑ ') or line.startswith('ⓒ '):
+            event_cat[2] = line[2:]
+        elif line.startswith('- '):
+            try:
+                dt = datetime.datetime.strptime(line.split(' ')[1][:-1], '%H:%M')
+                desc = line[line.find(', ') + 2:]
+                events.append(event_cat + [dt.time(), desc])
+            except Exception as e:
+                pass
+        elif line != '':
+            try:
+                ls = line.split(' ')
+                assert int(float(ls[0])) == (eventnum + 1), 'Wrong Event Number'
+                dt = datetime.datetime.strptime(line.split(' ')[1], '%H:%M')
+                eventnum += 1
+                desc = line[line.find(' - ') + 3:]
+                events.append(event_cat + [dt.time(), desc])
+            except Exception as e:
+                if event_cat[0] == 'E':
+                    events[-1][-1] += ' ' + line
+                pass
+
+    return events
 
 
 class AdminImageWidget(AdminFileWidget):
@@ -31,6 +89,33 @@ class ClientBusSlotInline(admin.TabularInline):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class AnesthesiaRecordEventInline(admin.TabularInline):
+    model = AnesthesiaRecordEvent
+    extra = 0
+    readonly_fields = ('dt', 'category', 'description')
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class AnesthesiaRecordAdmin(admin.ModelAdmin):
+    list_display = ('id', 'bed', 'dt_operation')
+
+    inlines = [AnesthesiaRecordEventInline]
+
+    def save_model(self, request, obj, form, change):
+        events = parse_anesthesia_record(obj.raw_record)
+        AnesthesiaRecordEvent.objects.filter(record=obj).delete()
+        for event in events:
+            dt = datetime.datetime.combine(obj.dt_operation, event[3])
+            AnesthesiaRecordEvent.objects.create(dt=dt, record=obj, category=event[2], description=event[4])
+        super(AnesthesiaRecordAdmin, self).save_model(request, obj, form, change)
 
 
 class ChannelAdmin(admin.ModelAdmin):
@@ -121,3 +206,4 @@ admin.site.register(Bed, BedAdmin)
 admin.site.register(Client, ClientAdmin)
 admin.site.register(FileRecorded, FileRecordedAdmin)
 admin.site.register(Review, ReviewAdmin)
+admin.site.register(AnesthesiaRecord, AnesthesiaRecordAdmin)
