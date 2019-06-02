@@ -214,6 +214,38 @@ class Review(models.Model):
         unique_together = ("name", "local_server_name")
 
 
+class DeviceConfigPreset(models.Model):
+    dt_update = models.DateTimeField(default=timezone.now)
+    device = models.ForeignKey('Device', on_delete=models.CASCADE)
+    name = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return '%s, %s' % (self.device, self.name)
+
+    class Meta:
+        unique_together = ("device", "name")
+
+
+class DeviceConfigPresetBed(models.Model):
+    bed = models.ForeignKey('Bed', on_delete=models.CASCADE)
+    preset = models.ForeignKey('DeviceConfigPreset', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.preset.name
+
+
+class DeviceConfigItem(models.Model):
+    preset = models.ForeignKey('DeviceConfigPreset', on_delete=models.CASCADE)
+    variable = models.CharField(max_length=255, blank=True, null=True)
+    value = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return '%s, %s' % (self.preset, self.variable)
+
+    class Meta:
+        unique_together = ("preset", "variable")
+
+
 class AnesthesiaRecordEvent(models.Model):
     dt = models.DateTimeField(default=timezone.now)
     record = models.ForeignKey('AnesthesiaRecord', on_delete=models.CASCADE)

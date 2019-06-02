@@ -16,7 +16,7 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
@@ -1083,6 +1083,14 @@ def client_info_body(request):
         try:
             target_client = Client.objects.get(mac=mac)
             target_client.save()
+            device_config = dict()
+            presets = DeviceConfigPresetBed.objects.filter(bed=target_client.bed)
+            for preset in presets:
+                device_config[preset.preset.device.device_type] = dict()
+                configitems = DeviceConfigItem.objects.filter(preset=preset.preset)
+                for configitem in configitems:
+                    device_config[preset.preset.device.device_type][configitem.variable] = configitem.value
+            r_dict['device_config_info'] = device_config
             r_dict['client_name'] = target_client.name
             r_dict['bed_name'] = target_client.bed.name
             r_dict['bed_id'] = target_client.bed_id
@@ -1407,5 +1415,3 @@ def upload_review(request):
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=response_status)
-
-

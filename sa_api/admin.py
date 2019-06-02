@@ -3,7 +3,7 @@ from django.contrib.admin.widgets import AdminFileWidget
 from django.utils.translation import ugettext as _
 from django.utils.safestring import mark_safe
 from django.contrib import admin
-from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord
+from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord, DeviceConfigItem, DeviceConfigPreset, DeviceConfigPresetBed
 
 
 def parse_anesthesia_record(text):
@@ -91,6 +91,22 @@ class ClientBusSlotInline(admin.TabularInline):
         return False
 
 
+class DeviceConfigItemInline(admin.TabularInline):
+    model = DeviceConfigItem
+    extra = 0
+    #readonly_fields = ('client', 'bus', 'name', 'active', 'device')
+
+
+class DeviceConfigPresetAdmin(admin.ModelAdmin):
+    model = DeviceConfigItem
+    extra = 0
+    readonly_fields = ('dt_update',)
+
+    list_display = ('id', 'device', 'name')
+
+    inlines = [DeviceConfigItemInline]
+
+
 class AnesthesiaRecordEventInline(admin.TabularInline):
     model = AnesthesiaRecordEvent
     extra = 0
@@ -153,8 +169,16 @@ class ClientAdmin(admin.ModelAdmin):
         return ['bed__name']
 
 
+class DeviceConfigPresetBedInline(admin.TabularInline):
+    model = DeviceConfigPresetBed
+    extra = 0
+    #readonly_fields = ('client', 'bus', 'name', 'active', 'device')
+
+
 class BedAdmin(admin.ModelAdmin):
     list_display = ('id', 'room', 'name', 'bed_type')
+
+    inlines = [DeviceConfigPresetBedInline]
 
     def bed_type(self, obj):
         bed_type_name = obj.BED_TYPE_CHOICES[obj.bed_type]
@@ -198,6 +222,7 @@ class ReviewAdmin(admin.ModelAdmin):
             )
         )
 
+
 # Register your models here.
 admin.site.register(Device)
 admin.site.register(Channel, ChannelAdmin)
@@ -205,5 +230,6 @@ admin.site.register(Room)
 admin.site.register(Bed, BedAdmin)
 admin.site.register(Client, ClientAdmin)
 admin.site.register(FileRecorded, FileRecordedAdmin)
+admin.site.register(DeviceConfigPreset, DeviceConfigPresetAdmin)
 admin.site.register(Review, ReviewAdmin)
 admin.site.register(AnesthesiaRecord, AnesthesiaRecordAdmin)
