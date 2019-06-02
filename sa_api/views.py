@@ -552,6 +552,7 @@ def dashboard(request):
         recent_records.append(row[3])
 
     template = loader.get_template('dashboard.html')
+
     context = {
         'since': str(since),
         'total_files': total_files,
