@@ -199,16 +199,16 @@ class BedAdmin(admin.ModelAdmin):
 
 
 class FileRecordedAdmin(admin.ModelAdmin):
-    list_display = ('id', 'bed_name', 'room_name', 'upload_date', 'begin_date', 'end_date', 'client_mac', 'file_path')
+    list_display = ('id', 'method', 'bed_name', 'room_name', 'upload_date', 'begin_date', 'end_date', 'client_mac', 'file_path', 'file_basename')
 
     def client_mac(self, obj):
         return obj.client.mac
 
     def bed_name(self, obj):
-        return obj.client.bed.name
+        return obj.bed.name
 
     def room_name(self, obj):
-        return obj.client.bed.room.name
+        return obj.bed.room.name
 
 
 class ReviewAdmin(admin.ModelAdmin):
