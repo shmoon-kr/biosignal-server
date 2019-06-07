@@ -16,14 +16,19 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
 
-def get_table_name_info():
-    return {'GE/Carescape': 'number_ge', 'Philips/IntelliVue': 'number_ph'}
+def get_table_name_info(main_only=True):
+    r = dict()
+    r['GE/Carescape'] = 'number_ge'
+    r['Philips/IntelliVue'] = 'number_ph'
+    if not main_only:
+        r['Masimo/Root'] = 'number_mr'
+    return r
 
 
 def get_agg_list():
@@ -177,6 +182,7 @@ def db_upload_summary(record):
         summary = cursor.fetchall()[0]
         if summary[0]:
             field_list = list()
+            field_list.append('method')
             field_list.append('device_displayed_name')
             field_list.append('file_basename')
             field_list.append('rosette')
@@ -188,6 +194,7 @@ def db_upload_summary(record):
             for val in table_val_list['summary_by_file']:
                 field_list.append('%s_%s' % (val[0], val[1]))
             value_list = list()
+            value_list.append(str(0))
             value_list.append("'%s'" % device_displayed_name)
             value_list.append("'%s'" % os.path.basename(record.file_path))
             value_list.append("'%s'" % record.bed.room.name)
@@ -226,10 +233,10 @@ def db_upload_summary(record):
 
 # Create your views here.
 
-def db_upload_main_numeric(filepath, room, bed, db_writing=True):
+def db_upload_main_numeric(filepath, room, bed, method=0, db_writing=True):
 
     timestamp_interval = 0.5
-    table_name_info = get_table_name_info()
+    table_name_info = get_table_name_info(main_only=False)
 
     read_start = datetime.datetime.now()
     vr_file = vr.vital_reader(filepath)
@@ -296,7 +303,7 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
         rows = cursor.fetchall()
 
         insert_query[device_type] = 'INSERT IGNORE INTO %s (' % (table_name_info[device_type])
-        column_info_db[device_type] = {}
+        column_info_db[device_type] = dict()
         for i, column in enumerate(rows):
             if column[0] != 'id':
                 column_info_db[device_type][len(column_info_db[device_type])] = column[0]
@@ -307,12 +314,12 @@ def db_upload_main_numeric(filepath, room, bed, db_writing=True):
         insert_query[device_type] += ') VALUES '
 
     for i, ad in enumerate(aligned_data):
-        tmp_query = '(\'%s\', \'%s\'' % (room, bed)
-        tmp_query += ', \'%s\'' % (datetime.datetime.fromtimestamp(ad['timestamp']).isoformat())
+        tmp_query = "(%d, '%s', '%s'" % (method, room, bed)
+        tmp_query += ", '%s'" % (datetime.datetime.fromtimestamp(ad['timestamp']).isoformat())
         device_type = ad['device']
         num_records[device_type] += 1
         for key, val in column_info_db[device_type].items():
-            if val not in ['rosette', 'bed', 'dt']:
+            if val not in ['method', 'rosette', 'bed', 'dt']:
                 tmp_query += ', NULL' if val not in ad else ', %f' % (ad[val])
         tmp_query += ')'
         if i == 0:
@@ -480,9 +487,12 @@ def preview(request):
                 chart_data[device]['dataset'] = ', '.join(dataset)
         db.close()
 
+        events = ManualInputEventItem.objects.filter(record__bed__name=bed, dt__range=(begin_date, end_date))
+
         context = dict()
         context['data'] = chart_data
         context['bed'] = bed
+        context['events'] = events
         context['date'] = datetime.datetime.strptime(begin_date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
 #        context['timestamp'] = context['data']['Philips/IntelliVue']['timestamp']
         template = loader.get_template('preview.html')

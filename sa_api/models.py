@@ -257,3 +257,15 @@ class AnesthesiaRecord(models.Model):
     dt_operation = models.DateField(default=timezone.now)
     bed = models.ForeignKey('Bed', on_delete=models.CASCADE)
     raw_record = models.TextField(blank=True)
+
+
+class ManualInputEventItem(models.Model):
+    dt = models.DateTimeField(default=timezone.now)
+    record = models.ForeignKey('ManualInputEvent', on_delete=models.CASCADE)
+    category = models.CharField(max_length=255, blank=True, null=True, default='Manual')
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+
+class ManualInputEvent(models.Model):
+    dt_operation = models.DateField(default=timezone.now)
+    bed = models.ForeignKey('Bed', on_delete=models.CASCADE)

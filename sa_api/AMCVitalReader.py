@@ -96,7 +96,7 @@ class vital_reader(object):
     def write_track_info(self, filename):
         fieldnames = ['did', 'tid', 'rec_type', 'rec_format', 'name', 'unit', 'minval', 'maxval', 'color', 'srate', 'adc_gain', 'adc_offset', 'mon_type', 'dt_length', 'vn_length']
         with open(filename, 'w', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting = csv.QUOTE_MINIMAL)
+            csv_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             csv_writer.writerow(fieldnames)
             for itrack in self.track:
                 csv_writer.writerow([self.track[itrack].did, self.track[itrack].tid, self.track[itrack].rec_type, self.track[itrack].rec_fmt,
@@ -107,11 +107,17 @@ class vital_reader(object):
     def write_device_info(self, filename):
         fieldnames = ['did', 'typename', 'devname', 'port']
         with open(filename, 'w', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting = csv.QUOTE_MINIMAL)
+            csv_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             csv_writer.writerow(fieldnames)
             for idevice in self.device:
                 csv_writer.writerow([self.device[idevice].did, self.device[idevice].typename,
                                      self.device[idevice].devname, self.device[idevice].port])
+
+    def get_device_info(self):
+        r = []
+        for idevice in self.device:
+            r.append(self.device[idevice].typename)
+        return r
 
     def analyze_dt(self, filename):
         fieldnames = []
@@ -169,7 +175,7 @@ class vital_reader(object):
                 for i in range(len(self.track[itrack].dt)):
                     r.append([self.track[itrack].dt[i], self.track[itrack].v_number[i]])
                 return r
-        raise ValueError('No such a track exists.')
+        raise ValueError('%s/%s track could not be found in %s.' % (typename, trackname, self.filename))
 
     def exist_track(self, typename, trackname):
         did = 0
@@ -265,6 +271,22 @@ class vital_reader(object):
                 return r, self.track[itrack].srate
         raise ValueError('No such a track exists.')
 
+    def read_wave_raw(self, typename, trackname):
+        did = 0
+        if typename != '':
+            for idevice in self.device:
+                if self.device[idevice].typename == typename:
+                    did = self.device[idevice].did
+            if did==0:
+                raise ValueError('No such a device exists.')
+        for itrack in self.track:
+            if self.track[itrack].name == trackname and self.track[itrack].did == did:
+                t_track = self.track[itrack]
+                if t_track.rec_type == 1:
+                    return t_track.dt, t_track.v_wave, t_track.v_number
+                raise ValueError('Requested track is not an wave track.')
+        raise ValueError('No such a track exists.')
+
     def read_number_datetime_interval(self, typename, trackname, datetime_start, datetime_end):
         dt, number = self.read_number_datetime(typename, trackname)
         p_start = 0
@@ -276,7 +298,7 @@ class vital_reader(object):
 
         if p_start < p_end:
             return dt[p_start:p_end], number[p_start:p_end]
-        return [],[]
+        return [], []
 
     def read_number_datetime(self, typename, trackname):
         dt, number = self.read_number_utc(typename, trackname)
@@ -473,6 +495,29 @@ class vital_reader(object):
             if self.device[self.track[itrack].did].typename in device_list and self.track[itrack].rec_type == 2:
                 for i, ti in enumerate(self.track[itrack].dt):
                     r.append([self.device[self.track[itrack].did].typename, ti, self.track[itrack].name, self.track[itrack].v_number[i]])
+        return r
+
+    def export_db_data_wave(self, device_list=[]):
+        r = dict()
+        for itrack in self.track:
+            if self.device[self.track[itrack].did].typename in device_list and self.track[itrack].rec_type == 1:
+                key = (self.device[self.track[itrack].did].typename, self.track[itrack].name)
+                if len(self.track[itrack].dt) == len(self.track[itrack].v_number) and len(self.track[itrack].dt):
+                    valid_wave = True
+                    psize = self.track[itrack].v_number[0]
+                    num = len(self.track[itrack].dt)
+                    for i in range(num):
+                        if self.track[itrack].v_number[i] != psize:
+                            valid_wave = False
+                    if valid_wave:
+                        r[key] = dict()
+                        r[key]['srate'] = self.track[itrack].srate
+                        r[key]['psize'] = psize
+                        r[key]['timestamp'] = self.track[itrack].dt
+                        r[key]['data'] = np.empty((num, psize), dtype=np.float32)
+                        for i in range(num):
+                            r[key]['data'][i] = self.track[itrack].v_wave[i*psize:(i+1)*psize]
+
         return r
 
     def check_validity(self):

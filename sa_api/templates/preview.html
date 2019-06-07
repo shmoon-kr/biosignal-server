@@ -2,14 +2,73 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.css">
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.bundle.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/Chart.js-2.8.0/dist/Chart.css">
+    <link rel="stylesheet" type="text/css" href="/static/admin/css/base.css">
+    <link rel="stylesheet" type="text/css" href="/static/admin/css/changelists.css">
+    <script type="text/javascript" src="/admin/jsi18n/"></script>
+    <script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
+    <script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
+    <script type="text/javascript" src="/static/admin/js/core.js"></script>
+    <script type="text/javascript" src="/static/admin/js/admin/RelatedObjectLookups.js"></script>
+    <script type="text/javascript" src="/static/admin/js/actions.js"></script>
+    <script type="text/javascript" src="/static/admin/js/urlify.js"></script>
+    <script type="text/javascript" src="/static/admin/js/prepopulate.js"></script>
+    <script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.js"></script>
+    <script type="text/javascript" src="/static/Chart.js-2.8.0/dist/Chart.bundle.js"></script>
+    <script type="text/javascript" src="/static/Chart.js-2.8.0/dist/chartjs-plugin-annotation.js"></script>
 
     <title>Preview, {{ bed }}, {{ date }}</title>
 </head>
 <body>
 
 <h1 align="center"> {{ bed }}, {{ date }} </h1>
+
+{% if events %}
+    <div class="results">
+    <table id="result_list">
+    <thead>
+    <tr>
+        <th scope="col"  class="column-bed_name">
+        <div class="text"><span>number</span></div>
+        <div class="clear"></div>
+        </th>
+        <th scope="col"  class="column-bed_name">
+        <div class="text"><span>dt</span></div>
+        <div class="clear"></div>
+        </th>
+        <th scope="col"  class="column-bed_name">
+        <div class="text"><span>category</span></div>
+        <div class="clear"></div>
+        </th>
+        <th scope="col"  class="column-bed_name">
+        <div class="text"><span>description</span></div>
+        <div class="clear"></div>
+        </th>
+    </tr>
+    </thead>
+    <tbody>
+
+    {% for event in events %}
+
+        {% if forloop.counter|divisibleby:"2" %}
+        <tr class="row2">
+        {% else %}
+        <tr class="row1">
+        {% endif %}
+
+        <td class="field-bed_name">{{ forloop.counter }}</td>
+        <td class="field-bed_name">{{ event.dt|date:"Y-m-d H:i:s" }}</td>
+        <td class="field-bed_name">{{ event.category }}</td>
+        <td class="field-bed_name">{{ event.description }}</td>
+
+        </tr>
+    {% endfor %}
+
+</tbody>
+</table>
+</div>
+
+{% endif %}
 
 {% for device, val in data.items %}
 
@@ -21,35 +80,58 @@
 
 <script>
 
-      {% for device, val in data.items %}
+    {% for device, val in data.items %}
 
-          new Chart(document.getElementById("{{ device }}"), {
-              "type": "line",
-              "data": {
-                  "labels": [{{ val.timestamp | safe }}],
-                  "datasets": [{{ val.dataset | safe }}]
-              },
-              "options": {
-                  "scales": {
-                      "xAxes": [{
-                          "type": "time",
-                          "time": {
-                              "unit": "hour"
-                          }
-                      }]
-                  },
-                  "layout": {
-                      padding: {
-                          left: 10,
-                          right: 10,
-                          top: 10,
-                          bottom: 10
+        new Chart(document.getElementById("{{ device }}"), {
+          type: "line",
+          data: {
+              labels: [{{ val.timestamp | safe }}],
+              datasets: [{{ val.dataset | safe }}]
+          },
+          options: {
+              scales: {
+                  xAxes: [{
+                      type: "time",
+                      time: {
+                          unit: "hour"
                       }
+                  }]
+              },
+              layout: {
+                  padding: {
+                      left: 10,
+                      right: 10,
+                      top: 10,
+                      bottom: 10
                   }
+              },
+              annotation: {
+                  drawTime: 'afterDatasetsDraw',
+                  annotations: [
+                      {% for event in events %}
+                          {% if forloop.counter != 1 %}
+                              ,
+                          {% endif %}
+                          {
+                              type: 'line',
+                              mode: 'vertical',
+                              scaleID: 'x-axis-0',
+                              value: '{{ event.dt|date:"Y-m-d H:i:s" }}',
+                              borderColor: 'green',
+                              borderWidth: 1,
+                              label: {
+                                  enabled: true,
+                                  position: "top",
+                                  content: {{ forloop.counter }}
+                              }
+                          }
+                      {% endfor %}
+                  ]
               }
-          });
+          }
+        });
 
-      {% endfor %}
+    {% endfor %}
 
 </script>
 
