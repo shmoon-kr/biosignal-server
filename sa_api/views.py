@@ -233,13 +233,13 @@ def db_upload_summary(record):
 
 # Create your views here.
 
-def db_upload_main_numeric(filepath, room, bed, method=0, db_writing=True):
+def db_upload_main_numeric(recorded, method=0, db_writing=True):
 
     timestamp_interval = 0.5
     table_name_info = get_table_name_info(main_only=False)
 
     read_start = datetime.datetime.now()
-    vr_file = vr.vital_reader(filepath)
+    vr_file = vr.vital_reader(recorded.file_path)
     vr_file.read_header()
     vr_file.read_packets(skip_wave=True)
     raw_data = vr_file.export_db_data([*table_name_info])
@@ -277,7 +277,7 @@ def db_upload_main_numeric(filepath, room, bed, method=0, db_writing=True):
         if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
         else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
     log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
-    log_dict['FILE_NAME'] = filepath
+    log_dict['FILE_NAME'] = recorded.file_basename
     log_dict['NUM_RECORDS_FILE'] = len(raw_data)
     log_dict['NUM_RECORDS_ALIGNED'] = len(aligned_data)
     log_dict['READING_EXECUTION_TIME'] = str(file_read_execution_time)
@@ -314,7 +314,7 @@ def db_upload_main_numeric(filepath, room, bed, method=0, db_writing=True):
         insert_query[device_type] += ') VALUES '
 
     for i, ad in enumerate(aligned_data):
-        tmp_query = "(%d, '%s', '%s'" % (method, room, bed)
+        tmp_query = "(%d, '%s', '%s'" % (method, recorded.bed.room.name, recorded.bed.name)
         tmp_query += ", '%s'" % (datetime.datetime.fromtimestamp(ad['timestamp']).isoformat())
         device_type = ad['device']
         num_records[device_type] += 1
@@ -1214,12 +1214,13 @@ def recording_info_body(request):
                             for chunk in request.FILES['attachment'].chunks():
                                 destination.write(chunk)
                         recorded.file_path = os.path.join(pathname, filename)
-                        recorded.save(update_fields=['file_path'])
+                        recorded.file_basename = filename
+                        recorded.save(update_fields=['file_path', 'file_basename'])
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
                         if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
                             try:
-                                db_upload_main_numeric(os.path.join(pathname, filename), target_client.bed.room.name, target_client.bed.name)
+                                db_upload_main_numeric(recorded)
                                 db_upload_summary(recorded)
                                 r_dict['success'] = True
                                 r_dict['message'] = 'Recording info was added and file was uploaded correctly.'

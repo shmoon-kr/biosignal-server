@@ -176,9 +176,42 @@ class FileRecorded(models.Model):
     begin_date = models.DateTimeField()
     end_date = models.DateTimeField()
     file_path = models.CharField(max_length=256, blank=True)
+    file_basename = models.CharField(max_length=256, blank=True)
+    METHOD_CHOICES = (
+        (0, "client"),
+        (1, "migration"),
+    )
+    method = models.IntegerField(choices=METHOD_CHOICES, default=0)
 
     def __str__(self):
         return self.file_path
+
+
+class NumberInfoFile(models.Model):
+    file = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    device_displayed_name = models.CharField(max_length=64)
+    db_table_name = models.CharField(max_length=64)
+
+    def __str__(self):
+        return '%s, %s' % (self.file, self.device_displayed_name)
+
+    class Meta:
+        unique_together = ("file", "device_displayed_name")
+
+
+class WaveInfoFile(models.Model):
+    file = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    device_displayed_name = models.CharField(max_length=64)
+    channel_name = models.CharField(max_length=64)
+    db_table_name = models.CharField(max_length=64)
+    srate = models.FloatField()
+    psize = models.IntegerField()
+
+    def __str__(self):
+        return '%s, %s, %s' % (self.file, self.device_displayed_name, self.channel_name)
+
+    class Meta:
+        unique_together = ("file", "device_displayed_name", "channel_name")
 
 
 class ClientBusSlot(models.Model):
