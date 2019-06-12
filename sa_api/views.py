@@ -7,6 +7,7 @@ import datetime
 import requests
 import MySQLdb
 import tempfile
+import numpy as np
 import sa_api.AMCVitalReader as vr
 from .forms import UploadFileForm, UploadReviewForm
 from pyfluent.client import FluentSender
@@ -20,6 +21,16 @@ from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, Clie
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
+
+
+def get_device_abb():
+    r = dict()
+    r['GE/Carescape'] = 'GEC'
+    r['Philips/IntelliVue'] = 'PIV'
+    r['Dräger/Primus'] = 'PRM'
+    r['Masimo/Root'] = 'MSM'
+    r['Covidien/BIS'] = 'BIS'
+    return r
 
 
 def get_table_name_info(main_only=True):
@@ -714,21 +725,115 @@ def summary_file(request):
     return HttpResponse(template.render(context, request))
 
 
-@csrf_exempt
-def decompose_vital_file(request):
+def decompose_vital_file(file_name, decomposed_path):
 
-    row = list()
-    file_basename = request.GET.get("device_type")
-    file_path = os.path.join('data', row[3], row[4].strftime('%y%m%d'), row[1])
-    is_exists = os.path.isfile(file_path)
-    begin_date = tz.localize(row[4])
-    end_date = tz.localize(row[5])
-    if is_exists:
-        bed = Bed.objects.get(name=row[3])
-        client = Client.objects.get(bed=bed)
-        recorded = FileRecorded.objects.get_or_create(method=0, bed=bed, file_basename=row[1], client=client,
-                                                                    begin_date=begin_date, end_date=end_date, file_path=file_path)
-    return
+    timestamp_interval = 0.5
+    device_abb = get_device_abb()
+    table_name_info = get_table_name_info(main_only=False)
+
+    read_start = datetime.datetime.now()
+    vr_file = vr.vital_reader(file_name)
+    vr_file.read_header()
+    vr_file.read_packets()
+    raw_data_number = vr_file.export_db_data()
+    raw_data_wave = vr_file.export_db_data_wave()
+    del vr_file
+
+    if not len(raw_data_number):
+        raise ValueError('No number data was found in vital file.')
+
+    def sort_by_time(val):
+        return val[:3]
+
+    raw_data_number.sort(key=sort_by_time)
+
+    aligned_data = list()
+    tmp_aligned = dict()
+    column_info = dict()
+    for i, ri in enumerate(raw_data_number):
+        if not ri[0] in column_info:
+            column_info[ri[0]] = {}
+        if not ri[2] in column_info[ri[0]]:
+            column_info[ri[0]][ri[2]] = len(column_info[ri[0]])
+        if not i:
+            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
+        elif tmp_aligned['device'] != ri[0] or ri[1]-tmp_aligned['timestamp'] > timestamp_interval or ri[2] in tmp_aligned:
+            aligned_data.append(tmp_aligned)
+            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
+        else:
+            tmp_aligned[ri[2]] = ri[3]
+    aligned_data.append(tmp_aligned)
+
+    file_read_execution_time = datetime.datetime.now() - read_start
+
+    '''
+
+    log_dict = dict()
+    log_dict['SERVER_NAME'] = 'global' \
+        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
+    log_dict['FILE_NAME'] = file_name
+    log_dict['NUM_RECORDS_FILE'] = len(raw_data_number)
+    log_dict['NUM_RECORDS_ALIGNED'] = len(aligned_data)
+    log_dict['READING_EXECUTION_TIME'] = str(file_read_execution_time)
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+    del log_dict
+    '''
+
+    timestamp_number = dict()
+    val_number = dict()
+
+    for device in [*column_info]:
+        timestamp_number[device] = list()
+        val_number[device] = list()
+
+    for i, ad in enumerate(aligned_data):
+        timestamp_number[ad['device']].append(ad['timestamp'])
+        tmp_val_list = [None] * len(column_info[ad['device']])
+        for key, val in ad.items():
+            if key not in ('device', 'timestamp'):
+                tmp_val_list[column_info[ad['device']][key]] = val
+        val_number[ad['device']].append(tmp_val_list)
+
+    r_number = list()
+
+    dt_datetime = np.dtype(datetime.datetime)
+    dt_str = np.dtype(str)
+
+    for device, cols in column_info.items():
+        if device in device_abb.keys():
+            if not os.path.exists(decomposed_path):
+                os.makedirs(decomposed_path)
+            np.savez_compressed(os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s.npz' % device_abb[device]),
+                                col_list=np.array(cols, dtype=dt_str),
+                                timestamp=np.array(timestamp_number[device], dtype=dt_datetime),
+                                number=np.array(val_number[device], dtype=np.float32))
+            r_message = "OK"
+        else:
+            r_message = "Device infomation does not exists."
+        r_number.append([device, r_message, len(timestamp_number[device]), len(column_info[device])])
+
+    r_wave = list()
+    for wave, val in raw_data_wave.items():
+        if wave[0] in device_abb.keys():
+            if not os.path.exists(decomposed_path):
+                os.makedirs(decomposed_path)
+            np.savez_compressed(os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s_%s.npz' % (device_abb[wave[0]], wave[1])),
+                                timestamp=np.array(val['timestamp'], dtype=dt_datetime),
+                                psize=np.array(val['psize'], dtype=np.int32),
+                                data=np.array(val['data'], dtype=np.float32))
+            r_message = "OK"
+        else:
+            r_message = "Device infomation does not exists."
+        print(wave, val)
+        print(val['timestamp'])
+        print(wave, len(val['timestamp']))
+        r_wave.append([wave[0], wave[1], r_message, len(val['timestamp']), val['srate'], max(val['psize'])])
+
+    return r_number, r_wave
 
 
 @csrf_exempt

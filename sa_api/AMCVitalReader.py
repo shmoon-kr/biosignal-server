@@ -481,7 +481,7 @@ class vital_reader(object):
             print(e)
 
         for itrack in self.track:
-            if self.track[itrack].rec_type == 1 or self.track[itrack].rec_type == 2:
+            if self.track[itrack].rec_type == 1 or self.track[itrack].rec_type == 2 or self.track[itrack].rec_type == 6:
                 self.track[itrack].dt = np.array(self.track[itrack].dt, dtype=np.float64)
                 self.track[itrack].v_wave = np.array(self.track[itrack].v_wave, dtype=np.float32)
                 if self.track[itrack].rec_type == 1:
@@ -492,7 +492,7 @@ class vital_reader(object):
     def export_db_data(self, device_list=[]):
         r = []
         for itrack in self.track:
-            if self.device[self.track[itrack].did].typename in device_list and self.track[itrack].rec_type == 2:
+            if self.track[itrack].rec_type == 2 and (not len(device_list) or self.device[self.track[itrack].did].typename in device_list):
                 for i, ti in enumerate(self.track[itrack].dt):
                     r.append([self.device[self.track[itrack].did].typename, ti, self.track[itrack].name, self.track[itrack].v_number[i]])
         return r
@@ -500,24 +500,27 @@ class vital_reader(object):
     def export_db_data_wave(self, device_list=[]):
         r = dict()
         for itrack in self.track:
-            if self.device[self.track[itrack].did].typename in device_list and self.track[itrack].rec_type == 1:
+            if self.track[itrack].rec_type in (1, 6) and (not len(device_list) or self.device[self.track[itrack].did].typename in device_list):
                 key = (self.device[self.track[itrack].did].typename, self.track[itrack].name)
                 if len(self.track[itrack].dt) == len(self.track[itrack].v_number) and len(self.track[itrack].dt):
-                    valid_wave = True
-                    psize = self.track[itrack].v_number[0]
+                    max_psize = max(self.track[itrack].v_number)
                     num = len(self.track[itrack].dt)
+                    '''
                     for i in range(num):
                         if self.track[itrack].v_number[i] != psize:
                             valid_wave = False
-                    if valid_wave:
-                        r[key] = dict()
-                        r[key]['srate'] = self.track[itrack].srate
-                        r[key]['psize'] = psize
-                        r[key]['timestamp'] = self.track[itrack].dt
-                        r[key]['data'] = np.empty((num, psize), dtype=np.float32)
-                        for i in range(num):
-                            r[key]['data'][i] = self.track[itrack].v_wave[i*psize:(i+1)*psize]
-
+                            print(key, 'invalid', psize, self.track[itrack].v_number[i])
+                    '''
+                    r[key] = dict()
+                    r[key]['srate'] = self.track[itrack].srate
+                    r[key]['psize'] = self.track[itrack].v_number
+                    r[key]['timestamp'] = self.track[itrack].dt
+                    r[key]['data'] = np.empty((num, max_psize), dtype=np.float32)
+                    r[key]['data'].fill(np.nan)
+                    start_p = 0
+                    for i in range(num):
+                        r[key]['data'][i, :self.track[itrack].v_number[i]] = self.track[itrack].v_wave[start_p:start_p+self.track[itrack].v_number[i]]
+                        start_p += self.track[itrack].v_number[i]
         return r
 
     def check_validity(self):

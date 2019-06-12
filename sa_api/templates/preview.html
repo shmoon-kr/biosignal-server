@@ -79,12 +79,12 @@
 {% endfor %}
 
 <script>
-    var event_info = {
+    let event_info = {
         drawTime: 'afterDatasetsDraw',
         annotations: []
     };
     {% for event in events %}
-        var single_event = {
+        single_event = {
           type: 'line',
           mode: 'vertical',
           scaleID: 'x-axis-0',
@@ -100,9 +100,11 @@
         event_info.annotations.push(single_event);
     {% endfor %}
 
+    let number_charts = [];
+
     {% for device, val in data.items %}
 
-        number_chart = new Chart(document.getElementById("{{ device }}"), {
+        tmp_chart = new Chart(document.getElementById("{{ device }}"), {
           type: "line",
           data: {
               labels: {{ val.timestamp | safe }},
@@ -125,13 +127,17 @@
                       bottom: 10
                   }
               },
+              animation: {
+                  duration: 0 // general animation time
+              },
               annotation: event_info
           }
         });
-        //number_chart.options.annotation = event_info
-        //number_chart.update()
+        number_charts.push(tmp_chart);
 
     {% endfor %}
+    //number_chart[0].options.annotation = event_info
+    //number_chart[0].update()
 
 </script>
 
