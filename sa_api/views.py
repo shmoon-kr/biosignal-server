@@ -477,14 +477,21 @@ def preview(request):
                 for col in table_col_list[device]:
                     chart_data[device][col] = list()
                 for row in query_results:
-                    chart_data[device]['timestamp'].append('"%s"' % str(row[0]))
+                    chart_data[device]['timestamp'].append(str(row[0]))
                     for i, val in enumerate(row[1:]):
-                        chart_data[device][table_col_list[device][i]].append('Number.NaN' if val is None else '%f' % val)
-                chart_data[device]['timestamp'] = ', '.join(chart_data[device]['timestamp'])
+                        chart_data[device][table_col_list[device][i]].append(float('nan') if val is None else val)
+                chart_data[device]['timestamp'] = json.dumps(chart_data[device]['timestamp'])
                 dataset = list()
                 for i, col in enumerate(table_col_list[device]): # rgb(75, 192, 192)
-                    dataset.append('{"label":"%s","data":[%s],"fill":false,"pointRadius": 0,"borderColor":"%s","lineTension":0}' % (col, ', '.join(chart_data[device][col]), color_preview[i]))
-                chart_data[device]['dataset'] = ', '.join(dataset)
+                    tmp_dataset = dict()
+                    tmp_dataset["label"] = col
+                    tmp_dataset["data"] = chart_data[device][col]
+                    tmp_dataset["fill"] = False
+                    tmp_dataset["pointRadius"] = 0
+                    tmp_dataset["borderColor"] = color_preview[i]
+                    tmp_dataset["lineTension"] = 0
+                    dataset.append(tmp_dataset)
+                chart_data[device]['dataset'] = json.dumps(dataset)
         db.close()
 
         events = ManualInputEventItem.objects.filter(record__bed__name=bed, dt__range=(begin_date, end_date))
@@ -494,7 +501,6 @@ def preview(request):
         context['bed'] = bed
         context['events'] = events
         context['date'] = datetime.datetime.strptime(begin_date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
-#        context['timestamp'] = context['data']['Philips/IntelliVue']['timestamp']
         template = loader.get_template('preview.html')
         return HttpResponse(template.render(context, request))
     else:
@@ -708,10 +714,42 @@ def summary_file(request):
     return HttpResponse(template.render(context, request))
 
 
+@csrf_exempt
+def decompose_vital_file(request):
+
+    row = list()
+    file_basename = request.GET.get("device_type")
+    file_path = os.path.join('data', row[3], row[4].strftime('%y%m%d'), row[1])
+    is_exists = os.path.isfile(file_path)
+    begin_date = tz.localize(row[4])
+    end_date = tz.localize(row[5])
+    if is_exists:
+        bed = Bed.objects.get(name=row[3])
+        client = Client.objects.get(bed=bed)
+        recorded = FileRecorded.objects.get_or_create(method=0, bed=bed, file_basename=row[1], client=client,
+                                                                    begin_date=begin_date, end_date=end_date, file_path=file_path)
+    return
+
+
+@csrf_exempt
+def register_vital_file(request):
+
+    row = list()
+    file_basename = request.GET.get("device_type")
+    file_path = os.path.join('data', row[3], row[4].strftime('%y%m%d'), row[1])
+    is_exists = os.path.isfile(file_path)
+    begin_date = tz.localize(row[4])
+    end_date = tz.localize(row[5])
+    if is_exists:
+        bed = Bed.objects.get(name=row[3])
+        client = Client.objects.get(bed=bed)
+        recorded = FileRecorded.objects.get_or_create(method=0, bed=bed, file_basename=row[1], client=client,
+                                                                    begin_date=begin_date, end_date=end_date, file_path=file_path)
+    return
+
+
 # Main body of device_info API function
 def device_info_body(request, api_type):
-
-    tz = pytz.timezone(settings.TIME_ZONE)
 
     device_type = request.GET.get("device_type")
     r_dict = dict()

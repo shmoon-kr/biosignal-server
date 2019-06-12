@@ -1,5 +1,7 @@
 *.pyc
 .idea/*
+data
+uploaded_files/*
 static/*
 media/*
 uploaded_data/*

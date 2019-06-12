@@ -79,14 +79,34 @@
 {% endfor %}
 
 <script>
+    var event_info = {
+        drawTime: 'afterDatasetsDraw',
+        annotations: []
+    };
+    {% for event in events %}
+        var single_event = {
+          type: 'line',
+          mode: 'vertical',
+          scaleID: 'x-axis-0',
+          value: '{{ event.dt|date:"Y-m-d H:i:s" }}',
+          borderColor: 'green',
+          borderWidth: 1,
+          label: {
+              enabled: true,
+              position: "top",
+              content: {{ forloop.counter }}
+          }
+        };
+        event_info.annotations.push(single_event);
+    {% endfor %}
 
     {% for device, val in data.items %}
 
-        new Chart(document.getElementById("{{ device }}"), {
+        number_chart = new Chart(document.getElementById("{{ device }}"), {
           type: "line",
           data: {
-              labels: [{{ val.timestamp | safe }}],
-              datasets: [{{ val.dataset | safe }}]
+              labels: {{ val.timestamp | safe }},
+              datasets: {{ val.dataset | safe }}
           },
           options: {
               scales: {
@@ -105,31 +125,11 @@
                       bottom: 10
                   }
               },
-              annotation: {
-                  drawTime: 'afterDatasetsDraw',
-                  annotations: [
-                      {% for event in events %}
-                          {% if forloop.counter != 1 %}
-                              ,
-                          {% endif %}
-                          {
-                              type: 'line',
-                              mode: 'vertical',
-                              scaleID: 'x-axis-0',
-                              value: '{{ event.dt|date:"Y-m-d H:i:s" }}',
-                              borderColor: 'green',
-                              borderWidth: 1,
-                              label: {
-                                  enabled: true,
-                                  position: "top",
-                                  content: {{ forloop.counter }}
-                              }
-                          }
-                      {% endfor %}
-                  ]
-              }
+              annotation: event_info
           }
         });
+        //number_chart.options.annotation = event_info
+        //number_chart.update()
 
     {% endfor %}
 
