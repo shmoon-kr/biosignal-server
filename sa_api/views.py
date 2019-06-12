@@ -729,7 +729,6 @@ def decompose_vital_file(file_name, decomposed_path):
 
     timestamp_interval = 0.5
     device_abb = get_device_abb()
-    table_name_info = get_table_name_info(main_only=False)
 
     read_start = datetime.datetime.now()
     vr_file = vr.vital_reader(file_name)
@@ -765,23 +764,6 @@ def decompose_vital_file(file_name, decomposed_path):
     aligned_data.append(tmp_aligned)
 
     file_read_execution_time = datetime.datetime.now() - read_start
-
-    '''
-
-    log_dict = dict()
-    log_dict['SERVER_NAME'] = 'global' \
-        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
-        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-    log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
-    log_dict['FILE_NAME'] = file_name
-    log_dict['NUM_RECORDS_FILE'] = len(raw_data_number)
-    log_dict['NUM_RECORDS_ALIGNED'] = len(aligned_data)
-    log_dict['READING_EXECUTION_TIME'] = str(file_read_execution_time)
-    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-    del log_dict
-    '''
 
     timestamp_number = dict()
     val_number = dict()
@@ -828,9 +810,6 @@ def decompose_vital_file(file_name, decomposed_path):
             r_message = "OK"
         else:
             r_message = "Device infomation does not exists."
-        print(wave, val)
-        print(val['timestamp'])
-        print(wave, len(val['timestamp']))
         r_wave.append([wave[0], wave[1], r_message, len(val['timestamp']), val['srate'], max(val['psize'])])
 
     return r_number, r_wave
