@@ -17,7 +17,7 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
@@ -764,7 +764,6 @@ def decompose_vital_file(file_name, decomposed_path):
     aligned_data.append(tmp_aligned)
 
     file_read_execution_time = datetime.datetime.now() - read_start
-
     timestamp_number = dict()
     val_number = dict()
 
@@ -789,30 +788,52 @@ def decompose_vital_file(file_name, decomposed_path):
         if device in device_abb.keys():
             if not os.path.exists(decomposed_path):
                 os.makedirs(decomposed_path)
-            np.savez_compressed(os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s.npz' % device_abb[device]),
-                                col_list=np.array(cols, dtype=dt_str),
+            file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s.npz' % device_abb[device])
+            np.savez_compressed(file_path, col_list=np.array(cols, dtype=dt_str),
                                 timestamp=np.array(timestamp_number[device], dtype=dt_datetime),
                                 number=np.array(val_number[device], dtype=np.float32))
             r_message = "OK"
         else:
             r_message = "Device infomation does not exists."
-        r_number.append([device, r_message, len(timestamp_number[device]), len(column_info[device])])
+        r_number.append([device, r_message, file_path, len(timestamp_number[device]), len(column_info[device])])
 
     r_wave = list()
     for wave, val in raw_data_wave.items():
         if wave[0] in device_abb.keys():
             if not os.path.exists(decomposed_path):
                 os.makedirs(decomposed_path)
-            np.savez_compressed(os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s_%s.npz' % (device_abb[wave[0]], wave[1])),
-                                timestamp=np.array(val['timestamp'], dtype=dt_datetime),
-                                psize=np.array(val['psize'], dtype=np.int32),
-                                data=np.array(val['data'], dtype=np.float32))
+            file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s_%s.npz' % (device_abb[wave[0]], wave[1]))
+            np.savez_compressed(file_path, timestamp=np.array(val['timestamp'], dtype=dt_datetime),
+                                psize=np.array(val['psize'], dtype=np.int32), data=np.array(val['data'], dtype=np.float32))
             r_message = "OK"
         else:
             r_message = "Device infomation does not exists."
-        r_wave.append([wave[0], wave[1], r_message, len(val['timestamp']), val['srate'], max(val['psize'])])
+        r_wave.append([wave[0], wave[1], r_message, file_path, len(val['timestamp']), val['srate'], max(val['psize'])])
 
     return r_number, r_wave
+
+
+def decompose_record(recorded):
+
+    table_name_info = get_table_name_info(main_only=False)
+    filename_split = recorded.file_basename.split('_')
+    decompose_path = os.path.join('raw_decomposed', filename_split[0], filename_split[1])
+    r_number, r_wave = decompose_vital_file(recorded.file_path, decompose_path)
+
+    for number_npz in r_number:
+        if number_npz[0] in table_name_info:
+            ninfo, _ = NumberInfoFile.objects.get_or_create(record=recorded, device_displayed_name=number_npz[0])
+            ninfo.db_table_name = table_name_info[number_npz[0]]
+            ninfo.file_path = number_npz[2]
+            ninfo.save()
+
+    for wave_npz in r_wave:
+        winfo, _ = WaveInfoFile.objects.get_or_create(record=recorded, device_displayed_name=wave_npz[0], channel_name=wave_npz[1])
+        winfo.file_path = wave_npz[3]
+        winfo.num_packets = wave_npz[4]
+        winfo.sampling_rate = wave_npz[5]
+        winfo.max_psize = wave_npz[6]
+        winfo.save()
 
 
 @csrf_exempt
