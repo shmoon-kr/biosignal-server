@@ -289,12 +289,31 @@ section div svg text:hover.sin{
       <!-- /.search form -->
       <!-- sidebar menu: : style can be found in sidebar.less -->
       <ul class="sidebar-menu" data-widget="tree">
-
-        <li class="active treeview">
+      {% for key, val in sidebar_menu.items %}
+          {% if val.active %}
+              <li class="treeview active">
+          {% else %}
+              <li class="treeview">
+          {% endif %}
+          <li class="treeview">
           <a href="#">
-            <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+              <i class="fa fa-dashboard"></i> <span>{{ key }}</span>
+              <span class="pull-right-container">
+                  <i class="fa fa-angle-left pull-right"></i>
+              </span>
           </a>
-        </li>
+              <ul class="treeview-menu">
+                  {% for menu in val.submenu %}
+                      {% if menu.0 %}
+                          <li class="active"><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
+                      {% else %}
+                          <li><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
+                      {% endif %}
+                  {% endfor %}
+              </ul>
+          </li>
+      {% endfor %}
+      </ul>
 
     </section>
     <!-- /.sidebar -->
@@ -303,12 +322,12 @@ section div svg text:hover.sin{
   <div class="content-wrapper">
     <section class="content-header">
       <h1>
-        Dashboard
-        <small>Version 2.0</small>
+        {{ loc.0 }}
       </h1>
       <ol class="breadcrumb">
         <li><a href="#"><i class="fa fa-dashboard"></i> Home</a></li>
-        <li class="active">Dashboard</li>
+        <li><a href="#">{{ loc.0 }}</a></li>
+        <li class="active">{{ loc.1 }}</li>
       </ol>
     </section>
     <section class="container">
@@ -329,7 +348,7 @@ section div svg text:hover.sin{
           <rect id="e03r" x="99.63" y="177.52" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
           <rect id="e04r" x="59.505" y="177.52" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
           <rect id="e05r" x="19.378" y="177.52" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
-          <rect id="e06r" x="19.378" y="95.355" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
+          <rect id="e06r" x="19.378" y="95.355" fill="#ECEFF4" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"/>
           <rect id="e07r" x="59.505" y="95.355" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
           <rect id="e08r" x="99.63" y="95.355" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"/>
           <rect id="e09r" x="139.756" y="95.355" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"/>
@@ -353,9 +372,6 @@ section div svg text:hover.sin{
           <rect id="b02r" x="320.992" y="394.398" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
           <rect id="b03r" x="280.866" y="477.432" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"/>
           <rect id="b04r" x="240.74" y="477.432" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"/>
-
-          <rect id="wrec02r" x="19.325" y="244.337" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="200.736" height="41.38"/>
-          <rect id="wrec12r" x="19.325" y="327.083" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="200.736" height="41.379"/>
 
           <text transform="matrix(1 0 0 1 157.5347 55.9121)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1288">서관</text>
 
@@ -388,9 +404,6 @@ section div svg text:hover.sin{
           <text id="b02t" transform="matrix(1 0 0 1 327.1045 420.9883)" font-family="'MalgunGothicRegular'" font-size="17.1189">B02</text>
           <text id="b03t" transform="matrix(1 0 0 1 286.8877 504.1387)" font-family="'MalgunGothicRegular'" font-size="17.1189">B03</text>
           <text id="b04t" transform="matrix(1 0 0 1 246.4004 504.1387)" font-family="'MalgunGothicRegular'" font-size="17.1189">B04</text>
-
-          <text id="wrec02t" transform="matrix(1 0 0 1 87.0225 271.5112)" font-family="'MalgunGothicRegular'" font-size="17.1189">WREC02</text>
-          <text id="wrec12t" transform="matrix(1 0 0 1 87.0225 354.2578)" font-family="'MalgunGothicRegular'" font-size="17.1189">WREC12</text>
 
           <text transform="matrix(1 0 0 1 275.0459 165.0215)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">D 로젯</text>
           <text transform="matrix(1 0 0 1 275.0459 310.939)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">C 로젯</text>
@@ -453,11 +466,6 @@ section div svg text:hover.sin{
           <rect id="i03r" x="320.904" y="476.971" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.175" height="41.43"/>
           <rect id="i04r" x="240.558" y="394.658" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"/>
 
-          <rect id="ipacu1r" x="160.73" y="244.705" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="60.26" height="41.429"/>
-          <rect id="ipacu2r" x="160.73" y="322.206" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="60.26" height="41.429"/>
-          <rect id="erec03r" x="160.73" y="400.213" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="60.26" height="41.43"/>
-          <rect id="y01r" x="160.73" y="477.766" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="60.26" height="41.43"/>
-
           <text id="l01t" transform="matrix(1 0 0 1 246.2891 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189">L01</text>
           <text id="l02t" transform="matrix(1 0 0 1 286.7773 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189">L02</text>
           <text id="l03t" transform="matrix(1 0 0 1 325.3623 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189">L03</text>
@@ -497,11 +505,6 @@ section div svg text:hover.sin{
           <text id="i03t" transform="matrix(1 0 0 1 328.5654 503.6465)" font-family="'MalgunGothicRegular'" font-size="17.139">I03</text>
           <text id="i04t" transform="matrix(1 0 0 1 248.7822 421.1514)" font-family="'MalgunGothicRegular'" font-size="17.139">I04</text>
 
-          <text id="ipacu1t" transform="matrix(1 0 0 1 162.6699 271.9102)" font-family="'MalgunGothicRegular'" font-size="17.139">IPACU1</text>
-          <text id="ipacu2t" transform="matrix(1 0 0 1 162.6699 348.3184)" font-family="'MalgunGothicRegular'" font-size="17.139">IPACU2</text>
-          <text id="erec03t" transform="matrix(1 0 0 1 161.8916 426.3262)" font-family="'MalgunGothicRegular'" font-size="17.139">EREC03</text>
-          <text id="y01t" transform="matrix(1 0 0 1 176.5913 504.9707)" font-family="'MalgunGothicRegular'" font-size="17.139">Y01</text>
-
           <text transform="matrix(1 0 0 1 53.4053 164.314)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">G 로젯</text>
           <text transform="matrix(1 0 0 1 233.2764 164.314)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">H 로젯</text>
           <text transform="matrix(1 0 0 1 274.9346 311.2983)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">L 로젯</text>
@@ -534,10 +537,6 @@ section div svg text:hover.sin{
           <rect id="k05r" x="281.85" y="178.108" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
           <rect id="k06r" x="241.724" y="178.108" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
 
-          <rect id="nrec13r" x="20.948" y="241.386" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="120.551" height="41.381"/>
-          <rect id="ob01r" x="241.636" y="241.386" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="120.551" height="41.381"/>
-          <rect id="ob02r" x="241.636" y="302.768" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="120.551" height="41.38"/>
-
           <text transform="matrix(1 0 0 1 152.0713 56.499)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1288">신관</text>
 
           <text id="k01t" transform="matrix(1 0 0 1 248.4658 122.4043)" font-family="'MalgunGothicRegular'" font-size="17.1189">K01</text>
@@ -553,10 +552,6 @@ section div svg text:hover.sin{
           <text id="j04t" transform="matrix(1 0 0 1 28.5391 132.186)" font-family="'MalgunGothicRegular'" font-size="17.1189">J04</text>
           <text id="j05t" transform="matrix(1 0 0 1 70.1133 122.4043)" font-family="'MalgunGothicRegular'" font-size="17.1189">J05</text>
           <text id="j06t" transform="matrix(1 0 0 1 108.6982 122.4043)" font-family="'MalgunGothicRegular'" font-size="17.1189">J06</text>
-
-          <text id="nrec13t" transform="matrix(1 0 0 1 50.166 267.4683)" font-family="'MalgunGothicRegular'" font-size="17.1189">NREC13</text>
-          <text id="ob01t" transform="matrix(1 0 0 1 280.8672 267.4683)" font-family="'MalgunGothicRegular'" font-size="17.1189">OB01</text>
-          <text id="ob02t" transform="matrix(1 0 0 1 280.8672 328.8506)" font-family="'MalgunGothicRegular'" font-size="17.1189">OB02</text>
 
           <text transform="matrix(1 0 0 1 73.7588 163.9785)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">J 로젯</text>
           <text transform="matrix(1 0 0 1 257.1465 163.9785)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">K 로젯</text>
@@ -575,9 +570,9 @@ section div svg text:hover.sin{
   </footer>
 
 
-<script src="../bower_components/jquery/dist/jquery.min.js"></script>
+<script src="static/bower_components/jquery/dist/jquery.min.js"></script>
 <!-- jQuery UI 1.11.4 -->
-<script src="../bower_components/jquery-ui/jquery-ui.min.js"></script>
+<script src="static/bower_components/jquery-ui/jquery-ui.min.js"></script>
 <!-- Resolve conflict in jQuery UI tooltip with Bootstrap tooltip -->
 <script>
   $.widget.bridge('uibutton', $.ui.button);
@@ -585,73 +580,69 @@ section div svg text:hover.sin{
 </script>
 <script type="text/javascript">
 
-  var red_beds=[{{ beds_red|safe }}];
-  for (var i=0; i<red_beds.length; i++){
-    var domr=""
-    var domt=""
-    domr = document.getElementById(red_beds[i]+'r');
-    domr.setAttribute('fill','#BB1839');
-    domt = document.getElementById(red_beds[i]+'t');
-    domt.setAttribute('fill','#FFFFFF');
-  }
+    let color_info = [
+        ['#BB1839', '#FFFFFF'],
+        ['#0000FF', '#FFFFFF'],
+        ['#008000', '#FFFFFF'],
+        ['#B7392B', '#FFFFFF'],
+        ['#F4D070', '#000000'],
+        ['#7C251E', '#FFFFFF'],
+        ['#D78C11', '#000000'],
+        ['#ECEFF4', '#000000']
+    ];
 
-  var yellow_beds = [{{ beds_yellow|safe }}];
-   for (var j=0; j<yellow_beds.length; j++){
-    var domr2=""
-    var domt2=""
-    domr2 = document.getElementById(yellow_beds[j]+'r');
-    domr2.setAttribute('fill','#E7C95A');
-    domt2 = document.getElementById(yellow_beds[j]+'t');
-    domt2.setAttribute('fill','#FFFFFF');
-  }
+    let beds = [];
+    beds.push({{ beds_red|safe }});
+    beds.push({{ beds_blue|safe }});
+    beds.push({{ beds_green|safe }});
+    beds.push([]);
+    beds.push([]);
+    beds.push([]);
 
-  var green_beds = [{{ beds_green|safe }}];
-   for (var k=0; k<green_beds.length; k++){
-    var domr3=""
-    var domt3=""
-    domr3 = document.getElementById(green_beds[k]+'r');
-    domr3.setAttribute('fill','#008000');
-    domt3 = document.getElementById(green_beds[k]+'t');
-    domt3.setAttribute('fill','#FFFFFF');
-  }
+    for (let i=0 ; i<color_info.length; i++) {
+        for (let j=0 ; j<beds[i].length; j++) {
+            document.getElementById(beds[i][j]+'r').setAttribute('fill',color_info[i][0]);
+            document.getElementById(beds[i][j]+'t').setAttribute('fill',color_info[i][1]);
+        }
+    }
 
 </script>
 
 
 <!-- Bootstrap 3.3.7 -->
-<script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+<script src="static/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
 <!-- Morris.js charts -->
-<script src="bower_components/raphael/raphael.min.js"></script>
-<script src="bower_components/morris.js/morris.js"></script>
+<script src="static/bower_components/raphael/raphael.min.js"></script>
+<script src="static/bower_components/morris.js/morris.js"></script>
 <!-- Sparkline -->
-<script src="bower_components/jquery-sparkline/dist/jquery.sparkline.min.js"></script>
+<script src="static/bower_components/jquery-sparkline/dist/jquery.sparkline.min.js"></script>
 <!-- jvectormap -->
-<script src="plugins/jvectormap/jquery-jvectormap-1.2.2.min.js"></script>
-<script src="plugins/jvectormap/jquery-jvectormap-world-mill-en.js"></script>
+<script src="static/plugins/jvectormap/jquery-jvectormap-1.2.2.min.js"></script>
+<script src="static/plugins/jvectormap/jquery-jvectormap-world-mill-en.js"></script>
 <!-- jQuery Knob Chart -->
-<script src="bower_components/jquery-knob/dist/jquery.knob.min.js"></script>
+<script src="static/bower_components/jquery-knob/dist/jquery.knob.min.js"></script>
 <!-- daterangepicker -->
-<script src="bower_components/moment/min/moment.min.js"></script>
-<script src="bower_components/bootstrap-daterangepicker/daterangepicker.js"></script>
+<script src="static/bower_components/moment/min/moment.min.js"></script>
+<script src="static/bower_components/bootstrap-daterangepicker/daterangepicker.js"></script>
 <!-- datepicker -->
-<script src="bower_components/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js"></script>
+<script src="static/bower_components/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js"></script>
 <!-- Bootstrap WYSIHTML5 -->
-<script src="plugins/bootstrap-wysihtml5/bootstrap3-wysihtml5.all.min.js"></script>
+<script src="static/plugins/bootstrap-wysihtml5/bootstrap3-wysihtml5.all.min.js"></script>
 <!-- Slimscroll -->
-<script src="bower_components/jquery-slimscroll/jquery.slimscroll.min.js"></script>
+<script src="static/bower_components/jquery-slimscroll/jquery.slimscroll.min.js"></script>
 <!-- FastClick -->
-<script src="bower_components/fastclick/lib/fastclick.js"></script>
+<script src="static/bower_components/fastclick/lib/fastclick.js"></script>
 <!-- AdminLTE App -->
-<script src="dist/js/adminlte.min.js"></script>
+<script src="static/dist/js/adminlte.min.js"></script>
 <!-- AdminLTE dashboard demo (This is only for demo purposes) -->
 <!--<script src="../dist/js/pages/dashboard.js"></script>-->
 
 <!--<script src="../dist/js/pages/dashboard2.js"></script>-->
 <!-- AdminLTE for demo purposes -->
-<script src="dist/js/demo.js"></script>
+<script src="static/dist/js/demo.js"></script>
 
-<script src="bower_components/datatables.net/js/jquery.dataTables.min.js"></script>
-<script src="bower_components/datatables.net-bs/js/dataTables.bootstrap.min.js"></script>
+<script src="static/bower_components/datatables.net/js/jquery.dataTables.min.js"></script>
+<script src="static/bower_components/datatables.net-bs/js/dataTables.bootstrap.min.js"></script>
 
 </body>
 </html>

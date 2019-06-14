@@ -14,7 +14,7 @@ from pyfluent.client import FluentSender
 from ftplib import FTP
 from itertools import product
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
 from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile
@@ -31,6 +31,53 @@ def get_device_abb():
     r['Masimo/Root'] = 'MSM'
     r['Covidien/BIS'] = 'BIS'
     return r
+
+
+def get_sidebar_menu(selected=None):
+
+    r = dict()
+    r['Dashboard'] = dict()
+    r['Dashboard']['active'] = True if selected in ('dashboard_rosette', 'dashboard_etc', 'dashboard_trend') else False
+    r['Dashboard']['submenu'] = list()
+    r['Dashboard']['submenu'].append([selected == 'dashboard_rosette', 'Rosette', '/dashboard?target=rosette'])
+    r['Dashboard']['submenu'].append([selected == 'dashboard_etc', 'Etc.', '/dashboard?target=etc'])
+    r['Dashboard']['submenu'].append([selected == 'dashboard_trend', 'Trend', '/dashboard?target=trend'])
+
+    r['서관'] = dict()
+    r['서관']['active'] = True if selected in ('B', 'C', 'D', 'E', 'WREC') else False
+    r['서관']['submenu'] = list()
+    r['서관']['submenu'].append([selected == 'B', 'B Rosette', '/summary_rosette?rosette=B'])
+    r['서관']['submenu'].append([selected == 'C', 'C Rosette', '/summary_rosette?rosette=C'])
+    r['서관']['submenu'].append([selected == 'D', 'D Rosette', '/summary_rosette?rosette=D'])
+    r['서관']['submenu'].append([selected == 'E', 'E Rosette', '/summary_rosette?rosette=E'])
+    r['서관']['submenu'].append([selected == 'WREC', 'Recovery', '/summary_rosette?rosette=WREC'])
+
+    r['동관'] = dict()
+    r['동관']['active'] = True if selected in ('F', 'G', 'H', 'I', 'L', 'EREC') else False
+    r['동관']['submenu'] = list()
+    r['동관']['submenu'].append([selected == 'F', 'F Rosette', '/summary_rosette?rosette=F'])
+    r['동관']['submenu'].append([selected == 'G', 'G Rosette', '/summary_rosette?rosette=G'])
+    r['동관']['submenu'].append([selected == 'H', 'H Rosette', '/summary_rosette?rosette=H'])
+    r['동관']['submenu'].append([selected == 'I', 'I Rosette', '/summary_rosette?rosette=I'])
+    r['동관']['submenu'].append([selected == 'L', 'L Rosette', '/summary_rosette?rosette=L'])
+    r['동관']['submenu'].append([selected == 'EREC', 'Recovery', '/summary_rosette?rosette=EREC'])
+
+    r['신관'] = dict()
+    r['신관']['active'] = True if selected in ('J', 'K', 'NREC') else False
+    r['신관']['submenu'] = list()
+    r['신관']['submenu'].append([selected == 'J', 'J Rosette', '/summary_rosette?rosette=J'])
+    r['신관']['submenu'].append([selected == 'K', 'K Rosette', '/summary_rosette?rosette=K'])
+    r['신관']['submenu'].append([selected == 'NREC', 'Recovery', '/summary_rosette?rosette=NREC'])
+
+    loc = list()
+    for key, val in r.items():
+        if val['active']:
+            loc.append(key)
+            for menu in val['submenu']:
+                if menu[0]:
+                    loc.append(menu[1])
+
+    return r, loc
 
 
 def get_table_name_info(main_only=True):
@@ -530,7 +577,7 @@ def dashboard(request):
 
     beds_red = list()
     beds_green = list()
-    beds_yellow = list()
+    beds_blue = list()
 
     bed_re = re.compile('[B-K]-[0-9]{2}')
 
@@ -540,11 +587,11 @@ def dashboard(request):
         if bed_re.match(client.bed.name):
             tmp_bed_name = client.bed.name.replace('-', '').lower()
             if client.color_info()[1] == 'red':
-                beds_red.append("'%s'" % tmp_bed_name)
+                beds_red.append(tmp_bed_name)
             elif client.status == Client.STATUS_RECORDING:
-                beds_yellow.append("'%s'" % tmp_bed_name)
+                beds_blue.append(tmp_bed_name)
             else:
-                beds_green.append("'%s'" % tmp_bed_name)
+                beds_green.append(tmp_bed_name)
 
     db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
                          user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
@@ -578,9 +625,23 @@ def dashboard(request):
         recent_duration.append('%f' % (row[2]/3600))
         recent_records.append(row[3])
 
-    template = loader.get_template('dashboard.html')
+    target = request.GET.get('target')
+
+    if target is None or target == 'rosette':
+        template = loader.get_template('dashboard_rosette.html')
+        sidebar_menu, loc = get_sidebar_menu('dashboard_rosette')
+    elif target == 'etc':
+        template = loader.get_template('dashboard_etc.html')
+        sidebar_menu, loc = get_sidebar_menu('dashboard_etc')
+    elif target == 'trend':
+        template = loader.get_template('dashboard_trend.html')
+        sidebar_menu, loc = get_sidebar_menu('dashboard_trend')
+    else:
+        raise Http404()
 
     context = {
+        'loc': loc,
+        'sidebar_menu': sidebar_menu,
         'since': str(since),
         'total_files': total_files,
         'total_records': total_records,
@@ -588,9 +649,9 @@ def dashboard(request):
         'recent_dates': ','.join(recent_dates),
         'recent_files': ','.join(recent_files),
         'recent_dutation': ','.join(recent_duration),
-        'beds_red': ','.join(beds_red),
-        'beds_green': ','.join(beds_green),
-        'beds_yellow': ','.join(beds_yellow),
+        'beds_red': json.dumps(beds_red),
+        'beds_green': json.dumps(beds_green),
+        'beds_blue': json.dumps(beds_blue),
     }
 
     return HttpResponse(template.render(context, request))
@@ -639,7 +700,6 @@ def summary_rosette(request):
     query += "AND begin_date BETWEEN '%s' AND '%s' GROUP BY DATE(begin_date) ORDER BY DATE(begin_date)" % (dt_from, dt_to)
     cursor.execute(query)
     trend_rosette = cursor.fetchall()
-    print(query)
 
     for row in trend_rosette:
         data[rosette]['date'].append(str(row[0]))
@@ -677,12 +737,14 @@ def summary_rosette(request):
 
     db.close()
 
-    print(data)
+    sidebar_menu, loc = get_sidebar_menu(rosette)
 
     template = loader.get_template('summary_rosette.html')
     context = {
         'data': data,
-        'data_json': json.dumps(data)
+        'data_json': json.dumps(data),
+        'loc': loc,
+        'sidebar_menu': sidebar_menu
     }
 
     return HttpResponse(template.render(context, request))
