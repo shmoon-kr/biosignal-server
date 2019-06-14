@@ -4,6 +4,7 @@ from sa_api import views
 
 urlpatterns = [
     path('dashboard', views.dashboard),
+    path('summary_rosette', views.summary_rosette),
     path('summary_file', views.summary_file),
     path('upload_review', views.upload_review),
     path('preview', views.preview),

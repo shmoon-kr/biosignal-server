@@ -264,12 +264,12 @@ def db_upload_main_numeric(recorded, method=0, db_writing=True):
 
     raw_data.sort(key=sort_by_time)
 
-    aligned_data = []
-    tmp_aligned = {}
-    column_info = {}
+    aligned_data = list()
+    tmp_aligned = dict()
+    column_info = dict()
     for i, ri in enumerate(raw_data):
         if not ri[0] in column_info:
-            column_info[ri[0]] = {}
+            column_info[ri[0]] = dict()
         if not ri[2] in column_info[ri[0]]:
             column_info[ri[0]][ri[2]] = len(column_info[ri[0]])
         if not i:
@@ -297,15 +297,15 @@ def db_upload_main_numeric(recorded, method=0, db_writing=True):
     fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
     del log_dict
 
-    insert_query = {}
+    insert_query = dict()
     db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
                          user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
                          password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
                          db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
     cursor = db.cursor()
 
-    column_info_db = {}
-    num_records = {}
+    column_info_db = dict()
+    num_records = dict()
 
     for device_type in [*column_info]:
         num_records[device_type] = 0
@@ -597,6 +597,98 @@ def dashboard(request):
 
 
 @csrf_exempt
+def summary_rosette(request):
+
+    rosette = request.GET.get('rosette')
+    dt_from = request.GET.get('dt_from')
+    dt_to = request.GET.get('dt_to')
+
+    if dt_from is None:
+        dt_from = datetime.date.today() - datetime.timedelta(days=7)
+        dt_to = datetime.date.today()
+    if dt_to is None:
+        dt_to = dt_from + datetime.timedelta(days=7)
+
+    room = get_object_or_404(Room, name=rosette)
+    beds = Bed.objects.filter(room=room).order_by('name')
+
+    data = dict()
+    data[rosette] = dict()
+    bed_name = list()
+    for bed in beds:
+        bed_name.append(bed.name)
+        data[bed.name] = dict()
+
+    for key, val in data.items():
+        val['date'] = list()
+        val['total_duration'] = list()
+        val['num_files'] = list()
+        val['files'] = list()
+
+    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+
+    cursor = db.cursor()
+    query = "SELECT DATE(begin_date) dt, COUNT(*) num_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION, "
+    query += "SUM(ECG_HR_AVG*ECG_HR_COUNT)/SUM(ECG_HR_COUNT), SUM(TEMP_AVG*TEMP_COUNT)/SUM(TEMP_COUNT), "
+    query += "SUM(NIBP_SYS_AVG*NIBP_SYS_COUNT)/SUM(NIBP_SYS_COUNT), SUM(NIBP_DIA_AVG*NIBP_DIA_COUNT)/SUM(NIBP_DIA_COUNT), "
+    query += "SUM(NIBP_MEAN_AVG*NIBP_MEAN_COUNT)/SUM(NIBP_MEAN_COUNT), SUM(PLETH_SPO2_AVG*PLETH_SPO2_COUNT)/SUM(PLETH_SPO2_COUNT) "
+    query += "FROM summary_by_file WHERE rosette='%s' AND bed IN ('%s') " % (rosette, "','".join(bed_name))
+    query += "AND begin_date BETWEEN '%s' AND '%s' GROUP BY DATE(begin_date) ORDER BY DATE(begin_date)" % (dt_from, dt_to)
+    cursor.execute(query)
+    trend_rosette = cursor.fetchall()
+    print(query)
+
+    for row in trend_rosette:
+        data[rosette]['date'].append(str(row[0]))
+        data[rosette]['num_files'].append(int(row[1]))
+        data[rosette]['total_duration'].append(int(row[2]))
+
+    query = "SELECT bed, DATE(begin_date) dt, COUNT(*) num_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION, "
+    query += "SUM(ECG_HR_AVG*ECG_HR_COUNT)/SUM(ECG_HR_COUNT), SUM(TEMP_AVG*TEMP_COUNT)/SUM(TEMP_COUNT), "
+    query += "SUM(NIBP_SYS_AVG*NIBP_SYS_COUNT)/SUM(NIBP_SYS_COUNT), SUM(NIBP_DIA_AVG*NIBP_DIA_COUNT)/SUM(NIBP_DIA_COUNT), "
+    query += "SUM(NIBP_MEAN_AVG*NIBP_MEAN_COUNT)/SUM(NIBP_MEAN_COUNT), SUM(PLETH_SPO2_AVG*PLETH_SPO2_COUNT)/SUM(PLETH_SPO2_COUNT) "
+    query += "FROM summary_by_file WHERE rosette='%s' AND bed IN ('%s') " % (rosette, "','".join(bed_name))
+    query += "AND begin_date BETWEEN '%s' AND '%s' GROUP BY bed, DATE(begin_date)" % (dt_from, dt_to)
+    cursor.execute(query)
+    trend_bed = cursor.fetchall()
+
+    for row in trend_bed:
+        data[row[0]]['date'].append(str(row[1]))
+        data[row[0]]['num_files'].append(int(row[2]))
+        data[row[0]]['total_duration'].append(int(row[3]))
+
+    query = "SELECT bed, file_basename, TIMESTAMPDIFF(SECOND, begin_date, end_date), ECG_HR_AVG, TEMP_AVG, NIBP_SYS_AVG, NIBP_DIA_AVG, NIBP_MEAN_AVG, PLETH_SPO2_AVG "
+    query += "FROM summary_by_file WHERE rosette='%s' AND bed IN ('%s') " % (rosette, "','".join(bed_name))
+    query += "AND begin_date BETWEEN '%s' AND '%s' ORDER BY begin_date DESC" % (dt_from, dt_to)
+    cursor.execute(query)
+    summary_files = cursor.fetchall()
+
+    for row in summary_files:
+        tmp = list(row)
+        tmp[2] = str(datetime.timedelta(seconds=tmp[2]))
+        for i in range(3, len(tmp)):
+            if tmp[i] is not None:
+                tmp[i] = format(tmp[i], '.2f')
+        data[rosette]['files'].append(tmp)
+        data[row[0]]['files'].append(tmp)
+
+    db.close()
+
+    print(data)
+
+    template = loader.get_template('summary_rosette.html')
+    context = {
+        'data': data,
+        'data_json': json.dumps(data)
+    }
+
+    return HttpResponse(template.render(context, request))
+
+
+@csrf_exempt
 def summary_file(request):
 
     table_col_list, table_val_list = get_table_col_val_list()
@@ -826,6 +918,15 @@ def decompose_record(recorded):
             ninfo.db_table_name = table_name_info[number_npz[0]]
             ninfo.file_path = number_npz[2]
             ninfo.save()
+        else:
+            log_dict = dict()
+            log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
+                settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+            log_dict['FILE_PATH'] = recorded.file_path
+            log_dict['FILE_BASENAME'] = recorded.file_basename
+            log_dict['EVENT'] = 'DB table name was not defined for device %s.' % number_npz[0]
+            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
     for wave_npz in r_wave:
         winfo, _ = WaveInfoFile.objects.get_or_create(record=recorded, device_displayed_name=wave_npz[0], channel_name=wave_npz[1])
@@ -834,6 +935,8 @@ def decompose_record(recorded):
         winfo.sampling_rate = wave_npz[5]
         winfo.max_psize = wave_npz[6]
         winfo.save()
+
+    return
 
 
 @csrf_exempt
@@ -849,7 +952,7 @@ def register_vital_file(request):
         bed = Bed.objects.get(name=row[3])
         client = Client.objects.get(bed=bed)
         recorded = FileRecorded.objects.get_or_create(method=0, bed=bed, file_basename=row[1], client=client,
-                                                                    begin_date=begin_date, end_date=end_date, file_path=file_path)
+                                                      begin_date=begin_date, end_date=end_date, file_path=file_path)
     return
 
 

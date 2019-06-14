@@ -202,7 +202,10 @@ class FileRecordedAdmin(admin.ModelAdmin):
     list_display = ('id', 'method', 'bed_name', 'room_name', 'upload_date', 'begin_date', 'end_date', 'client_mac', 'file_path', 'file_basename')
 
     def client_mac(self, obj):
-        return obj.client.mac
+        if obj.client is not None:
+            return obj.client.mac
+        else:
+            return 'None'
 
     def bed_name(self, obj):
         return obj.bed.name

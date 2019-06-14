@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>AdminLTE 2 | ChartJS</title>
+  <!-- Tell the browser to be responsive to screen width -->
+  <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+  <!-- Bootstrap 3.3.7 -->
+  <link rel="stylesheet" href="static/bower_components/bootstrap/dist/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="static/bower_components/font-awesome/css/font-awesome.min.css">
+  <!-- Ionicons -->
+  <link rel="stylesheet" href="static/bower_components/Ionicons/css/ionicons.min.css">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="static/dist/css/AdminLTE.min.css">
+    <!-- Morris charts -->
+  <link rel="stylesheet" href="static/bower_components/morris.js/morris.css">
+  
+  <!-- AdminLTE Skins. Choose a skin from the css/skins
+       folder instead of downloading all of them to reduce the load. -->
+  <link rel="stylesheet" href="static/dist/css/skins/_all-skins.min.css">
+    <!-- jvectormap -->
+  <link rel="stylesheet" href="static/bower_components/jvectormap/jquery-jvectormap.css">
+  <!-- Date Picker -->
+  <link rel="stylesheet" href="static/bower_components/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css">
+  <!-- Daterange picker -->
+  <link rel="stylesheet" href="static/bower_components/bootstrap-daterangepicker/daterangepicker.css">
+  <!-- bootstrap wysihtml5 - text editor -->
+  <link rel="stylesheet" href="static/plugins/bootstrap-wysihtml5/bootstrap3-wysihtml5.min.css">
+  <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+  <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+
+  <!-- Google Font -->
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
+</head>
+<body class="hold-transition skin-blue sidebar-mini">
+<div class="wrapper">
+
+  <header class="main-header">
+    <!-- Logo -->
+    <a href="../../bill.html" class="logo">
+      <!-- mini logo for sidebar mini 50x50 pixels -->
+      <span class="logo-mini"><b>A</b>N</span>
+      <!-- logo for regular state and mobile devices -->
+      <span class="logo-lg"><b>A</b>nesthesiology</span>
+    </a>
+    <!-- Header Navbar: style can be found in header.less -->
+    <nav class="navbar navbar-static-top">
+      <!-- Sidebar toggle button-->
+      <a href="#" class="sidebar-toggle" data-toggle="push-menu" role="button">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </a>
+    </nav>
+  </header>
+  <!-- Left side column. contains the logo and sidebar -->
+  <aside class="main-sidebar">
+    <!-- sidebar: style can be found in sidebar.less -->
+    <section class="sidebar">
+
+      <!-- sidebar menu: : style can be found in sidebar.less -->
+      <ul class="sidebar-menu" data-widget="tree">
+        <li class="treeview">
+          <a href="#">
+            <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+            <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+              </span>            
+          </a>
+            <ul class="treeview-menu">
+            <li><a href="../../bill.html"><i class="fa fa-circle-o"></i> Dashboard V1</a></li>
+            <li><a href="../../bill.html"><i class="fa fa-circle-o"></i> Dashboard V2</a></li>            
+            <li><a href="Dashboard_chart.html"><i class="fa fa-circle-o"></i> Dashboard Chart </a></li>   
+            </ul>
+        </li>
+        <li class="treeview active">
+          <a href="#">
+            <i class="fa fa-dashboard"></i> <span>서관</span>
+            <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+            </span>
+          </a>
+          <ul class="treeview-menu">
+            <li class="active"><a href="../../pages/charts/B_index.html"><i class="fa fa-circle-o"></i> B ROSSETTE </a></li>
+            <li><a href="../../pages/charts/C_index.html"><i class="fa fa-circle-o"></i> C ROSSETTE </a></li>
+            <li><a href="D_index.html"><i class="fa fa-circle-o"></i> D ROSSETTE </a></li>
+            <li><a href="E_index.html"><i class="fa fa-circle-o"></i> E ROSSETTE </a></li>
+            <li><a href="서회복실_index.html"><i class="fa fa-circle-o"></i> 회복실 </a></li>            
+          </ul>
+        </li>
+        <li class="treeview">
+          <a href="#">
+            <i class="fa fa-dashboard"></i> <span>동관</span>
+            <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+            </span>
+          </a>
+          <ul class="treeview-menu">
+            <li><a href="F_index.html"><i class="fa fa-circle-o"></i> F ROSSETTE </a></li>
+            <li><a href="G_index.html"><i class="fa fa-circle-o"></i> G ROSSETTE </a></li>
+            <li><a href="H_index.html"><i class="fa fa-circle-o"></i> H ROSSETTE </a></li>
+            <li><a href="I_index.html"><i class="fa fa-circle-o"></i> I ROSSETTE </a></li>
+            <li><a href="L_index.html"><i class="fa fa-circle-o"></i> L ROSSETTE </a></li>
+            <li><a href="동회복실_index.html"><i class="fa fa-circle-o"></i> 회복실 </a></li>             
+          </ul>
+        </li>
+        <li class="treeview">
+          <a href="#">
+            <i class="fa fa-dashboard"></i> <span>신관</span>
+            <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+            </span>
+          </a>
+          <ul class="treeview-menu">
+            <li><a href="J_index.html"><i class="fa fa-circle-o"></i> J ROSSETTE </a></li>
+            <li><a href="K_index.html"><i class="fa fa-circle-o"></i> K ROSSETTE </a></li>
+            <li><a href="신회복실_index.html"><i class="fa fa-circle-o"></i> 회복실 </a></li>             
+          </ul>
+        </li>
+      </ul>
+    </section>
+    <!-- /.sidebar -->
+    </aside>
+ 
+  <!-- Content Wrapper. Contains page content -->
+  <div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <h1>
+        서관
+      </h1>
+      <ol class="breadcrumb">
+        <li><a href="#"><i class="fa fa-dashboard"></i> Home</a></li>
+        <li><a href="#">서관</a></li>
+        <li class="active">B ROSSETTE</li>
+      </ol>
+    </section>
+  
+    <!-- Main content -->
+    <section class="content">
+      <div class="row">
+        <div class="container-fluid">
+          <!-- nav-tabs-custom-->
+          <div class="nav-tabs-custom">
+           
+            <ul class="nav nav-tabs">
+                {% for bed in data %}
+                    {% if forloop.first %}
+                        <li class="active"><a href="#{{ bed }}-Rossette" data-toggle="tab">{{ bed }} Rossette</a></li>
+                    {% else %}
+                        <li><a href="#{{ bed }}" data-toggle="tab">{{ bed }}</a></li>
+                    {% endif %}
+                {% endfor %}
+              <div class="pull-right box-tools">
+                <button type="button" class="btn btn-primary btn-sm daterange pull-right" id="daterange-btn">
+                  <i class="fa fa-calendar"></i></button>
+              </div>
+            </ul>
+
+            <div class="tab-content">
+
+                {% for bed, val in data.items %}
+
+                    {% if forloop.first %}
+
+              <div class="active tab-pane" id="{{ bed }}-Rossette">
+
+                    {% else %}
+
+              <div class="tab-pane" id="{{ bed }}">
+
+                    {% endif %}
+
+                <div class="row">
+                  <!-- content left-->
+                  <div class="col-md-6">
+                 
+                  <!-- AREA CHART -->
+                  <div class="box box-default">
+                    <div class="box-header with-border">
+                      <h3 class="box-title">Colleted Files</h3>
+
+                      <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
+                        </button>
+                        <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                      </div>
+                    </div>
+                    <div class="box-body chart-responsive">
+                      <div class="chart" id="revenue-chart" style="height:250px"></div>
+                    </div>
+                    <!-- /.box-body -->
+                  </div>
+                  <!-- /.box -->
+                  </div>
+                  <!-- /.content left-->
+                  
+                  <!-- content right-->
+                  <div class="col-md-6">
+                            
+                  <!-- BAR CHART -->
+                  <div class="box box-default">
+                    <div class="box-header with-border">
+                      <h3 class="box-title">Patient_Values</h3>
+
+                      <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
+                        </button>
+                        <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
+                      </div>
+                    </div>
+                    <div class="box-body">
+                      <div class="chart">
+                        <canvas id="chartjs-0" style="height:250px"></canvas>
+                      </div>
+                    </div>
+                    <!-- /.box-body -->
+                  </div>
+                  <!-- /.box -->
+                  
+                  </div>
+                  <!-- /.content right -->
+                  <!-- content low-->
+                  <div class="col-sm-12">
+                  <div class="box box-default">
+                    <div class="box-header with-border">
+                      <h3 class="box-title">Summary</h3>
+                      <div class="box-tools pull-right">
+                       <a href="../../pages/tables/data_cdh.html">view report</a>
+                      </div>
+                    </div>
+                    <!-- /.box-header -->
+                    <div class="box-body">
+                      <div class="table-responsive" style="height: 300px;">
+                        <table class="table no-margin" style="height: 290px;">
+                          <thead>
+                          <tr>
+                            <th>Patient</th>
+                            <th>Duration</th>
+                            <th>ECG_HR</th>
+                            <th>TEMP</th>
+                            <th>NIBP_SYS</th>
+                            <th>NIBP_DIA</th>
+                            <th>NIBP_MEAN</th>
+                            <th>PLETH_SPO2</th>
+                          </tr>
+                          </thead>
+
+                          <tbody>
+                          {% for file in val.files %}
+                          <tr>
+                            <td>{{ file.1 }}</td>
+                            <td>{{ file.2 }}</td>
+                            <td>{{ file.3 }}</td>
+                            <td>{{ file.4 }}</td>
+                            <td>{{ file.5 }}</td>
+                            <td>{{ file.6 }}</td>
+                            <td>{{ file.7 }}</td>
+                            <td>{{ file.8 }}</td>
+                          </tr>
+                          {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                      <!-- /.table-responsive -->
+                    </div>
+                  </div>
+                  <!-- /.box(Summary) -->                  
+                  
+                </div>
+                  <!-- /.content low-->  
+                </div>              
+              </div>
+
+                {% endfor %}
+
+              <!-- /.tab-pane -->
+            </div>
+            <!-- /.nav-tabs-content -->      
+          
+          </div>
+          <!-- /.nav-tabs-custom -->                
+        </div>
+      <!-- /.col -->  
+      
+      </div>
+      <!-- /.row -->  
+
+    </section>
+    <!-- /.content -->
+  </div>
+  
+  <!-- /.content-wrapper -->
+  <footer class="main-footer">
+    <div class="pull-right hidden-xs">
+      <b>Version</b> 1.0.0
+    </div>
+    <strong>Copyright &copy; 2019 </strong> 
+  </footer>
+  <!-- Control Sidebar -->
+  <aside class="control-sidebar control-sidebar-dark">
+    <!-- Create the tabs -->
+    <ul class="nav nav-tabs nav-justified control-sidebar-tabs">
+      <li><a href="#control-sidebar-home-tab" data-toggle="tab"><i class="fa fa-home"></i></a></li>
+      <li><a href="#control-sidebar-settings-tab" data-toggle="tab"><i class="fa fa-gears"></i></a></li>
+    </ul>
+  </aside>
+  <!-- /.control-sidebar -->
+  <!-- Add the sidebar's background. This div must be placed
+       immediately after the control sidebar -->
+  <div class="control-sidebar-bg"></div>
+</div>
+<!-- ./wrapper -->
+
+<!-- jQuery 3 -->
+<script src="static/bower_components/jquery/dist/jquery.min.js"></script>
+<!-- Bootstrap 3.3.7 -->
+<script src="static/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+<!-- ChartJS -->
+<script src="static/bower_components/chart.js/Chart.js"></script>
+<!-- FastClick -->
+<script src="static/bower_components/fastclick/lib/fastclick.js"></script>
+<!-- AdminLTE App -->
+<script src="static/dist/js/adminlte.min.js"></script>
+<!-- AdminLTE for demo purposes -->
+<script src="static/dist/js/demo.js"></script>
+<!-- page script -->
+
+<!-- daterangepicker -->
+<script src="static/bower_components/moment/min/moment.min.js"></script>
+<script src="static/bower_components/bootstrap-daterangepicker/daterangepicker.js"></script>
+<!-- datepicker -->
+<script src="static/bower_components/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js"></script>
+<!-- Morris.js charts -->
+<script src="static/bower_components/raphael/raphael.min.js"></script>
+<script src="static/bower_components/morris.js/morris.min.js"></script>
+
+<script>
+  $(function () {
+    // AREA CHART
+    var area = new Morris.Area({
+      element: 'revenue-chart',
+      resize: true,
+      data: [
+        {y: '2011 Q1', fail: 2666, good: 2666},
+        {y: '2011 Q2', fail: 2778, good: 2294},
+        {y: '2011 Q3', fail: 4912, good: 1969},
+        {y: '2011 Q4', fail: 3767, good: 3597},
+        {y: '2012 Q1', fail: 6810, good: 1914},
+        {y: '2012 Q2', fail: 5670, good: 4293},
+        {y: '2012 Q3', fail: 4820, good: 3795},
+        {y: '2012 Q4', fail: 15073, good: 5967},
+        {y: '2013 Q1', fail: 10687, good: 4460},
+        {y: '2013 Q2', fail: 8432, good: 5713}
+      ],
+      xkey: 'y',
+      ykeys: ['fail', 'good'],
+      labels: ['fail', 'good'],
+      lineColors: ['#dd4b39', '#c1c7d1'],
+      hideHover: 'auto'
+    });      
+    var area2 = new Morris.Area({
+      element: 'revenue-chart-2',
+      resize: true,
+      data: [
+        {y: '2011 Q1', fail: 2666, good: 2666},
+        {y: '2011 Q2', fail: 2778, good: 2294},
+        {y: '2011 Q3', fail: 4912, good: 1969},
+        {y: '2011 Q4', fail: 3767, good: 3597},
+        {y: '2012 Q1', fail: 6810, good: 1914},
+        {y: '2012 Q2', fail: 5670, good: 4293},
+        {y: '2012 Q3', fail: 4820, good: 3795},
+        {y: '2012 Q4', fail: 15073, good: 5967},
+        {y: '2013 Q1', fail: 10687, good: 4460},
+        {y: '2013 Q2', fail: 8432, good: 5713}
+      ],
+      xkey: 'y',
+      ykeys: ['fail', 'good'],
+      labels: ['fail', 'good'],
+      lineColors: ['#dd4b39', '#c1c7d1'],
+      hideHover: 'auto'
+    });
+    /* ChartJS
+     * -------
+     * Here we will create a few charts using ChartJS
+     */
+   
+    //--------------
+    //- bar CHART -
+    //--------------
+
+    var barChartData = {
+      labels  : ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+      datasets: [
+        {
+          label               : 'Electronics',
+          fillColor           : 'rgba(210, 214, 222, 1)',
+          strokeColor         : 'rgba(210, 214, 222, 1)',
+          pointColor          : 'rgba(210, 214, 222, 1)',
+          pointStrokeColor    : '#c1c7d1',
+          pointHighlightFill  : '#fff',
+          pointHighlightStroke: 'rgba(220,220,220,1)',
+          data                : [65, 59, 80, 81, 56, 55, 40]
+        },
+        {
+          label               : 'Digital Goods',
+          fillColor           : 'rgba(60,141,188,0.9)',
+          strokeColor         : 'rgba(60,141,188,0.8)',
+          pointColor          : '#3b8bba',
+          pointStrokeColor    : 'rgba(60,141,188,1)',
+          pointHighlightFill  : '#fff',
+          pointHighlightStroke: 'rgba(60,141,188,1)',
+          data                : [28, 48, 40, 19, 86, 27, 90]
+        }
+      ]
+    }
+
+    var barChartCanvas                   = $('#barChart').get(0).getContext('2d')
+    var barChart                         = new Chart(barChartCanvas)
+    var barChartData                     = barChartData
+    barChartData.datasets[1].fillColor   = '#00c0ef'
+    barChartData.datasets[1].strokeColor = '#00c0ef'
+    barChartData.datasets[1].pointColor  = '#00c0ef'
+    var barChartOptions                  = {
+      //Boolean - If we should show the scale at all
+      showScale               : true,        
+      //Boolean - Whether the scale should start at zero, or an order of magnitude down from the lowest value
+      scaleBeginAtZero        : true,
+      //Boolean - Whether grid lines are shown across the chart
+      scaleShowGridLines      : false,
+      //String - Colour of the grid lines
+      scaleGridLineColor      : 'rgba(0,0,0,.05)',
+      //Number - Width of the grid lines
+      scaleGridLineWidth      : 1,
+      //Boolean - Whether to show horizontal lines (except X axis)
+      scaleShowHorizontalLines: true,
+      //Boolean - Whether to show vertical lines (except Y axis)
+      scaleShowVerticalLines  : true,
+      //Boolean - If there is a stroke on each bar
+      barShowStroke           : true,
+      //Number - Pixel width of the bar stroke
+      barStrokeWidth          : 2,
+      //Number - Spacing between each of the X value sets
+      barValueSpacing         : 5,
+      //Number - Spacing between data sets within X values
+      barDatasetSpacing       : 1,
+      //String - A legend template
+      legendTemplate          : '<ul class="blash-legend"><li><span style="background-color:blue"></span><</li></ul>',
+      //Boolean - whether to make the chart responsive
+      responsive              : true,
+      maintainAspectRatio     : true
+    }
+
+    barChartOptions.datasetFill = false
+    barChart.Bar(barChartData, barChartOptions)    
+      
+    //Date range as a button
+    $('#daterange-btn').daterangepicker(
+      {
+        ranges   : {
+          'Today'       : [moment(), moment()],
+          'Yesterday'   : [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+          'Last 7 Days' : [moment().subtract(6, 'days'), moment()],
+          'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+          'This Month'  : [moment().startOf('month'), moment().endOf('month')],
+          'Last Month'  : [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+        },
+        startDate: moment().subtract(29, 'days'),
+        endDate  : moment()
+      },
+      function (start, end) {
+        $('#daterange-btn span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'))
+      }
+    )
+
+      let data = {{ data_json | safe }};
+      let charts_files = [];
+      let charts_durations = [];
+
+      new Chart(document.getElementById("chartjs-0"),{
+          "type":"line",
+          "data":{
+              "labels":["January","February","March","April","May","June","July"],
+              "datasets":[
+                  {
+                      "label":"My First Dataset",
+                      "data":[65,59,80,81,56,55,40],
+                      "fill":false,
+                      "borderColor":"rgb(75, 192, 192)",
+                      "lineTension":0.1
+                  }
+                  ]
+          },
+          "options":{}
+      });
+
+      tmp_chart = new Chart(document.getElementById("chart_durations_H"), {
+          type: "line",
+          data: {
+              labels: data["H"].date,
+              datasets: [
+                {
+                  label               : 'durations',
+                  fillColor           : 'rgba(60,141,188,0.9)',
+                  strokeColor         : 'rgba(60,141,188,0.8)',
+                  pointColor          : '#3b8bba',
+                  pointStrokeColor    : 'rgba(60,141,188,1)',
+                  pointHighlightFill  : '#fff',
+                  pointHighlightStroke: 'rgba(60,141,188,1)',
+                  data                : data["H"].num_files
+                }
+              ]
+          },
+          options: {
+              scales: {
+                  xAxes: [{
+                      type: "time",
+                      time: {
+                          unit: "day"
+                      }
+                  }]
+              },
+              layout: {
+                  padding: {
+                      left: 10,
+                      right: 10,
+                      top: 10,
+                      bottom: 10
+                  }
+              },
+              animation: {
+                  duration: 0 // general animation time
+              }
+          }
+      });
+
+      alert(tmp_chart)
+
+
+      Object.entries(data).forEach(entry => {
+          let key = entry[0];
+          let value = entry[1];
+
+          tmp_chart = new Chart(document.getElementById("chart_files_"+key), {
+              type: "line",
+              data: {
+                  labels: value.date,
+                  datasets: value.num_files
+              },
+              options: {
+                  scales: {
+                      xAxes: [{
+                          type: "time",
+                          time: {
+                              unit: "day"
+                          }
+                      }]
+                  },
+                  layout: {
+                      padding: {
+                          left: 10,
+                          right: 10,
+                          top: 10,
+                          bottom: 10
+                      }
+                  },
+                  animation: {
+                      duration: 0 // general animation time
+                  }
+              }
+          });
+          charts_files.push(tmp_chart);
+
+          tmp_chart = new Chart(document.getElementById("chart_durations_"+key), {
+              type: "line",
+              data: {
+                  labels: value.date,
+                  datasets: value.num_files
+              },
+              options: {
+                  scales: {
+                      xAxes: [{
+                          type: "time",
+                          time: {
+                              unit: "day"
+                          }
+                      }]
+                  },
+                  layout: {
+                      padding: {
+                          left: 10,
+                          right: 10,
+                          top: 10,
+                          bottom: 10
+                      }
+                  },
+                  animation: {
+                      duration: 0 // general animation time
+                  }
+              }
+          });
+          charts_durations.push(tmp_chart);
+
+          //use key and value here
+      });
+      
+  })
+
+</script>
+</body>
+</html>
