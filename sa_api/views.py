@@ -575,86 +575,100 @@ def dashboard(request):
 
     since = datetime.date(2019, 5, 7)
 
-    beds_red = list()
-    beds_green = list()
-    beds_blue = list()
-
-    bed_re = re.compile('[B-K]-[0-9]{2}')
-
-    clients_all = Client.objects.all()
-
-    for client in clients_all:
-        if bed_re.match(client.bed.name):
-            tmp_bed_name = client.bed.name.replace('-', '').lower()
-            if client.color_info()[1] == 'red':
-                beds_red.append(tmp_bed_name)
-            elif client.status == Client.STATUS_RECORDING:
-                beds_blue.append(tmp_bed_name)
-            else:
-                beds_green.append(tmp_bed_name)
-
-    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-    cursor = db.cursor()
-    query = 'SELECT COUNT(*) files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) DUR, SUM(TOTAL_COUNT) TOTAL_COUNT'
-    query += ' FROM summary_by_file'
-    cursor.execute(query)
-    total_stat = cursor.fetchall()[0]
-    total_files = '{:,}'.format(total_stat[0], ',')
-    total_duration = '{:,}'.format(int(total_stat[1] / 3600), ',')
-    total_records = '{:,}'.format(total_stat[2], ',')
-
-    query = 'SELECT DATE(begin_date) d, COUNT(*) files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) DUR,'
-    query += ' SUM(TOTAL_COUNT) TOTAL_COUNT FROM summary_by_file WHERE'
-    query += " begin_date >= '%s' GROUP BY DATE(begin_date) ORDER BY DATE(begin_date)" %\
-             str(datetime.date.today() + datetime.timedelta(days=-7))
-    cursor.execute(query)
-    recent_stat = cursor.fetchall()
-    db.close()
-
-    recent_dates = list()
-    recent_files = list()
-    recent_duration = list()
-    recent_records = list()
-
-    for row in recent_stat:
-        recent_dates.append('"%s"' % str(row[0]))
-        recent_files.append('%d' % row[1])
-        recent_duration.append('%f' % (row[2]/3600))
-        recent_records.append(row[3])
-
     target = request.GET.get('target')
 
     if target is None or target == 'rosette':
+        beds_red = list()
+        beds_orange = list()
+        beds_green = list()
+        beds_blue = list()
+
+        bed_re = re.compile('[B-L]-[0-9]{2}')
+
+        clients_all = Client.objects.all()
+
+        for client in clients_all:
+            if bed_re.match(client.bed.name):
+                tmp_bed_name = client.bed.name.replace('-', '').lower()
+                if client.color_info()[1] == 'red':
+                    beds_red.append(tmp_bed_name)
+                elif client.color_info()[1] == 'orange':
+                    beds_orange.append(tmp_bed_name)
+                elif client.status == Client.STATUS_RECORDING:
+                    beds_blue.append(tmp_bed_name)
+                else:
+                    beds_green.append(tmp_bed_name)
+
         template = loader.get_template('dashboard_rosette.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_rosette')
+        context = {
+            'loc': loc,
+            'sidebar_menu': sidebar_menu,
+            'since': str(since),
+            'beds_red': json.dumps(beds_red),
+            'beds_orange': json.dumps(beds_orange),
+            'beds_green': json.dumps(beds_green),
+            'beds_blue': json.dumps(beds_blue),
+        }
+        return HttpResponse(template.render(context, request))
     elif target == 'etc':
         template = loader.get_template('dashboard_etc.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_etc')
+        raise Http404()
     elif target == 'trend':
-        template = loader.get_template('dashboard_trend.html')
+        begin_date = request.GET.get('begin_date')
+        end_date = request.GET.get('end_date')
+        if begin_date is None:
+            begin_date = datetime.date.today() - datetime.timedelta(days=7)
+            end_date = datetime.datetime.now()
+        elif end_date is None:
+            end_date = begin_date + datetime.timedelta(days=7)
+        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+        cursor = db.cursor()
+        query = 'SELECT DATE(begin_date) dt, rosette, COUNT(*) files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) DUR, SUM(TOTAL_COUNT) TOTAL_COUNT'
+        query += " FROM summary_by_file WHERE begin_date BETWEEN '%s' AND '%s' GROUP BY dt, rosette" % (begin_date, end_date)
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        db.close()
+
+        label_dates = set()
+        for row in rows:
+            label_dates.add(str(row[0]))
+        label_dates = list(label_dates)
+        label_dates.sort()
+        label_dates_dict = dict()
+        for i, label in enumerate(label_dates):
+            label_dates_dict[label] = i
+
+        data = dict()
+        data['label_dates'] = label_dates
+        data['collected_files'] = dict()
+        data['collected_hours'] = dict()
+        data['total_hours'] = dict()
+
+        for row in rows:
+            if row[1] not in data['total_hours']:
+                data['collected_files'][row[1]] = [0] * len(label_dates)
+                data['collected_hours'][row[1]] = [0] * len(label_dates)
+                data['total_hours'][row[1]] = [0] * len(label_dates)
+            data['collected_files'][row[1]][label_dates_dict[str(row[0])]] = row[2]
+            data['collected_hours'][row[1]][label_dates_dict[str(row[0])]] = float(row[3])/3600
+
+        template = loader.get_template('dashboard_chart.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_trend')
+        context = {
+            'loc': loc,
+            'sidebar_menu': sidebar_menu,
+            'since': str(since),
+            'data': data,
+            'data_json': json.dumps(data)
+        }
+        return HttpResponse(template.render(context, request))
     else:
         raise Http404()
-
-    context = {
-        'loc': loc,
-        'sidebar_menu': sidebar_menu,
-        'since': str(since),
-        'total_files': total_files,
-        'total_records': total_records,
-        'total_duration': total_duration,
-        'recent_dates': ','.join(recent_dates),
-        'recent_files': ','.join(recent_files),
-        'recent_dutation': ','.join(recent_duration),
-        'beds_red': json.dumps(beds_red),
-        'beds_green': json.dumps(beds_green),
-        'beds_blue': json.dumps(beds_blue),
-    }
-
-    return HttpResponse(template.render(context, request))
 
 
 @csrf_exempt
@@ -1514,7 +1528,7 @@ def recording_info_body(request):
                         recorded = FileRecorded.objects.create(client=target_client, bed=target_client.bed, begin_date=begin, end_date=end)
                         date_str = begin.strftime("%y%m%d")
                         time_str = begin.strftime("%H%M%S")
-                        pathname = '%s/%s' % (settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.client.bed.name)
+                        pathname = os.path.join(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.bed.name, date_str)
                         if not os.path.exists(pathname):
                             os.makedirs(pathname)
                         filename = '%s_%s_%s.vital' % (recorded.client.bed.name, date_str, time_str)

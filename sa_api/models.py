@@ -72,12 +72,15 @@ class Client(models.Model):
     status = models.IntegerField(choices=CLIENT_STATUS_CHOICES, default=0)
 
     def color_info(self):
+
         if self.bed.name == 'Reserved':
-            return 2, 'grey'
+            return 3, 'grey'
         elif self.dt_report + datetime.timedelta(seconds=3600) < timezone.now():
             return 0, 'red'
+        elif not ClientBusSlot.objects.filter(client=self, active=True).count():
+            return 1, 'orange'
         else:
-            return 1, 'black'
+            return 2, 'black'
 
     def colored_bed(self):
         return format_html('<span style="color: %s;">%s</span>' % (self.color_info()[1], self.bed.name))
