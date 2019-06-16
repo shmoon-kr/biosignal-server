@@ -289,6 +289,86 @@ def db_upload_summary(record):
     return
 
 
+def db_upload_decomposed_numeric(recorded, number_info):
+
+    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+    cursor = db.cursor()
+
+    query = 'DESCRIBE %s' % number_info.db_table_name
+    cursor.execute(query)
+    rows = cursor.fetchall()
+
+    column_info_db = list()
+    for i, column in enumerate(rows):
+        if column[0] != 'id':
+            column_info_db.append(column[0])
+
+    ni = np.load(number_info.file_path)
+    timestamp = np.array(ni['timestamp'])
+    number = np.array(ni['number'])
+    col_list = np.array(ni['col_list'])
+
+    col_dict = dict()
+    unknown_columns = list()
+    for col in col_list:
+        col_dict[col] = len(col_dict)
+        if col not in column_info_db:
+            unknown_columns.append(col)
+
+    query = "INSERT IGNORE INTO %s (%s) VALUES " % (number_info.db_table_name, ', '.join(column_info_db))
+
+    for i in range(len(timestamp)):
+        if i:
+            query += ','
+        query += "(0, '%s', '%s', '%s'" % (recorded.bed.room.name, recorded.bed.name, str(timestamp[i]))
+        for col in column_info_db:
+            if col not in ('method', 'rosette', 'bed', 'dt'):
+                if col not in col_dict:
+                    query += ', NULL'
+                elif np.isnan(number[i, col_dict[col]]):
+                    query += ', NULL'
+                else:
+                    query += ', %f' % number[i, col_dict[col]]
+        query += ")"
+
+    log_dict = dict()
+    log_dict['SERVER_NAME'] = 'global' \
+        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+    log_dict['ACTION'] = 'DB_UPLOAD_DECOMPOSED'
+    log_dict['TARGET_FILE_VITAL'] = recorded.file_path
+    log_dict['TARGET_FILE_DECOMPOSED'] = number_info.file_path
+    log_dict['TARGET_DEVICE'] = number_info.device_displayed_name
+    log_dict['NEW_CHANNEL'] = unknown_columns
+    log_dict['NUM_RECORDS_QUERY'] = len(ni['timestamp'])
+    insert_start = datetime.datetime.now()
+
+    try:
+        cursor.execute(query)
+        db.commit()
+        db.close()
+    except MySQLdb.Error as e:
+        log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+        log_dict['EXCEPTION'] = str(e)
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        return False
+
+    db_upload_execution_time = datetime.datetime.now() - insert_start
+
+    log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount
+    log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time)
+
+    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+    return True
+
+
 # Create your views here.
 
 def db_upload_main_numeric(recorded, method=0, db_writing=True):
@@ -898,6 +978,8 @@ def decompose_vital_file(file_name, decomposed_path):
     timestamp_interval = 0.5
     device_abb = get_device_abb()
 
+    print('!')
+
     read_start = datetime.datetime.now()
     vr_file = vr.vital_reader(file_name)
     vr_file.read_header()
@@ -905,6 +987,8 @@ def decompose_vital_file(file_name, decomposed_path):
     raw_data_number = vr_file.export_db_data()
     raw_data_wave = vr_file.export_db_data_wave()
     del vr_file
+
+    print('!!!')
 
     if not len(raw_data_number):
         raise ValueError('No number data was found in vital file.')
@@ -940,7 +1024,7 @@ def decompose_vital_file(file_name, decomposed_path):
         val_number[device] = list()
 
     for i, ad in enumerate(aligned_data):
-        timestamp_number[ad['device']].append(ad['timestamp'])
+        timestamp_number[ad['device']].append(datetime.datetime.fromtimestamp(ad['timestamp']))
         tmp_val_list = [None] * len(column_info[ad['device']])
         for key, val in ad.items():
             if key not in ('device', 'timestamp'):
@@ -957,12 +1041,12 @@ def decompose_vital_file(file_name, decomposed_path):
             if not os.path.exists(decomposed_path):
                 os.makedirs(decomposed_path)
             file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s.npz' % device_abb[device])
-            np.savez_compressed(file_path, col_list=np.array(cols, dtype=dt_str),
+            np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
                                 timestamp=np.array(timestamp_number[device], dtype=dt_datetime),
                                 number=np.array(val_number[device], dtype=np.float32))
             r_message = "OK"
         else:
-            r_message = "Device infomation does not exists."
+            r_message = "Device information does not exists."
         r_number.append([device, r_message, file_path, len(timestamp_number[device]), len(column_info[device])])
 
     r_wave = list()
@@ -975,7 +1059,7 @@ def decompose_vital_file(file_name, decomposed_path):
                                 psize=np.array(val['psize'], dtype=np.int32), data=np.array(val['data'], dtype=np.float32))
             r_message = "OK"
         else:
-            r_message = "Device infomation does not exists."
+            r_message = "Device information does not exists."
         r_wave.append([wave[0], wave[1], r_message, file_path, len(val['timestamp']), val['srate'], max(val['psize'])])
 
     return r_number, r_wave
