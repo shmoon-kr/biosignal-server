@@ -1071,7 +1071,20 @@ def decompose_record(recorded):
     table_name_info = get_table_name_info(main_only=False)
     filename_split = recorded.file_basename.split('_')
     decompose_path = os.path.join('raw_decomposed', filename_split[0], filename_split[1])
-    r_number, r_wave = decompose_vital_file(recorded.file_path, decompose_path)
+    try:
+        r_number, r_wave = decompose_vital_file(recorded.file_path, decompose_path)
+    except Exception as e:
+        log_dict = dict()
+        log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
+            settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+        log_dict['FILE_PATH'] = recorded.file_path
+        log_dict['FILE_BASENAME'] = recorded.file_basename
+        log_dict['EXCEPTION'] = str(e)
+        log_dict['EVENT'] = 'An exception was raised while reading a vital file.'
+        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        return
 
     for number_npz in r_number:
         ninfo, _ = NumberInfoFile.objects.get_or_create(record=recorded, device_displayed_name=number_npz[0])
