@@ -193,7 +193,7 @@ class FileRecorded(models.Model):
 class NumberInfoFile(models.Model):
     record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
     device_displayed_name = models.CharField(max_length=64)
-    db_table_name = models.CharField(max_length=64)
+    db_table_name = models.CharField(max_length=64, blank=True)
     file_path = models.CharField(max_length=256, blank=True)
 
     def __str__(self):

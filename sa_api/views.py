@@ -1051,6 +1051,9 @@ def decompose_vital_file(file_name, decomposed_path):
         if wave[0] in device_abb.keys():
             if not os.path.exists(decomposed_path):
                 os.makedirs(decomposed_path)
+            val_ts = list()
+            for i in range(len(val['timestamp'])):
+                val_ts.append(datetime.datetime.fromtimestamp(val['timestamp'][i]))
             file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s_%s.npz' % (device_abb[wave[0]], wave[1]))
             np.savez_compressed(file_path, timestamp=np.array(val['timestamp'], dtype=dt_datetime),
                                 psize=np.array(val['psize'], dtype=np.int32), data=np.array(val['data'], dtype=np.float32))
@@ -1070,12 +1073,12 @@ def decompose_record(recorded):
     r_number, r_wave = decompose_vital_file(recorded.file_path, decompose_path)
 
     for number_npz in r_number:
+        ninfo, _ = NumberInfoFile.objects.get_or_create(record=recorded, device_displayed_name=number_npz[0])
+        ninfo.file_path = number_npz[2]
         if number_npz[0] in table_name_info:
-            ninfo, _ = NumberInfoFile.objects.get_or_create(record=recorded, device_displayed_name=number_npz[0])
             ninfo.db_table_name = table_name_info[number_npz[0]]
-            ninfo.file_path = number_npz[2]
-            ninfo.save()
         else:
+            ninfo.db_table_name = ''
             log_dict = dict()
             log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
                 settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
@@ -1084,6 +1087,8 @@ def decompose_record(recorded):
             log_dict['EVENT'] = 'DB table name was not defined for device %s.' % number_npz[0]
             fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
             fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        ninfo.save()
+
 
     for wave_npz in r_wave:
         winfo, _ = WaveInfoFile.objects.get_or_create(record=recorded, device_displayed_name=wave_npz[0], channel_name=wave_npz[1])
