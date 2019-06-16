@@ -1043,6 +1043,7 @@ def decompose_vital_file(file_name, decomposed_path):
                                 number=np.array(val_number[device], dtype=np.float32))
             r_message = "OK"
         else:
+            file_path = ''
             r_message = "Device information does not exists."
         r_number.append([device, r_message, file_path, len(timestamp_number[device]), len(column_info[device])])
 
