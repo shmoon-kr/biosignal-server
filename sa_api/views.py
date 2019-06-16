@@ -86,6 +86,7 @@ def get_table_name_info(main_only=True):
     r['Philips/IntelliVue'] = 'number_ph'
     if not main_only:
         r['Masimo/Root'] = 'number_mr'
+        r['Covidien/BIS'] = 'number_bs'
     return r
 
 
@@ -978,8 +979,6 @@ def decompose_vital_file(file_name, decomposed_path):
     timestamp_interval = 0.5
     device_abb = get_device_abb()
 
-    print('!')
-
     read_start = datetime.datetime.now()
     vr_file = vr.vital_reader(file_name)
     vr_file.read_header()
@@ -987,8 +986,6 @@ def decompose_vital_file(file_name, decomposed_path):
     raw_data_number = vr_file.export_db_data()
     raw_data_wave = vr_file.export_db_data_wave()
     del vr_file
-
-    print('!!!')
 
     if not len(raw_data_number):
         raise ValueError('No number data was found in vital file.')
