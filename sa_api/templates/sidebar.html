@@ -1,0 +1,35 @@
+<!-- sidebar: style can be found in sidebar.less -->
+<section class="sidebar">
+
+  <!-- Sidebar user panel -->
+  <!-- /.search form -->
+  <!-- sidebar menu: : style can be found in sidebar.less -->
+  <ul class="sidebar-menu" data-widget="tree">
+  {% for key, val in sidebar_menu.items %}
+      {% if val.active %}
+          <li class="treeview active">
+      {% else %}
+          <li class="treeview">
+      {% endif %}
+      <li class="treeview">
+      <a href="#">
+          <i class="fa fa-dashboard"></i> <span>{{ key }}</span>
+          <span class="pull-right-container">
+              <i class="fa fa-angle-left pull-right"></i>
+          </span>
+      </a>
+          <ul class="treeview-menu">
+              {% for menu in val.submenu %}
+                  {% if menu.0 %}
+                      <li class="active"><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
+                  {% else %}
+                      <li><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
+                  {% endif %}
+              {% endfor %}
+          </ul>
+      </li>
+  {% endfor %}
+  </ul>
+
+</section>
+<!-- /.sidebar -->

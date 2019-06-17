@@ -73,7 +73,7 @@ class Client(models.Model):
 
     def color_info(self):
 
-        if self.bed.name == 'Reserved':
+        if self.bed.name == 'Reserved' if self.bed is not None else False:
             return 3, 'grey'
         elif self.dt_report + datetime.timedelta(seconds=3600) < timezone.now():
             return 0, 'red'
@@ -83,7 +83,7 @@ class Client(models.Model):
             return 2, 'black'
 
     def colored_bed(self):
-        return format_html('<span style="color: %s;">%s</span>' % (self.color_info()[1], self.bed.name))
+        return format_html('<span style="color: %s;">%s</span>' % (self.color_info()[1], self.bed.name if self.bed is not None else 'NULL'))
 
     colored_bed.allow_tags = True
 #    colored_bed.admin_order_field = 'color_info'

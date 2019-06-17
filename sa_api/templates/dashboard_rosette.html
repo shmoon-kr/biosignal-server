@@ -32,6 +32,8 @@
   <!-- DataTables -->
   <link rel="stylesheet" href="static/bower_components/datatables.net-bs/css/dataTables.bootstrap.min.css">
 
+  <link rel="import" href="static/test.html">
+
 
   <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
   <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -273,7 +275,7 @@ section div svg text:hover.sin{
         <!-- mini logo for sidebar mini 50x50 pixels -->
         <span class="logo-mini"><b>A</b>LT</span>
         <!-- logo for regular state and mobile devices -->
-        <span class="logo-lg"><b>Anesthesiology</b></span>
+        <span class="logo-lg"><b>Asan Medical Center</b></span>
       </a>
       <!-- Header Navbar: style can be found in header.less -->
       <nav class="navbar navbar-static-top">
@@ -282,54 +284,11 @@ section div svg text:hover.sin{
     </header>
 	<!-- Left side column. contains the logo and sidebar -->
   <aside class="main-sidebar">
-    <!-- sidebar: style can be found in sidebar.less -->
-    <section class="sidebar">
-      <!-- Sidebar user panel -->
-
-      <!-- /.search form -->
-      <!-- sidebar menu: : style can be found in sidebar.less -->
-      <ul class="sidebar-menu" data-widget="tree">
-      {% for key, val in sidebar_menu.items %}
-          {% if val.active %}
-              <li class="treeview active">
-          {% else %}
-              <li class="treeview">
-          {% endif %}
-          <li class="treeview">
-          <a href="#">
-              <i class="fa fa-dashboard"></i> <span>{{ key }}</span>
-              <span class="pull-right-container">
-                  <i class="fa fa-angle-left pull-right"></i>
-              </span>
-          </a>
-              <ul class="treeview-menu">
-                  {% for menu in val.submenu %}
-                      {% if menu.0 %}
-                          <li class="active"><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
-                      {% else %}
-                          <li><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
-                      {% endif %}
-                  {% endfor %}
-              </ul>
-          </li>
-      {% endfor %}
-      </ul>
-
-    </section>
-    <!-- /.sidebar -->
+  {% include "sidebar.html" %}
   </aside>
    <!-- Content Wrapper. Contains page content -->
   <div class="content-wrapper">
-    <section class="content-header">
-      <h1>
-        {{ loc.0 }}
-      </h1>
-      <ol class="breadcrumb">
-        <li><a href="#"><i class="fa fa-dashboard"></i> Home</a></li>
-        <li><a href="#">{{ loc.0 }}</a></li>
-        <li class="active">{{ loc.1 }}</li>
-      </ol>
-    </section>
+    {% include "content_header.html" %}
     <section class="container">
       <div class="row layer">
         <div class="col-lg-4 col-md-4 col-sm-12">

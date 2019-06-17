@@ -39,7 +39,7 @@ def get_sidebar_menu(selected=None):
     r['Dashboard'] = dict()
     r['Dashboard']['active'] = True if selected in ('dashboard_rosette', 'dashboard_etc', 'dashboard_trend') else False
     r['Dashboard']['submenu'] = list()
-    r['Dashboard']['submenu'].append([selected == 'dashboard_rosette', 'Rosette', '/dashboard?target=rosette'])
+    r['Dashboard']['submenu'].append([selected == 'dashboard_rosette', 'Anesthesiology', '/dashboard?target=rosette'])
     r['Dashboard']['submenu'].append([selected == 'dashboard_etc', 'Etc.', '/dashboard?target=etc'])
     r['Dashboard']['submenu'].append([selected == 'dashboard_trend', 'Trend', '/dashboard?target=trend'])
 

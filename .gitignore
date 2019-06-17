@@ -3,6 +3,7 @@
 data
 raw_decomposed
 uploaded_files/*
+tablet/*
 static/*
 media/*
 uploaded_data/*
