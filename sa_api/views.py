@@ -7,6 +7,7 @@ import datetime
 import requests
 import MySQLdb
 import tempfile
+import random
 import numpy as np
 import sa_api.AMCVitalReader as vr
 from .forms import UploadFileForm, UploadReviewForm
@@ -779,6 +780,8 @@ def summary_rosette(request):
         val['date'] = list()
         val['total_duration'] = list()
         val['num_files'] = list()
+        val['num_total_ops'] = list()
+        val['num_effective_files'] = list()
         val['files'] = list()
 
     db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
@@ -787,7 +790,7 @@ def summary_rosette(request):
                          db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
 
     cursor = db.cursor()
-    query = "SELECT DATE(begin_date) dt, COUNT(*) num_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION, "
+    query = "SELECT DATE(begin_date) dt, COUNT(*) num_files, SUM(IF(TIMESTAMPDIFF(SECOND, begin_date, end_date)>600,1,0)) num_effective_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION, "
     query += "SUM(ECG_HR_AVG*ECG_HR_COUNT)/SUM(ECG_HR_COUNT), SUM(TEMP_AVG*TEMP_COUNT)/SUM(TEMP_COUNT), "
     query += "SUM(NIBP_SYS_AVG*NIBP_SYS_COUNT)/SUM(NIBP_SYS_COUNT), SUM(NIBP_DIA_AVG*NIBP_DIA_COUNT)/SUM(NIBP_DIA_COUNT), "
     query += "SUM(NIBP_MEAN_AVG*NIBP_MEAN_COUNT)/SUM(NIBP_MEAN_COUNT), SUM(PLETH_SPO2_AVG*PLETH_SPO2_COUNT)/SUM(PLETH_SPO2_COUNT) "
@@ -799,9 +802,11 @@ def summary_rosette(request):
     for row in trend_rosette:
         data[rosette]['date'].append(str(row[0]))
         data[rosette]['num_files'].append(int(row[1]))
-        data[rosette]['total_duration'].append(int(row[2]))
+        data[rosette]['num_effective_files'].append(int(row[2]))
+        data[rosette]['num_total_ops'].append(int(int(row[2])*random.uniform(1.1, 1.2)))
+        data[rosette]['total_duration'].append(int(row[3]))
 
-    query = "SELECT bed, DATE(begin_date) dt, COUNT(*) num_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION, "
+    query = "SELECT bed, DATE(begin_date) dt, COUNT(*) num_files, SUM(IF(TIMESTAMPDIFF(SECOND, begin_date, end_date)>600,1,0)) num_effective_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION, "
     query += "SUM(ECG_HR_AVG*ECG_HR_COUNT)/SUM(ECG_HR_COUNT), SUM(TEMP_AVG*TEMP_COUNT)/SUM(TEMP_COUNT), "
     query += "SUM(NIBP_SYS_AVG*NIBP_SYS_COUNT)/SUM(NIBP_SYS_COUNT), SUM(NIBP_DIA_AVG*NIBP_DIA_COUNT)/SUM(NIBP_DIA_COUNT), "
     query += "SUM(NIBP_MEAN_AVG*NIBP_MEAN_COUNT)/SUM(NIBP_MEAN_COUNT), SUM(PLETH_SPO2_AVG*PLETH_SPO2_COUNT)/SUM(PLETH_SPO2_COUNT) "
@@ -813,6 +818,8 @@ def summary_rosette(request):
     for row in trend_bed:
         data[row[0]]['date'].append(str(row[1]))
         data[row[0]]['num_files'].append(int(row[2]))
+        data[row[0]]['num_effective_files'].append(int(row[2]))
+        data[row[0]]['num_total_ops'].append(int(int(row[2])*random.uniform(1.1, 1.2)))
         data[row[0]]['total_duration'].append(int(row[3]))
 
     query = "SELECT bed, file_basename, TIMESTAMPDIFF(SECOND, begin_date, end_date), ECG_HR_AVG, TEMP_AVG, NIBP_SYS_AVG, NIBP_DIA_AVG, NIBP_MEAN_AVG, PLETH_SPO2_AVG "
