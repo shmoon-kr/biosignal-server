@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>  <title>AMC Bio Signal</title>
-</title>
+  </title>
   <!-- Tell the browser to be responsive to screen width -->
   <meta content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" name="viewport">
   <!-- Bootstrap 3.3.7 -->
@@ -15,13 +15,13 @@
   <link rel="stylesheet" href="static/bower_components/Ionicons/css/ionicons.min.css">
   <!-- Theme style -->
   <link rel="stylesheet" href="static/dist/css/AdminLTE.min.css">
-    <!-- Morris charts -->
+  <!-- Morris charts -->
   <link rel="stylesheet" href="static/bower_components/morris.js/morris.css">
-  
+
   <!-- AdminLTE Skins. Choose a skin from the css/skins
        folder instead of downloading all of them to reduce the load. -->
   <link rel="stylesheet" href="static/dist/css/skins/_all-skins.min.css">
-    <!-- jvectormap -->
+  <!-- jvectormap -->
   <link rel="stylesheet" href="static/bower_components/jvectormap/jquery-jvectormap.css">
   <!-- Date Picker -->
   <link rel="stylesheet" href="static/bower_components/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css">
@@ -64,69 +64,28 @@
   </header>
   <!-- Left side column. contains the logo and sidebar -->
   <aside class="main-sidebar">
-    <!-- sidebar: style can be found in sidebar.less -->
-    <section class="sidebar">
+    {% include "sidebar.html" %}
+  </aside>
 
-      <!-- sidebar menu: : style can be found in sidebar.less -->
-      <ul class="sidebar-menu" data-widget="tree">
-      {% for key, val in sidebar_menu.items %}
-          {% if val.active %}
-              <li class="treeview active">
-          {% else %}
-              <li class="treeview">
-          {% endif %}
-          <li class="treeview">
-          <a href="#">
-              <i class="fa fa-dashboard"></i> <span>{{ key }}</span>
-              <span class="pull-right-container">
-                  <i class="fa fa-angle-left pull-right"></i>
-              </span>
-          </a>
-              <ul class="treeview-menu">
-                  {% for menu in val.submenu %}
-                      {% if menu.0 %}
-                          <li class="active"><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
-                      {% else %}
-                          <li><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
-                      {% endif %}
-                  {% endfor %}
-              </ul>
-          </li>
-      {% endfor %}
-      </ul>
-    </section>
-    <!-- /.sidebar -->
-    </aside>
- 
   <!-- Content Wrapper. Contains page content -->
   <div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    <section class="content-header">
-      <h1>
-        {{ loc.0 }}
-      </h1>
-      <ol class="breadcrumb">
-        <li><a href="#"><i class="fa fa-dashboard"></i> Home</a></li>
-        <li><a href="#">{{ loc.0 }}</a></li>
-        <li class="active">{{ loc.1 }}</li>
-      </ol>
-    </section>
-  
+    {% include "content_header.html" %}
+
     <!-- Main content -->
     <section class="content">
       <div class="row">
         <div class="col-md-12">
-            <div class="box">
-              <div class="box-header">
-                <!-- tools box -->
-                <div class="pull-right box-tools">
-                  <button type="button" class="btn btn-primary btn-sm daterange pull-right" id="daterange-btn"
+          <div class="box">
+            <div class="box-header">
+              <!-- tools box -->
+              <div class="pull-right box-tools">
+                <button type="button" class="btn btn-primary btn-sm daterange pull-right" id="daterange-btn"
                         title="Date range">
-                    <i class="fa fa-calendar"></i></button>
-                  <button type="button" class="btn btn-primary btn-sm pull-right" data-widget="collapse"
+                  <i class="fa fa-calendar"></i></button>
+                <button type="button" class="btn btn-primary btn-sm pull-right" data-widget="collapse"
                         data-toggle="tooltip" title="Collapse" style="margin-right: 5px;">
-                    <i class="fa fa-minus"></i></button>
-                </div>
+                  <i class="fa fa-minus"></i></button>
+              </div>
               <!-- /. tools -->
 
               <i class="fa fa-map-marker"></i>
@@ -136,55 +95,55 @@
               </h3>
             </div>
 
-              <div class ="box-body">
-                <div class="row">
-                    <div class="col-lg-6">
-                      <!-- LINE CHART -->
-                      <div class="box box-default">
-                        <div class="box-header with-border">
-                          <h3 class="box-title">Collected files</h3>
+            <div class ="box-body">
+              <div class="row">
+                <div class="col-lg-6">
+                  <!-- LINE CHART -->
+                  <div class="box box-default">
+                    <div class="box-header with-border">
+                      <h3 class="box-title">Collected files</h3>
 
-                          <div class="box-tools pull-right">
-                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
-                            </button>
-                            <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-                          </div>
-                        </div>
-                        <div class="box-body">
-                          <div class="chart">
-                            <canvas id="collected_files" style="height:250px"></canvas>
-                          </div>
-                        </div>
-                        <!-- /.box-body -->
+                      <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
+                        </button>
+                        <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
                       </div>
-                      <!-- /.box -->
-                    </div>  
-                    <div class="col-lg-6">
-                      <!-- LINE CHART -->
-                      <div class="box box-default">
-                        <div class="box-header with-border">
-                          <h3 class="box-title">Collected hours</h3>
+                    </div>
+                    <div class="box-body">
+                      <div class="chart">
+                        <canvas id="collected_files" style="height:250px"></canvas>
+                      </div>
+                    </div>
+                    <!-- /.box-body -->
+                  </div>
+                  <!-- /.box -->
+                </div>
+                <div class="col-lg-6">
+                  <!-- LINE CHART -->
+                  <div class="box box-default">
+                    <div class="box-header with-border">
+                      <h3 class="box-title">Collected hours</h3>
 
-                          <div class="box-tools pull-right">
-                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
-                            </button>
-                            <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-                          </div>
-                        </div>
-                        <div class="box-body">
-                          <div class="chart">
-                            <canvas id="collected_hours" style="height:250px"></canvas>
-                          </div>
-                        </div>
-                        <!-- /.box-body -->
+                      <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
+                        </button>
+                        <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
                       </div>
-                      <!-- /.box -->
-                    </div>                                   
-                </div>              
+                    </div>
+                    <div class="box-body">
+                      <div class="chart">
+                        <canvas id="collected_hours" style="height:250px"></canvas>
+                      </div>
+                    </div>
+                    <!-- /.box-body -->
+                  </div>
+                  <!-- /.box -->
+                </div>
               </div>
-            </div>        
+            </div>
+          </div>
         </div>
-        </div>
+      </div>
       <!-- /.row-->
       <!-- row down-->
       <div class="row">
@@ -226,21 +185,21 @@
             </div>
             <!-- /.box-body -->
           </div>
-          <!-- /.box -->        
-        </div>        
-      </div> 
-      <!-- /.row--> 
+          <!-- /.box -->
+        </div>
+      </div>
+      <!-- /.row-->
 
     </section>
     <!-- /.content -->
   </div>
-  
+
   <!-- /.content-wrapper -->
   <footer class="main-footer">
     <div class="pull-right hidden-xs">
       <b>Version</b> 1.0.0
     </div>
-    <strong>Copyright &copy; 2019 </strong> 
+    <strong>Copyright &copy; 2019 </strong>
   </footer>
   <!-- Control Sidebar -->
   <aside class="control-sidebar control-sidebar-dark">
@@ -281,298 +240,298 @@
 <script src="static/bower_components/morris.js/morris.min.js"></script>
 
 <script>
-  $(function () {
-    //Date range as a button
-    $('#daterange-btn').daterangepicker(
-      {
-        ranges   : {
-          'Today'       : [moment(), moment()],
-          'Yesterday'   : [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-          'Last 7 Days' : [moment().subtract(6, 'days'), moment()],
-          'Last 30 Days': [moment().subtract(29, 'days'), moment()],
-          'This Month'  : [moment().startOf('month'), moment().endOf('month')],
-          'Last Month'  : [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
-        },
-        startDate: moment().subtract(29, 'days'),
-        endDate  : moment()
-      },
-      function (start, end) {
-        $('#daterange-btn span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'))
-      }
-    );
-
-    let data = {{ data_json|safe }};
-
-    /* ChartJS
-     * -------
-     * Here we will create a few charts using ChartJS
-     */      
-   
-    //-------------
-    //- LINE CHART DATA-
-    //--------------
-    // Get context with jQuery - using jQuery's .get() method.
-    let CollectedFileCanvas          = $('#collected_files').get(0).getContext('2d');
-    // This will get the first returned node in the jQuery collection.      
-    let CollectedFileChart                = new Chart(CollectedFileCanvas);
-
-    let CollectedFileChartDatasets = [];
-
-    Object.entries(data.collected_files).forEach(entry => {
-        let key = entry[0];
-        let value = entry[1];
-        //use key and value here
-        CollectedFileChartDatasets.push(
+    $(function () {
+        //Date range as a button
+        $('#daterange-btn').daterangepicker(
             {
-                label               : key,
-                fillColor           : 'rgba(0,192,239,0.9)',
-                strokeColor         : 'rgba(0,192,239,0.8)',
-                pointColor          : '#00c0ef',
-                pointStrokeColor    : 'rgba(0,192,239,1)',
-                pointHighlightFill  : '#00c0ef',
-                pointHighlightStroke: 'rgba(0,192,239,1)',
-                data                : value
+                ranges   : {
+                    'Today'       : [moment(), moment()],
+                    'Yesterday'   : [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                    'Last 7 Days' : [moment().subtract(6, 'days'), moment()],
+                    'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                    'This Month'  : [moment().startOf('month'), moment().endOf('month')],
+                    'Last Month'  : [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                },
+                startDate: moment().subtract(29, 'days'),
+                endDate  : moment()
+            },
+            function (start, end) {
+                $('#daterange-btn span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'))
             }
-        )
-    });
+        );
 
-    let CollectedFileChartData = {
-        labels: data.label_dates,
-        datasets: CollectedFileChartDatasets
-    };
+        let data = {{ data_json|safe }};
 
-    let CollectedFileChartChartOptions = {
-      //Boolean - If we should show the scale at all
-      showScale               : true,
-      //Boolean - Whether grid lines are shown across the chart
-      scaleShowGridLines      : false,
-      //String - Colour of the grid lines
-      scaleGridLineColor      : 'rgba(0,0,0,.05)',
-      //Number - Width of the grid lines
-      scaleGridLineWidth      : 1,
-      //Boolean - Whether to show horizontal lines (except X axis)
-      scaleShowHorizontalLines: true,
-      //Boolean - Whether to show vertical lines (except Y axis)
-      scaleShowVerticalLines  : true,
-      //Boolean - Whether the line is curved between points
-      bezierCurve             : true,
-      //Number - Tension of the bezier curve between points
-      bezierCurveTension      : 0.3,
-      //Boolean - Whether to show a dot for each point
-      pointDot                : false,
-      //Number - Radius of each point dot in pixels
-      pointDotRadius          : 4,
-      //Number - Pixel width of point dot stroke
-      pointDotStrokeWidth     : 1,
-      //Number - amount extra to add to the radius to cater for hit detection outside the drawn point
-      pointHitDetectionRadius : 20,
-      //Boolean - Whether to show a stroke for datasets
-      datasetStroke           : true,
-      //Number - Pixel width of dataset stroke
-      datasetStrokeWidth      : 2,
-      //Boolean - Whether to fill the dataset with a color
-      datasetFill             : true,
-      //String - A legend template
-      maintainAspectRatio     : true,
-      //Boolean - whether to make the chart responsive to window resizing
-      responsive              : true
-    };
-    CollectedFileChartChartOptions.datasetFill = false;
-    CollectedFileChart.Line(CollectedFileChartData, CollectedFileChartChartOptions);
-      
-    //-------------
-    //- LINE CHART_1 DATA-
-    //--------------      
-    // Get context with jQuery - using jQuery's .get() method.
-    let CollectedHourChartCanvas          = $('#collected_hours').get(0).getContext('2d')
-    // This will get the first returned node in the jQuery collection.      
-    let CollectedHourChart                = new Chart(CollectedHourChartCanvas);
+        /* ChartJS
+         * -------
+         * Here we will create a few charts using ChartJS
+         */
 
-    let CollectedHourChartDatasets = [];
+        //-------------
+        //- LINE CHART DATA-
+        //--------------
+        // Get context with jQuery - using jQuery's .get() method.
+        let CollectedFileCanvas          = $('#collected_files').get(0).getContext('2d');
+        // This will get the first returned node in the jQuery collection.
+        let CollectedFileChart                = new Chart(CollectedFileCanvas);
 
-    Object.entries(data.collected_hours).forEach(entry => {
-        let key = entry[0];
-        let value = entry[1];
-        //use key and value here
-        CollectedHourChartDatasets.push(
+        let CollectedFileChartDatasets = [];
+
+        Object.entries(data.collected_files).forEach(entry => {
+            let key = entry[0];
+            let value = entry[1];
+            //use key and value here
+            CollectedFileChartDatasets.push(
+                {
+                    label               : key,
+                    fillColor           : 'rgba(0,192,239,0.9)',
+                    strokeColor         : 'rgba(0,192,239,0.8)',
+                    pointColor          : '#00c0ef',
+                    pointStrokeColor    : 'rgba(0,192,239,1)',
+                    pointHighlightFill  : '#00c0ef',
+                    pointHighlightStroke: 'rgba(0,192,239,1)',
+                    data                : value
+                }
+            )
+        });
+
+        let CollectedFileChartData = {
+            labels: data.label_dates,
+            datasets: CollectedFileChartDatasets
+        };
+
+        let CollectedFileChartChartOptions = {
+            //Boolean - If we should show the scale at all
+            showScale               : true,
+            //Boolean - Whether grid lines are shown across the chart
+            scaleShowGridLines      : false,
+            //String - Colour of the grid lines
+            scaleGridLineColor      : 'rgba(0,0,0,.05)',
+            //Number - Width of the grid lines
+            scaleGridLineWidth      : 1,
+            //Boolean - Whether to show horizontal lines (except X axis)
+            scaleShowHorizontalLines: true,
+            //Boolean - Whether to show vertical lines (except Y axis)
+            scaleShowVerticalLines  : true,
+            //Boolean - Whether the line is curved between points
+            bezierCurve             : true,
+            //Number - Tension of the bezier curve between points
+            bezierCurveTension      : 0.3,
+            //Boolean - Whether to show a dot for each point
+            pointDot                : false,
+            //Number - Radius of each point dot in pixels
+            pointDotRadius          : 4,
+            //Number - Pixel width of point dot stroke
+            pointDotStrokeWidth     : 1,
+            //Number - amount extra to add to the radius to cater for hit detection outside the drawn point
+            pointHitDetectionRadius : 20,
+            //Boolean - Whether to show a stroke for datasets
+            datasetStroke           : true,
+            //Number - Pixel width of dataset stroke
+            datasetStrokeWidth      : 2,
+            //Boolean - Whether to fill the dataset with a color
+            datasetFill             : true,
+            //String - A legend template
+            maintainAspectRatio     : true,
+            //Boolean - whether to make the chart responsive to window resizing
+            responsive              : true
+        };
+        CollectedFileChartChartOptions.datasetFill = false;
+        CollectedFileChart.Line(CollectedFileChartData, CollectedFileChartChartOptions);
+
+        //-------------
+        //- LINE CHART_1 DATA-
+        //--------------
+        // Get context with jQuery - using jQuery's .get() method.
+        let CollectedHourChartCanvas          = $('#collected_hours').get(0).getContext('2d')
+        // This will get the first returned node in the jQuery collection.
+        let CollectedHourChart                = new Chart(CollectedHourChartCanvas);
+
+        let CollectedHourChartDatasets = [];
+
+        Object.entries(data.collected_hours).forEach(entry => {
+            let key = entry[0];
+            let value = entry[1];
+            //use key and value here
+            CollectedHourChartDatasets.push(
+                {
+                    label               : key,
+                    fillColor           : 'rgba(0,192,239,0.9)',
+                    strokeColor         : 'rgba(0,192,239,0.8)',
+                    pointColor          : '#00c0ef',
+                    pointStrokeColor    : 'rgba(0,192,239,1)',
+                    pointHighlightFill  : '#00c0ef',
+                    pointHighlightStroke: 'rgba(0,192,239,1)',
+                    data                : value
+                }
+            )
+        });
+
+        let CollectedHourChartData = {
+            labels: data.label_dates,
+            datasets: CollectedHourChartDatasets
+        };
+
+        var CollectedHourChartOptions = {
+            //Boolean - If we should show the scale at all
+            showScale               : true,
+            //Boolean - Whether grid lines are shown across the chart
+            scaleShowGridLines      : false,
+            //String - Colour of the grid lines
+            scaleGridLineColor      : 'rgba(0,0,0,.05)',
+            //Number - Width of the grid lines
+            scaleGridLineWidth      : 1,
+            //Boolean - Whether to show horizontal lines (except X axis)
+            scaleShowHorizontalLines: true,
+            //Boolean - Whether to show vertical lines (except Y axis)
+            scaleShowVerticalLines  : true,
+            //Boolean - Whether the line is curved between points
+            bezierCurve             : true,
+            //Number - Tension of the bezier curve between points
+            bezierCurveTension      : 0.3,
+            //Boolean - Whether to show a dot for each point
+            pointDot                : false,
+            //Number - Radius of each point dot in pixels
+            pointDotRadius          : 4,
+            //Number - Pixel width of point dot stroke
+            pointDotStrokeWidth     : 1,
+            //Number - amount extra to add to the radius to cater for hit detection outside the drawn point
+            pointHitDetectionRadius : 20,
+            //Boolean - Whether to show a stroke for datasets
+            datasetStroke           : true,
+            //Number - Pixel width of dataset stroke
+            datasetStrokeWidth      : 2,
+            //Boolean - Whether to fill the dataset with a color
+            datasetFill             : true,
+            //String - A legend template
+            maintainAspectRatio     : true,
+            //Boolean - whether to make the chart responsive to window resizing
+            responsive              : true
+        };
+        CollectedHourChartOptions.datasetFill = false;
+        CollectedHourChart.Line(CollectedHourChartData, CollectedHourChartOptions)
+
+        //-------------
+        //- AREA CHART DATA-
+        //-------------
+        // Get context with jQuery - using jQuery's .get() method.
+        var areaChartCanvas = $('#areaChart').get(0).getContext('2d')
+        // This will get the first returned node in the jQuery collection.
+        var areaChart       = new Chart(areaChartCanvas)
+
+        var areaChartData = {
+            labels  : ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+            datasets: [
+                {
+                    label               : 'Files',
+                    fillColor           : 'rgba(0,192,239,0.9)',
+                    strokeColor         : 'rgba(0,192,239,0.8)',
+                    pointColor          : '#00c0ef',
+                    pointStrokeColor    : 'rgba(0,192,239,1)',
+                    pointHighlightFill  : '#00c0ef',
+                    pointHighlightStroke: 'rgba(0,192,239,1)',
+                    data                : [120, 150, 180, 210, 300, 505, 640]
+                },
+                {
+                    label               : 'Hours',
+                    fillColor           : 'rgba(193,199,209,0.9)',
+                    strokeColor         : 'rgba(193,199,209,0.8)',
+                    pointColor          : '#c1c7d1',
+                    pointStrokeColor    : 'rgba(193,199,209,1)',
+                    pointHighlightFill  : '#c1c7d1',
+                    pointHighlightStroke: 'rgba(193,199,209,1)',
+                    data                : [100, 120, 140, 190, 250, 350, 500]
+                }
+            ]
+        };
+
+        var areaChartOptions = {
+            //Boolean - If we should show the scale at all
+            showScale               : true,
+            //Boolean - Whether grid lines are shown across the chart
+            scaleShowGridLines      : false,
+            //String - Colour of the grid lines
+            scaleGridLineColor      : 'rgba(0,0,0,.05)',
+            //Number - Width of the grid lines
+            scaleGridLineWidth      : 1,
+            //Boolean - Whether to show horizontal lines (except X axis)
+            scaleShowHorizontalLines: true,
+            //Boolean - Whether to show vertical lines (except Y axis)
+            scaleShowVerticalLines  : true,
+            //Boolean - Whether the line is curved between points
+            bezierCurve             : true,
+            //Number - Tension of the bezier curve between points
+            bezierCurveTension      : 0.3,
+            //Boolean - Whether to show a dot for each point
+            pointDot                : false,
+            //Number - Radius of each point dot in pixels
+            pointDotRadius          : 4,
+            //Number - Pixel width of point dot stroke
+            pointDotStrokeWidth     : 1,
+            //Number - amount extra to add to the radius to cater for hit detection outside the drawn point
+            pointHitDetectionRadius : 20,
+            //Boolean - Whether to show a stroke for datasets
+            datasetStroke           : true,
+            //Number - Pixel width of dataset stroke
+            datasetStrokeWidth      : 2,
+            //Boolean - Whether to fill the dataset with a color
+            datasetFill             : true,
+            //Boolean - whether to maintain the starting aspect ratio or not when responsive, if set to false, will take up entire container
+            maintainAspectRatio     : true,
+            //Boolean - whether to make the chart responsive to window resizing
+            responsive              : true
+        }
+
+        //Create the Area chart
+        areaChart.Line(areaChartData, areaChartOptions)
+
+        //-------------
+        //- PIE CHART -
+        //-------------
+        // Get context with jQuery - using jQuery's .get() method.
+        var pieChartCanvas = $('#pieChart').get(0).getContext('2d')
+        var pieChart       = new Chart(pieChartCanvas)
+        var PieData        = [
             {
-                label               : key,
-                fillColor           : 'rgba(0,192,239,0.9)',
-                strokeColor         : 'rgba(0,192,239,0.8)',
-                pointColor          : '#00c0ef',
-                pointStrokeColor    : 'rgba(0,192,239,1)',
-                pointHighlightFill  : '#00c0ef',
-                pointHighlightStroke: 'rgba(0,192,239,1)',
-                data                : value
+                value    : 300,
+                color    : '#3b8bba',
+                highlight: '#3b8bba',
+                label    : 'Storage'
+            },
+            {
+                value    : 100,
+                color    : '#d2d6de',
+                highlight: '#d2d6de',
+                label    : 'Available'
             }
-        )
-    });
+        ]
+        var pieOptions     = {
+            //Boolean - Whether we should show a stroke on each segment
+            segmentShowStroke    : true,
+            //String - The colour of each segment stroke
+            segmentStrokeColor   : '#fff',
+            //Number - The width of each segment stroke
+            segmentStrokeWidth   : 2,
+            //Number - The percentage of the chart that we cut out of the middle
+            percentageInnerCutout: 50, // This is 0 for Pie charts
+            //Number - Amount of animation steps
+            animationSteps       : 100,
+            //String - Animation easing effect
+            animationEasing      : 'easeOutBounce',
+            //Boolean - Whether we animate the rotation of the Doughnut
+            animateRotate        : true,
+            //Boolean - Whether we animate scaling the Doughnut from the centre
+            animateScale         : false,
+            //Boolean - whether to make the chart responsive to window resizing
+            responsive           : true,
+            // Boolean - whether to maintain the starting aspect ratio or not when responsive, if set to false, will take up entire container
+            maintainAspectRatio  : true,
+        }
+        //Create pie or douhnut chart
+        // You can switch between pie and douhnut using the method below.
+        pieChart.Doughnut(PieData, pieOptions)
 
-    let CollectedHourChartData = {
-        labels: data.label_dates,
-        datasets: CollectedHourChartDatasets
-    };
-
-    var CollectedHourChartOptions = {
-      //Boolean - If we should show the scale at all
-      showScale               : true,
-      //Boolean - Whether grid lines are shown across the chart
-      scaleShowGridLines      : false,
-      //String - Colour of the grid lines
-      scaleGridLineColor      : 'rgba(0,0,0,.05)',
-      //Number - Width of the grid lines
-      scaleGridLineWidth      : 1,
-      //Boolean - Whether to show horizontal lines (except X axis)
-      scaleShowHorizontalLines: true,
-      //Boolean - Whether to show vertical lines (except Y axis)
-      scaleShowVerticalLines  : true,
-      //Boolean - Whether the line is curved between points
-      bezierCurve             : true,
-      //Number - Tension of the bezier curve between points
-      bezierCurveTension      : 0.3,
-      //Boolean - Whether to show a dot for each point
-      pointDot                : false,
-      //Number - Radius of each point dot in pixels
-      pointDotRadius          : 4,
-      //Number - Pixel width of point dot stroke
-      pointDotStrokeWidth     : 1,
-      //Number - amount extra to add to the radius to cater for hit detection outside the drawn point
-      pointHitDetectionRadius : 20,
-      //Boolean - Whether to show a stroke for datasets
-      datasetStroke           : true,
-      //Number - Pixel width of dataset stroke
-      datasetStrokeWidth      : 2,
-      //Boolean - Whether to fill the dataset with a color
-      datasetFill             : true,
-      //String - A legend template
-      maintainAspectRatio     : true,
-      //Boolean - whether to make the chart responsive to window resizing
-      responsive              : true
-    };
-    CollectedHourChartOptions.datasetFill = false;
-    CollectedHourChart.Line(CollectedHourChartData, CollectedHourChartOptions)
-
-    //-------------
-    //- AREA CHART DATA-
-    //-------------      
-    // Get context with jQuery - using jQuery's .get() method.
-    var areaChartCanvas = $('#areaChart').get(0).getContext('2d')
-    // This will get the first returned node in the jQuery collection.
-    var areaChart       = new Chart(areaChartCanvas)
-
-    var areaChartData = {
-      labels  : ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
-      datasets: [        
-        {
-          label               : 'Files',
-          fillColor           : 'rgba(0,192,239,0.9)',
-          strokeColor         : 'rgba(0,192,239,0.8)',
-          pointColor          : '#00c0ef',
-          pointStrokeColor    : 'rgba(0,192,239,1)',
-          pointHighlightFill  : '#00c0ef',
-          pointHighlightStroke: 'rgba(0,192,239,1)',
-          data                : [120, 150, 180, 210, 300, 505, 640]
-        },
-        {
-          label               : 'Hours',
-          fillColor           : 'rgba(193,199,209,0.9)',
-          strokeColor         : 'rgba(193,199,209,0.8)',
-          pointColor          : '#c1c7d1',
-          pointStrokeColor    : 'rgba(193,199,209,1)',
-          pointHighlightFill  : '#c1c7d1',
-          pointHighlightStroke: 'rgba(193,199,209,1)',
-          data                : [100, 120, 140, 190, 250, 350, 500]
-        }          
-      ]
-    };
-
-    var areaChartOptions = {
-      //Boolean - If we should show the scale at all
-      showScale               : true,
-      //Boolean - Whether grid lines are shown across the chart
-      scaleShowGridLines      : false,
-      //String - Colour of the grid lines
-      scaleGridLineColor      : 'rgba(0,0,0,.05)',
-      //Number - Width of the grid lines
-      scaleGridLineWidth      : 1,
-      //Boolean - Whether to show horizontal lines (except X axis)
-      scaleShowHorizontalLines: true,
-      //Boolean - Whether to show vertical lines (except Y axis)
-      scaleShowVerticalLines  : true,
-      //Boolean - Whether the line is curved between points
-      bezierCurve             : true,
-      //Number - Tension of the bezier curve between points
-      bezierCurveTension      : 0.3,
-      //Boolean - Whether to show a dot for each point
-      pointDot                : false,
-      //Number - Radius of each point dot in pixels
-      pointDotRadius          : 4,
-      //Number - Pixel width of point dot stroke
-      pointDotStrokeWidth     : 1,
-      //Number - amount extra to add to the radius to cater for hit detection outside the drawn point
-      pointHitDetectionRadius : 20,
-      //Boolean - Whether to show a stroke for datasets
-      datasetStroke           : true,
-      //Number - Pixel width of dataset stroke
-      datasetStrokeWidth      : 2,
-      //Boolean - Whether to fill the dataset with a color
-      datasetFill             : true,
-      //Boolean - whether to maintain the starting aspect ratio or not when responsive, if set to false, will take up entire container
-      maintainAspectRatio     : true,
-      //Boolean - whether to make the chart responsive to window resizing
-      responsive              : true
-    }
-
-    //Create the Area chart
-    areaChart.Line(areaChartData, areaChartOptions)
-      
-    //-------------
-    //- PIE CHART -
-    //-------------
-    // Get context with jQuery - using jQuery's .get() method.
-    var pieChartCanvas = $('#pieChart').get(0).getContext('2d')
-    var pieChart       = new Chart(pieChartCanvas)
-    var PieData        = [
-      {
-        value    : 300,
-        color    : '#3b8bba',
-        highlight: '#3b8bba',
-        label    : 'Storage'
-      },
-      {
-        value    : 100,
-        color    : '#d2d6de',
-        highlight: '#d2d6de',
-        label    : 'Available'
-      }
-    ]
-    var pieOptions     = {
-      //Boolean - Whether we should show a stroke on each segment
-      segmentShowStroke    : true,
-      //String - The colour of each segment stroke
-      segmentStrokeColor   : '#fff',
-      //Number - The width of each segment stroke
-      segmentStrokeWidth   : 2,
-      //Number - The percentage of the chart that we cut out of the middle
-      percentageInnerCutout: 50, // This is 0 for Pie charts
-      //Number - Amount of animation steps
-      animationSteps       : 100,
-      //String - Animation easing effect
-      animationEasing      : 'easeOutBounce',
-      //Boolean - Whether we animate the rotation of the Doughnut
-      animateRotate        : true,
-      //Boolean - Whether we animate scaling the Doughnut from the centre
-      animateScale         : false,
-      //Boolean - whether to make the chart responsive to window resizing
-      responsive           : true,
-      // Boolean - whether to maintain the starting aspect ratio or not when responsive, if set to false, will take up entire container
-      maintainAspectRatio  : true,
-    }
-    //Create pie or douhnut chart
-    // You can switch between pie and douhnut using the method below.
-    pieChart.Doughnut(PieData, pieOptions)      
-      
-  })
+    })
 
 </script>
 </body>

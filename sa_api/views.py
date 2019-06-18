@@ -8,6 +8,7 @@ import requests
 import MySQLdb
 import tempfile
 import random
+import shutil
 import numpy as np
 import sa_api.AMCVitalReader as vr
 from .forms import UploadFileForm, UploadReviewForm
@@ -714,7 +715,6 @@ def dashboard(request):
         query += " FROM summary_by_file WHERE begin_date BETWEEN '%s' AND '%s' GROUP BY dt, rosette" % (begin_date, end_date)
         cursor.execute(query)
         rows = cursor.fetchall()
-        db.close()
 
         label_dates = set()
         for row in rows:
@@ -738,6 +738,35 @@ def dashboard(request):
                 data['total_hours'][row[1]] = [0] * len(label_dates)
             data['collected_files'][row[1]][label_dates_dict[str(row[0])]] = row[2]
             data['collected_hours'][row[1]][label_dates_dict[str(row[0])]] = float(row[3])/3600
+
+        query = 'SELECT a.dt, COUNT(*) num_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION FROM '
+        query += "(SELECT DISTINCT DATE(begin_date) dt FROM summary_by_file WHERE begin_date >= '%s') AS a" % str(since)
+        query += " LEFT JOIN summary_by_file AS b ON a.dt >= DATE(b.begin_date) GROUP BY a.dt ORDER BY a.dt"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        db.close()
+
+        data['accumulative'] = dict()
+        data['accumulative']['label_dates'] = list()
+        data['accumulative']['collected_hours'] = list()
+        data['accumulative']['collected_files'] = list()
+        for row in rows:
+            data['accumulative']['label_dates'].append(str(row[0]))
+            data['accumulative']['collected_files'].append(row[1])
+            data['accumulative']['collected_hours'].append(int(row[2]/3600))
+
+        data['storage_usage'] = dict()
+        data['storage_usage']['labels'] = ['Main Storage', 'NAS1 (Vol1)']
+        storages = list()
+        storages.append(shutil.disk_usage("/mnt/Data"))
+        storages.append(shutil.disk_usage("/mnt/NAS1"))
+        total = list()
+        free = list()
+        for storage in storages:
+            total.append(storage[0] // 2**30)
+            free.append(storage[2] // 2**30)
+        data['storage_usage']['total'] = total
+        data['storage_usage']['free'] = free
 
         template = loader.get_template('dashboard_chart.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_trend')
