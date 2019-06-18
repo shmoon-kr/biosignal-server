@@ -788,8 +788,8 @@ def dashboard(request):
 def summary_rosette(request):
 
     rosette = request.GET.get('rosette')
-    dt_from = request.GET.get('dt_from')
-    dt_to = request.GET.get('dt_to')
+    dt_from = request.GET.get('begin_date')
+    dt_to = request.GET.get('end_date')
 
     if dt_from is None:
         dt_from = datetime.date.today() - datetime.timedelta(days=7)

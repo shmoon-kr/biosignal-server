@@ -398,6 +398,10 @@ class vital_reader(object):
                             rec.infolen = int.from_bytes(packet_data.read(2), byteorder="little", signed=False)
                             rec.dt = struct.unpack('<d', packet_data.read(8))[0]
                             rec.tid = int.from_bytes(packet_data.read(2), byteorder="little", signed=False)
+#                            print('tid', rec.tid)
+#                            print('len track', len(self.track))
+#                            for track in self.track:
+#                                print(track)
 #                            print ("tid:%d, did:%d"%(rec.tid, self.track[rec.tid].did))
                             if True if track_list == [] or self.track[rec.tid].did == 0 else [self.device[self.track[rec.tid].did].typename, self.track[rec.tid].name] in track_list:
                                 if self.track[rec.tid].did == "":
