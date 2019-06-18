@@ -174,13 +174,11 @@ def convert_summary_data(col_list, data, by):
             tmp_row.append("%s </br> %s" % (row[col_dict["begin_date"]], row[col_dict["end_date"]]))
 
         if by == 'file':
-            tmp_row.append('<a href="/preview?rosette=%s&bed=%s&begin_date=%s&end_date=%s">Preview</a>' % (
-                row[col_dict["rosette"]], row[col_dict["bed"]], row[col_dict["begin_date"]], row[col_dict["end_date"]]
-            ))
+            begin_date = row[col_dict["begin_date"]]
+            file_path = os.path.join('/mnt/Data/CloudStation', row[col_dict["bed"]], begin_date.strftime('%y%m%d'))
+            file_name = '%s_%s.vital' % (row[col_dict["bed"]], begin_date.strftime('%y%m%d_%H%M%S'))
+            tmp_row.append('<a href="/review?file=%s">Review</a>' % file_name)
             if settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME'] == 'AMC_Anesthesiology':
-                begin_date = row[col_dict["begin_date"]]
-                file_path = os.path.join('/mnt/Data/CloudStation', row[col_dict["bed"]], begin_date.strftime('%y%m%d'))
-                file_name = '%s_%s.vital' % (row[col_dict["bed"]], begin_date.strftime('%y%m%d_%H%M%S'))
                 if os.path.isfile(os.path.join(file_path, file_name)):
                     tmp_row[-1] += ' </br> <a href="/download_vital_file?bed=%s&begin_date=%s"> vital </a>' % (
                         row[col_dict["bed"]], str(begin_date)
@@ -582,12 +580,16 @@ def download_csv_device(request):
 
 
 @csrf_exempt
-def preview(request):
+def review(request):
 
-    bed = request.GET.get("bed")
-    rosette = request.GET.get("rosette")
-    begin_date = request.GET.get("begin_date")
-    end_date = request.GET.get("end_date")
+    file = request.GET.get("file")
+
+    record = get_object_or_404(FileRecorded, file_basename=file)
+
+    bed = record.bed.name
+    rosette = record.bed.room.name
+    begin_date = record.begin_date.astimezone(tz)
+    end_date = record.end_date.astimezone(tz)
 
     table_name_info = get_table_name_info()
     table_col_list, table_val_list = get_table_col_val_list()
@@ -606,7 +608,7 @@ def preview(request):
 
         for device, table in table_name_info.items():
             query = "SELECT dt, %s FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
-                    (', '.join(table_col_list[device]), table, rosette, bed, begin_date, end_date)
+                    (', '.join(table_col_list[device]), table, rosette, bed, str(begin_date), str(end_date))
             cursor.execute(query)
             query_results = cursor.fetchall()
             if len(query_results):
@@ -641,7 +643,7 @@ def preview(request):
         context['data'] = chart_data
         context['bed'] = bed
         context['events'] = events
-        context['date'] = datetime.datetime.strptime(begin_date, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        context['date'] = begin_date.strftime('%Y-%m-%d')
         template = loader.get_template('preview.html')
         return HttpResponse(template.render(context, request))
     else:

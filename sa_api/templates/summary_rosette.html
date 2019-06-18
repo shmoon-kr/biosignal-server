@@ -180,7 +180,7 @@
                           <tbody>
                           {% for file in val.files %}
                             <tr>
-                              <td>{{ file.1 }}</td>
+                              <td><a href="/review?file={{ file.1 }}">{{ file.1 }}</a></td>
                               <td>{{ file.2 }}</td>
                               <td>{{ file.3 }}</td>
                               <td>{{ file.4 }}</td>
