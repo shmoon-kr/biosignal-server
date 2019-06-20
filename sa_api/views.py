@@ -10,7 +10,7 @@ import tempfile
 import random
 import shutil
 import numpy as np
-import sa_api.AMCVitalReader as vr
+import sa_api.VitalFileHandler as VFH
 from .forms import UploadFileForm, UploadReviewForm
 from pyfluent.client import FluentSender
 from ftplib import FTP
@@ -378,11 +378,10 @@ def db_upload_main_numeric(recorded, method=0, db_writing=True):
     table_name_info = get_table_name_info(main_only=False)
 
     read_start = datetime.datetime.now()
-    vr_file = vr.vital_reader(recorded.file_path)
-    vr_file.read_header()
-    vr_file.read_packets(skip_wave=True)
-    raw_data = vr_file.export_db_data([*table_name_info])
-    del vr_file
+    handle = VFH.VitalFileHandler(recorded.file_path)
+    raw_data = handle.export_number(table_name_info.keys())
+    len_raw_data = len(raw_data)
+    del handle
 
     if not len(raw_data):
         raise ValueError('No number data was found in vital file.')
@@ -408,6 +407,7 @@ def db_upload_main_numeric(recorded, method=0, db_writing=True):
         else:
             tmp_aligned[ri[2]] = ri[3]
     aligned_data.append(tmp_aligned)
+    del raw_data
 
     file_read_execution_time = datetime.datetime.now() - read_start
 
@@ -417,7 +417,7 @@ def db_upload_main_numeric(recorded, method=0, db_writing=True):
         else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
     log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
     log_dict['FILE_NAME'] = recorded.file_basename
-    log_dict['NUM_RECORDS_FILE'] = len(raw_data)
+    log_dict['NUM_RECORDS_FILE'] = len_raw_data
     log_dict['NUM_RECORDS_ALIGNED'] = len(aligned_data)
     log_dict['READING_EXECUTION_TIME'] = str(file_read_execution_time)
     fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
@@ -1018,12 +1018,8 @@ def decompose_vital_file(file_name, decomposed_path):
     device_abb = get_device_abb()
 
     read_start = datetime.datetime.now()
-    vr_file = vr.vital_reader(file_name)
-    vr_file.read_header()
-    vr_file.read_packets()
-    raw_data_number = vr_file.export_db_data()
-    raw_data_wave = vr_file.export_db_data_wave()
-    del vr_file
+    handle = VFH.VitalFileHandler(file_name)
+    raw_data_number = handle.export_number()
 
     if not len(raw_data_number):
         raise ValueError('No number data was found in vital file.')
@@ -1059,7 +1055,7 @@ def decompose_vital_file(file_name, decomposed_path):
         val_number[device] = list()
 
     for i, ad in enumerate(aligned_data):
-        timestamp_number[ad['device']].append(datetime.datetime.fromtimestamp(ad['timestamp']))
+        timestamp_number[ad['device']].append(ad['timestamp'])
         tmp_val_list = [None] * len(column_info[ad['device']])
         for key, val in ad.items():
             if key not in ('device', 'timestamp'):
@@ -1077,7 +1073,7 @@ def decompose_vital_file(file_name, decomposed_path):
                 os.makedirs(decomposed_path)
             file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s.npz' % device_abb[device])
             np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
-                                timestamp=np.array(timestamp_number[device], dtype=dt_datetime),
+                                timestamp=np.array(timestamp_number[device], dtype=np.float64),
                                 number=np.array(val_number[device], dtype=np.float32))
             r_message = "OK"
         else:
@@ -1086,20 +1082,16 @@ def decompose_vital_file(file_name, decomposed_path):
         r_number.append([device, r_message, file_path, len(timestamp_number[device]), len(column_info[device])])
 
     r_wave = list()
-    for wave, val in raw_data_wave.items():
-        if wave[0] in device_abb.keys():
+
+    for track_info in handle.get_track_info():
+        if track_info[0] in device_abb.keys() and track_info[2] in (1, 6):
             if not os.path.exists(decomposed_path):
                 os.makedirs(decomposed_path)
-            val_ts = list()
-            for i in range(len(val['timestamp'])):
-                val_ts.append(datetime.datetime.fromtimestamp(val['timestamp'][i]))
+            dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
             file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s_%s.npz' % (device_abb[wave[0]], wave[1]))
-            np.savez_compressed(file_path, timestamp=np.array(val['timestamp'], dtype=dt_datetime),
-                                psize=np.array(val['psize'], dtype=np.int32), data=np.array(val['data'], dtype=np.float32))
+            np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val);
             r_message = "OK"
-        else:
-            r_message = "Device information does not exists."
-        r_wave.append([wave[0], wave[1], r_message, file_path, len(val['timestamp']), val['srate'], max(val['psize'])])
+            r_wave.append([track_info[0], track_info[1], r_message, file_path, len(dt), track_info[3]])
 
     return r_number, r_wave
 
