@@ -209,7 +209,6 @@ class WaveInfoFile(models.Model):
     channel_name = models.CharField(max_length=64)
     file_path = models.CharField(max_length=256, blank=True)
     sampling_rate = models.FloatField(null=True)
-    max_psize = models.IntegerField(null=True)
     num_packets = models.IntegerField(null=True)
 
     def __str__(self):

@@ -1090,8 +1090,7 @@ def decompose_vital_file(file_name, decomposed_path):
             dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
             file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s_%s.npz' % (device_abb[wave[0]], wave[1]))
             np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val);
-            r_message = "OK"
-            r_wave.append([track_info[0], track_info[1], r_message, file_path, len(dt), track_info[3]])
+            r_wave.append([track_info[0], track_info[1], file_path, len(dt), track_info[3]])
 
     return r_number, r_wave
 
@@ -1133,13 +1132,11 @@ def decompose_record(recorded):
             fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
         ninfo.save()
 
-
     for wave_npz in r_wave:
         winfo, _ = WaveInfoFile.objects.get_or_create(record=recorded, device_displayed_name=wave_npz[0], channel_name=wave_npz[1])
-        winfo.file_path = wave_npz[3]
-        winfo.num_packets = wave_npz[4]
-        winfo.sampling_rate = wave_npz[5]
-        winfo.max_psize = wave_npz[6]
+        winfo.file_path = wave_npz[2]
+        winfo.num_packets = wave_npz[3]
+        winfo.sampling_rate = wave_npz[4]
         winfo.save()
 
     return
