@@ -13,3 +13,4 @@ urllib3==1.24.1
 uWSGI==2.0.18
 numpy==1.16.1
 Pillow==6.0.0
+pandas==0.24.2

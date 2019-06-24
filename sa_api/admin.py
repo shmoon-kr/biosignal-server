@@ -3,7 +3,7 @@ from django.contrib.admin.widgets import AdminFileWidget
 from django.utils.translation import ugettext as _
 from django.utils.safestring import mark_safe
 from django.contrib import admin
-from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord, DeviceConfigItem, DeviceConfigPreset, DeviceConfigPresetBed, ManualInputEvent, ManualInputEventItem
+from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord, DeviceConfigItem, DeviceConfigPreset, DeviceConfigPresetBed, ManualInputEvent, ManualInputEventItem, DeviceAlias, ChannelAlias
 
 
 def parse_anesthesia_record(text):
@@ -241,7 +241,9 @@ class ReviewAdmin(admin.ModelAdmin):
 
 # Register your models here.
 admin.site.register(Device)
+admin.site.register(DeviceAlias)
 admin.site.register(Channel, ChannelAdmin)
+admin.site.register(ChannelAlias)
 admin.site.register(Room)
 admin.site.register(Bed, BedAdmin)
 admin.site.register(Client, ClientAdmin)

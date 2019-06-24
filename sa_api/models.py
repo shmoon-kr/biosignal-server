@@ -3,8 +3,12 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
+from pyfluent.client import FluentSender
+from sa_api.common import *
 import os
 import datetime
+import numpy as np
+import sa_api.VitalFileHandler as VFH
 
 # Create your models here.
 
@@ -19,12 +23,28 @@ class OverwriteStorage(FileSystemStorage):
 class Device(models.Model):
     dt_update = models.DateTimeField(auto_now=True)
     device_type = models.CharField(max_length=64, unique=True)
-    displayed_name = models.CharField(max_length=64, unique=True, null=True)
+    displayed_name = models.CharField(max_length=64, unique=True, null=True, default=None)
+    code = models.CharField(max_length=16, unique=True, null=True, default=None)
+    db_table_name = models.CharField(max_length=64, unique=True, null=True, default=None)
     is_main = models.BooleanField(default=False)
     use_custom_setting = models.BooleanField(default=False)
 
     def __str__(self):
         return self.displayed_name
+
+
+class DeviceAlias(models.Model):
+    dt_update = models.DateTimeField(auto_now=True)
+    alias = models.CharField(max_length=64, unique=True)
+    device = models.ForeignKey('Device', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return '%s -> %s' % (self.alias, self.device.displayed_name)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['alias'], name='idx_alias'),
+        ]
 
 
 class Room(models.Model):
@@ -172,6 +192,15 @@ class Channel(models.Model):
         return '%s, %s' % (self.device.device_type, self.name)
 
 
+class ChannelAlias(models.Model):
+    dt_update = models.DateTimeField(auto_now=True)
+    alias = models.CharField(max_length=64, unique=True)
+    channel = models.ForeignKey('Channel', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return '%s, %s -> %s' % (self.channel.device.displayed_name, self.alias, self.channel.abbreviation)
+
+
 class FileRecorded(models.Model):
     client = models.ForeignKey('Client', on_delete=models.SET_NULL, blank=True, null=True)
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
@@ -185,6 +214,139 @@ class FileRecorded(models.Model):
         (1, "migration"),
     )
     method = models.IntegerField(choices=METHOD_CHOICES, default=0)
+
+    def decompose_vital_file(self, decomposed_path):
+
+        timestamp_interval = 0.5
+        device_abb = get_device_abb()
+
+        read_start = datetime.datetime.now()
+        handle = VFH.VitalFileHandler(self.file_path)
+        raw_data_number = handle.export_number()
+
+        if not len(raw_data_number):
+            raise ValueError('No number data was found in vital file.')
+
+        def sort_by_time(val):
+            return val[:3]
+
+        raw_data_number.sort(key=sort_by_time)
+
+        aligned_data = list()
+        tmp_aligned = dict()
+        column_info = dict()
+        for i, ri in enumerate(raw_data_number):
+            if not ri[0] in column_info:
+                column_info[ri[0]] = {}
+            if not ri[2] in column_info[ri[0]]:
+                column_info[ri[0]][ri[2]] = len(column_info[ri[0]])
+            if not i:
+                tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
+            elif tmp_aligned['device'] != ri[0] or ri[1] - tmp_aligned['timestamp'] > timestamp_interval or ri[
+                2] in tmp_aligned:
+                aligned_data.append(tmp_aligned)
+                tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
+            else:
+                tmp_aligned[ri[2]] = ri[3]
+        aligned_data.append(tmp_aligned)
+
+        file_read_execution_time = datetime.datetime.now() - read_start
+        timestamp_number = dict()
+        val_number = dict()
+
+        for device in [*column_info]:
+            timestamp_number[device] = list()
+            val_number[device] = list()
+
+        for i, ad in enumerate(aligned_data):
+            timestamp_number[ad['device']].append(ad['timestamp'])
+            tmp_val_list = [None] * len(column_info[ad['device']])
+            for key, val in ad.items():
+                if key not in ('device', 'timestamp'):
+                    tmp_val_list[column_info[ad['device']][key]] = val
+            val_number[ad['device']].append(tmp_val_list)
+
+        r_number = list()
+
+        dt_datetime = np.dtype(datetime.datetime)
+        dt_str = np.dtype(str)
+
+        for device, cols in column_info.items():
+            if device in device_abb.keys():
+                if not os.path.exists(decomposed_path):
+                    os.makedirs(decomposed_path)
+                file_path = os.path.join(decomposed_path, os.path.splitext(self.file_basename))[0] + '_%s.npz' % device_abb[device]
+                np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
+                                    timestamp=np.array(timestamp_number[device], dtype=np.float64),
+                                    number=np.array(val_number[device], dtype=np.float32))
+                r_message = "OK"
+            else:
+                file_path = ''
+                r_message = "Device information does not exists."
+            r_number.append([device, r_message, file_path, len(timestamp_number[device]), len(column_info[device])])
+
+        r_wave = list()
+
+        for track_info in handle.get_track_info():
+            if track_info[0] in device_abb.keys() and track_info[2] in (1, 6):
+                print(track_info)
+                if not os.path.exists(decomposed_path):
+                    os.makedirs(decomposed_path)
+                dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
+                file_path = os.path.join(decomposed_path, os.path.splitext(self.file_basename)[0] + '_%s_%s.npz' % (
+                                         device_abb[track_info[0]], track_info[1]))
+                np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val);
+                r_wave.append([track_info[0], track_info[1], file_path, len(dt), track_info[3]])
+
+        return r_number, r_wave
+
+    def decompose(self):
+
+        table_name_info = get_table_name_info(main_only=False)
+        filename_split = self.file_basename.split('_')
+        decompose_path = os.path.join('raw_decomposed', filename_split[0], filename_split[1])
+        try:
+            r_number, r_wave = self.decompose_vital_file(decompose_path)
+        except Exception as e:
+            log_dict = dict()
+            log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
+                settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+            log_dict['FILE_PATH'] = self.file_path
+            log_dict['FILE_BASENAME'] = self.file_basename
+            log_dict['EXCEPTION'] = str(e)
+            log_dict['EVENT'] = 'An exception was raised while reading a vital file.'
+            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+            return
+
+        for number_npz in r_number:
+            ninfo, _ = NumberInfoFile.objects.get_or_create(record=self, device_displayed_name=number_npz[0])
+            ninfo.file_path = number_npz[2]
+            if number_npz[0] in table_name_info:
+                ninfo.db_table_name = table_name_info[number_npz[0]]
+            else:
+                ninfo.db_table_name = ''
+                log_dict = dict()
+                log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
+                    settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+                log_dict['FILE_PATH'] = self.file_path
+                log_dict['FILE_BASENAME'] = self.file_basename
+                log_dict['EVENT'] = 'DB table name was not defined for device %s.' % number_npz[0]
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+            ninfo.save()
+
+        for wave_npz in r_wave:
+            winfo, _ = WaveInfoFile.objects.get_or_create(record=self, device_displayed_name=wave_npz[0],
+                                                          channel_name=wave_npz[1])
+            winfo.file_path = wave_npz[2]
+            winfo.num_packets = wave_npz[3]
+            winfo.sampling_rate = wave_npz[4]
+            winfo.save()
+
+        return
 
     def __str__(self):
         return self.file_path

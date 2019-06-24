@@ -103,6 +103,15 @@ class VitalFileHandler(object):
             r.append((self.devices[track.did].typename, track.name, track.rec_type, track.srate))
         return r
 
+    def get_timestamp_range(self):
+        min_dt = list()
+        max_dt = list()
+        for tid, track in self.tracks.items():
+            if len(track.dt):
+                min_dt.append(min(track.dt))
+                max_dt.append(max(track.dt))
+        return min(min_dt), max(max_dt)
+
     def read_metadata(self, timestamp='unix'):
 
         self.fp.seek(10 + self.headerlen)

@@ -9,7 +9,9 @@ import MySQLdb
 import tempfile
 import random
 import shutil
+import pandas
 import numpy as np
+from sa_api.common import *
 import sa_api.VitalFileHandler as VFH
 from .forms import UploadFileForm, UploadReviewForm
 from pyfluent.client import FluentSender
@@ -23,16 +25,6 @@ from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, Clie
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
-
-
-def get_device_abb():
-    r = dict()
-    r['GE/Carescape'] = 'GEC'
-    r['Philips/IntelliVue'] = 'PIV'
-    r['Dräger/Primus'] = 'PRM'
-    r['Masimo/Root'] = 'MSM'
-    r['Covidien/BIS'] = 'BIS'
-    return r
 
 
 def get_sidebar_menu(selected=None):
@@ -80,16 +72,6 @@ def get_sidebar_menu(selected=None):
                     loc.append(menu[1])
 
     return r, loc
-
-
-def get_table_name_info(main_only=True):
-    r = dict()
-    r['GE/Carescape'] = 'number_ge'
-    r['Philips/IntelliVue'] = 'number_ph'
-    if not main_only:
-        r['Masimo/Root'] = 'number_mr'
-        r['Covidien/BIS'] = 'number_bs'
-    return r
 
 
 def get_agg_list():
@@ -1012,134 +994,43 @@ def summary_file(request):
     return HttpResponse(template.render(context, request))
 
 
-def decompose_vital_file(file_name, decomposed_path):
+def search_vital_files():
 
-    timestamp_interval = 0.5
-    device_abb = get_device_abb()
+    r = list()
 
-    read_start = datetime.datetime.now()
-    handle = VFH.VitalFileHandler(file_name)
-    raw_data_number = handle.export_number()
-
-    if not len(raw_data_number):
-        raise ValueError('No number data was found in vital file.')
-
-    def sort_by_time(val):
-        return val[:3]
-
-    raw_data_number.sort(key=sort_by_time)
-
-    aligned_data = list()
-    tmp_aligned = dict()
-    column_info = dict()
-    for i, ri in enumerate(raw_data_number):
-        if not ri[0] in column_info:
-            column_info[ri[0]] = {}
-        if not ri[2] in column_info[ri[0]]:
-            column_info[ri[0]][ri[2]] = len(column_info[ri[0]])
-        if not i:
-            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
-        elif tmp_aligned['device'] != ri[0] or ri[1]-tmp_aligned['timestamp'] > timestamp_interval or ri[2] in tmp_aligned:
-            aligned_data.append(tmp_aligned)
-            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
-        else:
-            tmp_aligned[ri[2]] = ri[3]
-    aligned_data.append(tmp_aligned)
-
-    file_read_execution_time = datetime.datetime.now() - read_start
-    timestamp_number = dict()
-    val_number = dict()
-
-    for device in [*column_info]:
-        timestamp_number[device] = list()
-        val_number[device] = list()
-
-    for i, ad in enumerate(aligned_data):
-        timestamp_number[ad['device']].append(ad['timestamp'])
-        tmp_val_list = [None] * len(column_info[ad['device']])
-        for key, val in ad.items():
-            if key not in ('device', 'timestamp'):
-                tmp_val_list[column_info[ad['device']][key]] = val
-        val_number[ad['device']].append(tmp_val_list)
-
-    r_number = list()
-
-    dt_datetime = np.dtype(datetime.datetime)
-    dt_str = np.dtype(str)
-
-    for device, cols in column_info.items():
-        if device in device_abb.keys():
-            if not os.path.exists(decomposed_path):
-                os.makedirs(decomposed_path)
-            file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s.npz' % device_abb[device])
-            np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
-                                timestamp=np.array(timestamp_number[device], dtype=np.float64),
-                                number=np.array(val_number[device], dtype=np.float32))
-            r_message = "OK"
-        else:
-            file_path = ''
-            r_message = "Device information does not exists."
-        r_number.append([device, r_message, file_path, len(timestamp_number[device]), len(column_info[device])])
-
-    r_wave = list()
-
-    for track_info in handle.get_track_info():
-        if track_info[0] in device_abb.keys() and track_info[2] in (1, 6):
-            if not os.path.exists(decomposed_path):
-                os.makedirs(decomposed_path)
-            dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
-            file_path = os.path.join(decomposed_path, os.path.splitext(os.path.basename(file_name))[0]+'_%s_%s.npz' % (device_abb[wave[0]], wave[1]))
-            np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val);
-            r_wave.append([track_info[0], track_info[1], file_path, len(dt), track_info[3]])
-
-    return r_number, r_wave
-
-
-def decompose_record(recorded):
-
-    table_name_info = get_table_name_info(main_only=False)
-    filename_split = recorded.file_basename.split('_')
-    decompose_path = os.path.join('raw_decomposed', filename_split[0], filename_split[1])
+    beds = ['B-01', 'B-02', 'B-03', 'B-04']
     try:
-        r_number, r_wave = decompose_vital_file(recorded.file_path, decompose_path)
-    except Exception as e:
-        log_dict = dict()
-        log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
-            settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-        log_dict['FILE_PATH'] = recorded.file_path
-        log_dict['FILE_BASENAME'] = recorded.file_basename
-        log_dict['EXCEPTION'] = str(e)
-        log_dict['EVENT'] = 'An exception was raised while reading a vital file.'
-        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-        return
+        client = Client.objects.get(name='Vital Recorder')
+    except Client.DoesNotExist:
+        raise ValueError('Vital Recorder client does not exists.')
 
-    for number_npz in r_number:
-        ninfo, _ = NumberInfoFile.objects.get_or_create(record=recorded, device_displayed_name=number_npz[0])
-        ninfo.file_path = number_npz[2]
-        if number_npz[0] in table_name_info:
-            ninfo.db_table_name = table_name_info[number_npz[0]]
-        else:
-            ninfo.db_table_name = ''
-            log_dict = dict()
-            log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
-                settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-            log_dict['FILE_PATH'] = recorded.file_path
-            log_dict['FILE_BASENAME'] = recorded.file_basename
-            log_dict['EVENT'] = 'DB table name was not defined for device %s.' % number_npz[0]
-            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'], settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-        ninfo.save()
+    for bed_name in beds:
+        try:
+            bed = Bed.objects.get(name=bed_name)
+            end_dt = datetime.date.today()
+            start_dt = end_dt - datetime.timedelta(days=3)
+            for dt in pandas.date_range(start_dt, end_dt):
+                if os.path.exists(os.path.join('data', bed.name, dt.strftime('%y%m%d'))):
+                    bed_re = re.compile('%s_%s_[0-9]{6}.vital' % (bed.name, dt.strftime('%y%m%d')))
+                    files = os.listdir(os.path.join('data', bed.name, dt.strftime('%y%m%d')))
+                    for file in files:
+                        if bed_re.match(file):
+                            split_file = os.path.splitext(file)[0].split('_')
+                            begin_date = datetime.datetime.strptime(split_file[1]+split_file[2], '%y%m%d%H%M%S')
+                            record, created = FileRecorded.objects.get_or_create(file_basename=file, defaults={
+                                'client': client,
+                                'bed': bed,
+                                'begin_date': begin_date,
+                                'end_date': begin_date,
+                                'file_path': os.path.join('data', bed.name, dt.strftime('%y%m%d'), file),
+                                'method': 1
+                            })
+                            if created:
+                                r.append(record)
+        except Bed.DoesNotExist:
+            pass
 
-    for wave_npz in r_wave:
-        winfo, _ = WaveInfoFile.objects.get_or_create(record=recorded, device_displayed_name=wave_npz[0], channel_name=wave_npz[1])
-        winfo.file_path = wave_npz[2]
-        winfo.num_packets = wave_npz[3]
-        winfo.sampling_rate = wave_npz[4]
-        winfo.save()
-
-    return
+    return r
 
 
 @csrf_exempt
