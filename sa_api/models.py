@@ -6,10 +6,14 @@ from django.core.files.storage import FileSystemStorage
 from pyfluent.client import FluentSender
 import os
 import datetime
+import pytz
 import numpy as np
 import sa_api.VitalFileHandler as VFH
 
+
 # Create your models here.
+
+tz = pytz.timezone(settings.TIME_ZONE)
 
 
 class OverwriteStorage(FileSystemStorage):
@@ -305,6 +309,8 @@ class FileRecorded(models.Model):
 
         unknown_device = set()
 
+        end_dt = list()
+
         for found_device, cols in column_info.items():
             try:
                 device = Device.objects.get(displayed_name=found_device)
@@ -313,7 +319,7 @@ class FileRecorded(models.Model):
                     device = DeviceAlias.objects.get(alias=found_device).device
                 except DeviceAlias.DoesNotExist:
                     device = None
-            if True if found_device is None else device.code is None:
+            if True if device is None else device.code is None:
                 unknown_device.add(found_device)
                 log_dict = dict()
                 log_dict['ACTION'] = 'DECOMPOSE'
@@ -330,11 +336,16 @@ class FileRecorded(models.Model):
                 if not os.path.exists(decompose_path):
                     os.makedirs(decompose_path)
                 file_path = os.path.join(decompose_path, os.path.splitext(self.file_basename)[0] + '_%s.npz' % device.code)
+                end_dt.append(max(timestamp_number[found_device]))
                 np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
                                     timestamp=np.array(timestamp_number[found_device], dtype=np.float64),
                                     number=np.array(val_number[found_device], dtype=np.float32))
 
-                ninfo = NumberInfoFile.objects.create(record=self, device=device, file_path=file_path)
+                NumberInfoFile.objects.create(record=self, device=device, file_path=file_path)
+
+        if len(end_dt) and self.end_date is None:
+            self.end_date = datetime.datetime.fromtimestamp(max(end_dt)).astimezone(tz) + datetime.timedelta(minutes=5)
+            self.save()
 
         for track_info in handle.get_track_info():
             if track_info[0] not in unknown_device and track_info[2] in (1, 6):
@@ -353,8 +364,8 @@ class FileRecorded(models.Model):
                                              device.code, track_info[1]))
                     np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val)
 
-                    winfo = WaveInfoFile.objects.create(record=self, device=device, channel_name=track_info[1],
-                                                        file_path=file_path, num_packets=len(dt), sampling_rate=track_info[3])
+                    WaveInfoFile.objects.create(record=self, device=device, channel_name=track_info[1],
+                                                file_path=file_path, num_packets=len(dt), sampling_rate=track_info[3])
 
     def __str__(self):
         return self.file_path

@@ -523,11 +523,9 @@ def download_csv_device(request):
 
     bed = request.GET.get("bed")
     rosette = request.GET.get("rosette")
-    device = request.GET.get("device")
     begin_date = request.GET.get("begin_date")
     end_date = request.GET.get("end_date")
-
-    table_name_info = get_table_name_info()
+    device = Device.objects.get(displayed_name=request.GET.get("device"))
 
     if rosette is None or bed is None or begin_date is None or end_date is None:
         r_dict = dict()
@@ -544,7 +542,7 @@ def download_csv_device(request):
         cursor = db.cursor()
 
         query = "SELECT * FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
-                (table_name_info[device], rosette, bed, begin_date, end_date)
+                (device.db_table_name, rosette, bed, begin_date, end_date)
         cursor.execute(query)
         title = list()
         for col in cursor.description:
@@ -581,7 +579,7 @@ def review(request):
     begin_date = record.begin_date.astimezone(tz)
     end_date = record.end_date.astimezone(tz)
 
-    table_name_info = get_table_name_info()
+    main_devices = Device.objects.filter(is_main=True, db_table_name__isnull=False)
     table_col_list, table_val_list = get_table_col_val_list()
 
     color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
@@ -596,9 +594,9 @@ def review(request):
                              db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
         cursor = db.cursor()
 
-        for device, table in table_name_info.items():
+        for device in main_devices:
             query = "SELECT dt, %s FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
-                    (', '.join(table_col_list[device]), table, rosette, bed, str(begin_date), str(end_date))
+                    (', '.join(table_col_list[device]), device.db_table_name, rosette, bed, str(begin_date), str(end_date))
             cursor.execute(query)
             query_results = cursor.fetchall()
             if len(query_results):
@@ -1002,34 +1000,37 @@ def summary_file(request):
     return HttpResponse(template.render(context, request))
 
 
-def search_vital_files():
+def search_vital_files(beds, date_from=None, date_to=None):
 
     r = list()
 
-    beds = ['B-01', 'B-02', 'B-03', 'B-04']
     try:
         client = Client.objects.get(name='Vital Recorder')
     except Client.DoesNotExist:
         raise ValueError('Vital Recorder client does not exists.')
 
+    if date_from is None:
+        date_to = datetime.date.today()
+        date_from = date_to - datetime.timedelta(days=3)
+    elif date_to is None:
+        date_to = date_from
+
     for bed_name in beds:
         try:
             bed = Bed.objects.get(name=bed_name)
-            end_dt = datetime.date.today()
-            start_dt = end_dt - datetime.timedelta(days=3)
-            for dt in pandas.date_range(start_dt, end_dt):
+            for dt in pandas.date_range(date_from, date_to):
                 if os.path.exists(os.path.join('data', bed.name, dt.strftime('%y%m%d'))):
                     bed_re = re.compile('%s_%s_[0-9]{6}.vital' % (bed.name, dt.strftime('%y%m%d')))
                     files = os.listdir(os.path.join('data', bed.name, dt.strftime('%y%m%d')))
                     for file in files:
                         if bed_re.match(file):
                             split_file = os.path.splitext(file)[0].split('_')
-                            begin_date = datetime.datetime.strptime(split_file[1]+split_file[2], '%y%m%d%H%M%S')
+                            begin_date = datetime.datetime.strptime(split_file[1]+split_file[2], '%y%m%d%H%M%S').astimezone(tz)
                             record, created = FileRecorded.objects.get_or_create(file_basename=file, defaults={
                                 'client': client,
                                 'bed': bed,
                                 'begin_date': begin_date,
-                                'end_date': begin_date,
+                                'end_date': None,
                                 'file_path': os.path.join('data', bed.name, dt.strftime('%y%m%d'), file),
                                 'method': 1
                             })
@@ -1564,7 +1565,6 @@ def recording_info_body(request):
                         recorded.file_path = os.path.join(pathname, filename)
                         recorded.file_basename = filename
                         recorded.save(update_fields=['file_path', 'file_basename'])
-                        #recorded.decompose()
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
                         if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
@@ -1577,6 +1577,7 @@ def recording_info_body(request):
                                 r_dict['success'] = True
                                 r_dict['exception'] = str(e)
                                 r_dict['message'] = 'Recording info was added and file was uploaded correctly. But DB upload was failed.'
+                        recorded.decompose()
                     except Exception as e:
                         r_dict['success'] = False
                         r_dict['exception'] = str(e)
