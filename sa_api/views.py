@@ -11,7 +11,6 @@ import random
 import shutil
 import pandas
 import numpy as np
-from sa_api.common import *
 import sa_api.VitalFileHandler as VFH
 from .forms import UploadFileForm, UploadReviewForm
 from pyfluent.client import FluentSender
@@ -25,19 +24,6 @@ from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, Clie
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
-
-
-def get_device_dict():
-
-    r = dict()
-    for device in Device.objects.all():
-        r[device.displayed_name] = device
-
-    for devicealias in DeviceAlias.objects.all():
-        if devicealias.alias not in r.keys():
-            r[devicealias.alias] = devicealias.device
-
-    return r
 
 
 def get_sidebar_menu(selected=None):
@@ -213,7 +199,6 @@ def file_upload_storage(date_string, bed_name, filepath):
 
 def db_upload_summary(record):
 
-    table_name_info = get_table_name_info()
     table_col_list, table_val_list = get_table_col_val_list()
 
     db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
@@ -222,13 +207,15 @@ def db_upload_summary(record):
                          db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
     cursor = db.cursor()
 
-    for device_displayed_name, table in table_name_info.items():
+    main_devices = Device.objects.filter(is_main=True, db_table_name__isnull=False)
+
+    for device in main_devices: #device_displayed_name, table
         field_list = list()
-        for val in table_val_list[device_displayed_name]:
+        for val in table_val_list[device.displayed_name]:
             field_list.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
 
         query = 'SELECT COUNT(*) TOTAL_COUNT, %s' % ', '.join(field_list)
-        query += " FROM %s WHERE rosette = '%s' AND bed = '%s' AND" % (table, record.bed.room.name, record.bed.name)
+        query += " FROM %s WHERE rosette = '%s' AND bed = '%s' AND" % (device.db_table_name, record.bed.room.name, record.bed.name)
         query += " dt BETWEEN '%s' and '%s'" % (record.begin_date.astimezone(tz), record.end_date.astimezone(tz))
 
         cursor.execute(query)
@@ -249,7 +236,7 @@ def db_upload_summary(record):
                 field_list.append('%s_%s' % (val[0], val[1]))
             value_list = list()
             value_list.append(str(0))
-            value_list.append("'%s'" % device_displayed_name)
+            value_list.append("'%s'" % device.displayed_name)
             value_list.append("'%s'" % os.path.basename(record.file_path))
             value_list.append("'%s'" % record.bed.room.name)
             value_list.append("'%s'" % record.bed.name)
@@ -370,11 +357,17 @@ def db_upload_decomposed_numeric(recorded, number_info):
 def db_upload_main_numeric(recorded, method=0, db_writing=True):
 
     timestamp_interval = 0.5
-    table_name_info = get_table_name_info(main_only=False)
+
+    device_numeric_db = Device.objects.filter(db_table_name__isnull=False)
+
+    device_list = list()
+
+    for device in device_numeric_db:
+        device_list.append(device.displayed_name)
 
     read_start = datetime.datetime.now()
     handle = VFH.VitalFileHandler(recorded.file_path)
-    raw_data = handle.export_number(table_name_info.keys())
+    raw_data = handle.export_number(device_list)
     len_raw_data = len(raw_data)
     del handle
 
@@ -430,13 +423,15 @@ def db_upload_main_numeric(recorded, method=0, db_writing=True):
     column_info_db = dict()
     num_records = dict()
 
-    for device_type in [*column_info]:
+    for device_type in column_info.keys():
+        device = Device.objects.get(displayed_name=device_type)
+
         num_records[device_type] = 0
-        query = 'DESCRIBE %s' % (table_name_info[device_type])
+        query = 'DESCRIBE %s' % device.db_table_name
         cursor.execute(query)
         rows = cursor.fetchall()
 
-        insert_query[device_type] = 'INSERT IGNORE INTO %s (' % (table_name_info[device_type])
+        insert_query[device_type] = 'INSERT IGNORE INTO %s (' % device.db_table_name
         column_info_db[device_type] = dict()
         for i, column in enumerate(rows):
             if column[0] != 'id':
