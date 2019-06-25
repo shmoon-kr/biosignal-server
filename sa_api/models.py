@@ -1,10 +1,9 @@
-from django.db import models
+from django.db import models, connection
 from django.utils import timezone
 from django.utils.html import format_html
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from pyfluent.client import FluentSender
-from sa_api.common import *
 import os
 import datetime
 import numpy as np
@@ -206,7 +205,7 @@ class FileRecorded(models.Model):
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, blank=True, null=True)
     upload_date = models.DateTimeField(auto_now_add=True)
     begin_date = models.DateTimeField()
-    end_date = models.DateTimeField()
+    end_date = models.DateTimeField(null=True)
     file_path = models.CharField(max_length=256, blank=True)
     file_basename = models.CharField(max_length=256, blank=True)
     METHOD_CHOICES = (
@@ -215,17 +214,40 @@ class FileRecorded(models.Model):
     )
     method = models.IntegerField(choices=METHOD_CHOICES, default=0)
 
-    def decompose_vital_file(self, decomposed_path):
+    def decompose(self):
+
+        connection.connect()
+
+        filename_split = self.file_basename.split('_')
+        decompose_path = os.path.join('decompose', filename_split[0], filename_split[1])
 
         timestamp_interval = 0.5
-        device_abb = get_device_abb()
 
         read_start = datetime.datetime.now()
-        handle = VFH.VitalFileHandler(self.file_path)
-        raw_data_number = handle.export_number()
+        try:
+            handle = VFH.VitalFileHandler(self.file_path)
+            raw_data_number = handle.export_number()
+        except Exception as e:
+            log_dict = dict()
+            log_dict['ACTION'] = 'DECOMPOSE'
+            log_dict['EVENT'] = 'EXCEPTION'
+            log_dict['FILE_BASENAME'] = self.file_basename
+            log_dict['MESSAGE'] = 'An exception %s was raised during vital file processing.' % e
+            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+            return
 
         if not len(raw_data_number):
-            raise ValueError('No number data was found in vital file.')
+            log_dict = dict()
+            log_dict['ACTION'] = 'DECOMPOSE'
+            log_dict['EVENT'] = 'ERROR'
+            log_dict['FILE_BASENAME'] = self.file_basename
+            log_dict['MESSAGE'] = 'No number data was found in vital file.'
+            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+            return
 
         def sort_by_time(val):
             return val[:3]
@@ -266,118 +288,103 @@ class FileRecorded(models.Model):
                     tmp_val_list[column_info[ad['device']][key]] = val
             val_number[ad['device']].append(tmp_val_list)
 
-        r_number = list()
-
-        dt_datetime = np.dtype(datetime.datetime)
+        #dt_datetime = np.dtype(datetime.datetime)
         dt_str = np.dtype(str)
 
-        for device, cols in column_info.items():
-            if device in device_abb.keys():
-                if not os.path.exists(decomposed_path):
-                    os.makedirs(decomposed_path)
-                file_path = os.path.join(decomposed_path, os.path.splitext(self.file_basename))[0] + '_%s.npz' % device_abb[device]
-                np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
-                                    timestamp=np.array(timestamp_number[device], dtype=np.float64),
-                                    number=np.array(val_number[device], dtype=np.float32))
-                r_message = "OK"
-            else:
-                file_path = ''
-                r_message = "Device information does not exists."
-            r_number.append([device, r_message, file_path, len(timestamp_number[device]), len(column_info[device])])
+        numberinfofiles = NumberInfoFile.objects.filter(record=self)
+        for numberinfofile in numberinfofiles:
+            if os.path.exists(numberinfofile.file_path):
+                os.remove(numberinfofile.file_path)
+        numberinfofiles.delete()
 
-        r_wave = list()
+        waveinfofiles = WaveInfoFile.objects.filter(record=self)
+        for waveinfofile in waveinfofiles:
+            if os.path.exists(waveinfofile.file_path):
+                os.remove(waveinfofile.file_path)
+        waveinfofiles.delete()
 
-        for track_info in handle.get_track_info():
-            if track_info[0] in device_abb.keys() and track_info[2] in (1, 6):
-                print(track_info)
-                if not os.path.exists(decomposed_path):
-                    os.makedirs(decomposed_path)
-                dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
-                file_path = os.path.join(decomposed_path, os.path.splitext(self.file_basename)[0] + '_%s_%s.npz' % (
-                                         device_abb[track_info[0]], track_info[1]))
-                np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val);
-                r_wave.append([track_info[0], track_info[1], file_path, len(dt), track_info[3]])
+        unknown_device = set()
 
-        return r_number, r_wave
-
-    def decompose(self):
-
-        table_name_info = get_table_name_info(main_only=False)
-        filename_split = self.file_basename.split('_')
-        decompose_path = os.path.join('raw_decomposed', filename_split[0], filename_split[1])
-        try:
-            r_number, r_wave = self.decompose_vital_file(decompose_path)
-        except Exception as e:
-            log_dict = dict()
-            log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
-                settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-            log_dict['FILE_PATH'] = self.file_path
-            log_dict['FILE_BASENAME'] = self.file_basename
-            log_dict['EXCEPTION'] = str(e)
-            log_dict['EVENT'] = 'An exception was raised while reading a vital file.'
-            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-            return
-
-        for number_npz in r_number:
-            ninfo, _ = NumberInfoFile.objects.get_or_create(record=self, device_displayed_name=number_npz[0])
-            ninfo.file_path = number_npz[2]
-            if number_npz[0] in table_name_info:
-                ninfo.db_table_name = table_name_info[number_npz[0]]
-            else:
-                ninfo.db_table_name = ''
+        for found_device, cols in column_info.items():
+            try:
+                device = Device.objects.get(displayed_name=found_device)
+            except Device.DoesNotExist:
+                try:
+                    device = DeviceAlias.objects.get(alias=found_device).device
+                except DeviceAlias.DoesNotExist:
+                    device = None
+            if True if found_device is None else device.code is None:
+                unknown_device.add(found_device)
                 log_dict = dict()
-                log_dict['SERVER_NAME'] = 'global' if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' else \
-                    settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-                log_dict['FILE_PATH'] = self.file_path
+                log_dict['ACTION'] = 'DECOMPOSE'
+                log_dict['EVENT'] = 'UNDEFINED_DEVICE'
                 log_dict['FILE_BASENAME'] = self.file_basename
-                log_dict['EVENT'] = 'DB table name was not defined for device %s.' % number_npz[0]
+                if found_device is None:
+                    log_dict['MESSAGE'] = 'A new device %s was found.' % found_device
+                else:
+                    log_dict['MESSAGE'] = 'A code for device %s was not defiened.' % found_device
                 fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
                                       settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
                 fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-            ninfo.save()
+            else:
+                if not os.path.exists(decompose_path):
+                    os.makedirs(decompose_path)
+                file_path = os.path.join(decompose_path, os.path.splitext(self.file_basename)[0] + '_%s.npz' % device.code)
+                np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
+                                    timestamp=np.array(timestamp_number[found_device], dtype=np.float64),
+                                    number=np.array(val_number[found_device], dtype=np.float32))
 
-        for wave_npz in r_wave:
-            winfo, _ = WaveInfoFile.objects.get_or_create(record=self, device_displayed_name=wave_npz[0],
-                                                          channel_name=wave_npz[1])
-            winfo.file_path = wave_npz[2]
-            winfo.num_packets = wave_npz[3]
-            winfo.sampling_rate = wave_npz[4]
-            winfo.save()
+                ninfo = NumberInfoFile.objects.create(record=self, device=device, file_path=file_path)
 
-        return
+        for track_info in handle.get_track_info():
+            if track_info[0] not in unknown_device and track_info[2] in (1, 6):
+                try:
+                    device = Device.objects.get(displayed_name=track_info[0])
+                except Device.DoesNotExist:
+                    try:
+                        device = DeviceAlias.objects.get(alias=track_info[0]).device
+                    except DeviceAlias.DoesNotExist:
+                        device = None
+                if device is not None:
+                    if not os.path.exists(decompose_path):
+                        os.makedirs(decompose_path)
+                    dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
+                    file_path = os.path.join(decompose_path, os.path.splitext(self.file_basename)[0] + '_%s_%s.npz' % (
+                                             device.code, track_info[1]))
+                    np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val)
+
+                    winfo = WaveInfoFile.objects.create(record=self, device=device, channel_name=track_info[1],
+                                                        file_path=file_path, num_packets=len(dt), sampling_rate=track_info[3])
 
     def __str__(self):
         return self.file_path
 
 
 class NumberInfoFile(models.Model):
-    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
-    device_displayed_name = models.CharField(max_length=64)
-    db_table_name = models.CharField(max_length=64, blank=True)
+    record = models.ForeignKey('FileRecorded', null=True, on_delete=models.CASCADE)
+    device = models.ForeignKey('Device', null=True, on_delete=models.CASCADE)
     file_path = models.CharField(max_length=256, blank=True)
 
     def __str__(self):
-        return '%s, %s' % (self.record.file_basename, self.device_displayed_name)
+        return '%s, %s' % (self.record.file_basename, self.device.displayed_name)
 
     class Meta:
-        unique_together = ("record", "device_displayed_name")
+        unique_together = ("record", "device")
 
 
 class WaveInfoFile(models.Model):
-    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
-    device_displayed_name = models.CharField(max_length=64)
+    record = models.ForeignKey('FileRecorded', null=True, on_delete=models.CASCADE)
+    device = models.ForeignKey('Device', null=True, on_delete=models.CASCADE)
     channel_name = models.CharField(max_length=64)
     file_path = models.CharField(max_length=256, blank=True)
     sampling_rate = models.FloatField(null=True)
     num_packets = models.IntegerField(null=True)
 
     def __str__(self):
-        return '%s, %s, %s' % (self.record.file_basename, self.device_displayed_name, self.channel_name)
+        return '%s, %s, %s' % (self.record.file_basename, self.device.displayed_name, self.channel_name)
 
     class Meta:
-        unique_together = ("record", "device_displayed_name", "channel_name")
+        unique_together = ("record", "device", "channel_name")
 
 
 class ClientBusSlot(models.Model):

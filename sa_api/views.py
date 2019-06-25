@@ -21,10 +21,23 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, DeviceAlias
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
+
+
+def get_device_dict():
+
+    r = dict()
+    for device in Device.objects.all():
+        r[device.displayed_name] = device
+
+    for devicealias in DeviceAlias.objects.all():
+        if devicealias.alias not in r.keys():
+            r[devicealias.alias] = devicealias.device
+
+    return r
 
 
 def get_sidebar_menu(selected=None):
@@ -1556,6 +1569,7 @@ def recording_info_body(request):
                         recorded.file_path = os.path.join(pathname, filename)
                         recorded.file_basename = filename
                         recorded.save(update_fields=['file_path', 'file_basename'])
+                        #recorded.decompose()
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
                         if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:

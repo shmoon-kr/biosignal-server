@@ -1,9 +1,8 @@
 *.pyc
 .idea/*
 data
-raw_decomposed
+decompose
 uploaded_files/*
-tablet/*
 static/*
 media/*
 uploaded_data/*
