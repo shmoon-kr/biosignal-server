@@ -9,7 +9,9 @@ from pathos.multiprocessing import ProcessingPool as Pool
 
 
 tz = pytz.timezone(settings.TIME_ZONE)
-beds_migration = ('B-01', 'B-02', 'B-03', 'B-04')
+beds_migration = (
+    'B-01', 'B-02', 'B-03', 'B-04', 'C-01', 'C-02', 'C-03', 'C-04', 'C-06'
+)
 
 
 def valid_date_type(arg_date_str):
@@ -26,7 +28,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         records = search_vital_files(beds_migration)
-        with Pool(4) as p:
-            p.map(FileRecorded.decompose, records)
+        for record in records:
+            record.decompose()
 
         return
