@@ -27,8 +27,8 @@ class Command(BaseCommand):
     help = 'Search vital files.'
 
     def handle(self, *args, **kwargs):
-        records = search_vital_files(beds_migration)
-        for record in records:
+
+        for record in search_vital_files(beds_migration):
             record.decompose()
 
         return

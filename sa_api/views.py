@@ -272,86 +272,6 @@ def db_upload_summary(record):
     return
 
 
-def db_upload_decomposed_numeric(recorded, number_info):
-
-    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-    cursor = db.cursor()
-
-    query = 'DESCRIBE %s' % number_info.db_table_name
-    cursor.execute(query)
-    rows = cursor.fetchall()
-
-    column_info_db = list()
-    for i, column in enumerate(rows):
-        if column[0] != 'id':
-            column_info_db.append(column[0])
-
-    ni = np.load(number_info.file_path)
-    timestamp = np.array(ni['timestamp'])
-    number = np.array(ni['number'])
-    col_list = np.array(ni['col_list'])
-
-    col_dict = dict()
-    unknown_columns = list()
-    for col in col_list:
-        col_dict[col] = len(col_dict)
-        if col not in column_info_db:
-            unknown_columns.append(col)
-
-    query = "INSERT IGNORE INTO %s (%s) VALUES " % (number_info.db_table_name, ', '.join(column_info_db))
-
-    for i in range(len(timestamp)):
-        if i:
-            query += ','
-        query += "(0, '%s', '%s', '%s'" % (recorded.bed.room.name, recorded.bed.name, str(timestamp[i]))
-        for col in column_info_db:
-            if col not in ('method', 'rosette', 'bed', 'dt'):
-                if col not in col_dict:
-                    query += ', NULL'
-                elif np.isnan(number[i, col_dict[col]]):
-                    query += ', NULL'
-                else:
-                    query += ', %f' % number[i, col_dict[col]]
-        query += ")"
-
-    log_dict = dict()
-    log_dict['SERVER_NAME'] = 'global' \
-        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
-        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-    log_dict['ACTION'] = 'DB_UPLOAD_DECOMPOSED'
-    log_dict['TARGET_FILE_VITAL'] = recorded.file_path
-    log_dict['TARGET_FILE_DECOMPOSED'] = number_info.file_path
-    log_dict['TARGET_DEVICE'] = number_info.device_displayed_name
-    log_dict['NEW_CHANNEL'] = unknown_columns
-    log_dict['NUM_RECORDS_QUERY'] = len(ni['timestamp'])
-    insert_start = datetime.datetime.now()
-
-    try:
-        cursor.execute(query)
-        db.commit()
-        db.close()
-    except MySQLdb.Error as e:
-        log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
-        log_dict['EXCEPTION'] = str(e)
-        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-        return False
-
-    db_upload_execution_time = datetime.datetime.now() - insert_start
-
-    log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount
-    log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time)
-
-    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-    return True
-
-
 # Create your views here.
 
 def db_upload_main_numeric(recorded, method=0, db_writing=True):
@@ -1567,17 +1487,17 @@ def recording_info_body(request):
                         recorded.save(update_fields=['file_path', 'file_basename'])
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
+                        recorded.decompose()
                         if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
                             try:
-                                db_upload_main_numeric(recorded)
-                                db_upload_summary(recorded)
+                                recorded.load_number()
+                                recorded.load_summary()
                                 r_dict['success'] = True
                                 r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
                             except Exception as e:
                                 r_dict['success'] = True
                                 r_dict['exception'] = str(e)
                                 r_dict['message'] = 'Recording info was added and file was uploaded correctly. But DB upload was failed.'
-                        recorded.decompose()
                     except Exception as e:
                         r_dict['success'] = False
                         r_dict['exception'] = str(e)

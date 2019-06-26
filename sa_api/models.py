@@ -4,12 +4,13 @@ from django.utils.html import format_html
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from pyfluent.client import FluentSender
+from itertools import product
 import os
 import datetime
 import pytz
+import MySQLdb
 import numpy as np
 import sa_api.VitalFileHandler as VFH
-
 
 # Create your models here.
 
@@ -106,10 +107,11 @@ class Client(models.Model):
             return 2, 'black'
 
     def colored_bed(self):
-        return format_html('<span style="color: %s;">%s</span>' % (self.color_info()[1], self.bed.name if self.bed is not None else 'NULL'))
+        return format_html('<span style="color: %s;">%s</span>' % (
+        self.color_info()[1], self.bed.name if self.bed is not None else 'NULL'))
 
     colored_bed.allow_tags = True
-#    colored_bed.admin_order_field = 'color_info'
+    #    colored_bed.admin_order_field = 'color_info'
     colored_bed.admin_order_field = 'bed__name'
     colored_bed.short_description = 'bed'
 
@@ -182,7 +184,8 @@ class Channel(models.Model):
 
     def colored_abbreviation(self):
         color_code = format(self.color_r, '02x') + format(self.color_g, '02x') + format(self.color_b, '02x')
-        return format_html('<span style="color: #%s; background-color: black;">%s</span>' % (color_code, self.abbreviation))
+        return format_html(
+            '<span style="color: #%s; background-color: black;">%s</span>' % (color_code, self.abbreviation))
 
     colored_abbreviation.allow_tags = True
     colored_abbreviation.admin_order_field = 'abbreviation'
@@ -217,6 +220,184 @@ class FileRecorded(models.Model):
         (1, "migration"),
     )
     method = models.IntegerField(choices=METHOD_CHOICES, default=0)
+
+    def load_summary(self):
+
+        agg_list = ('MIN', 'MAX', 'AVG', 'COUNT')
+
+        table_col_list = dict()
+        table_col_list['summary_by_file'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
+        table_col_list['Philips/IntelliVue'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SAT_O2']
+        table_col_list['GE/Carescape'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
+
+        table_val_list = dict()
+        table_val_list['summary_by_file'] = product(table_col_list['summary_by_file'], agg_list)
+        table_val_list['Philips/IntelliVue'] = product(table_col_list['Philips/IntelliVue'], agg_list)
+        table_val_list['GE/Carescape'] = product(table_col_list['GE/Carescape'], agg_list)
+
+        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+        cursor = db.cursor()
+
+        main_devices = Device.objects.filter(is_main=True, db_table_name__isnull=False)
+
+        for device in main_devices:  # device_displayed_name, table
+            field_list = list()
+            for val in table_val_list[device.displayed_name]:
+                field_list.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
+
+            query = 'SELECT COUNT(*) TOTAL_COUNT, %s' % ', '.join(field_list)
+            query += " FROM %s WHERE rosette = '%s' AND bed = '%s' AND" % (
+                device.db_table_name, self.bed.room.name, self.bed.name)
+            query += " dt BETWEEN '%s' and '%s'" % (self.begin_date.astimezone(tz).replace(tzinfo=None),
+                                                    self.end_date.astimezone(tz).replace(tzinfo=None))
+
+            cursor.execute(query)
+
+            summary = cursor.fetchall()[0]
+            if summary[0]:
+                field_list = list()
+                field_list.append('method')
+                field_list.append('device_displayed_name')
+                field_list.append('file_basename')
+                field_list.append('rosette')
+                field_list.append('bed')
+                field_list.append('begin_date')
+                field_list.append('end_date')
+                field_list.append('effective')
+                field_list.append('TOTAL_COUNT')
+                for val in table_val_list['summary_by_file']:
+                    field_list.append('%s_%s' % (val[0], val[1]))
+                value_list = list()
+                value_list.append(str(0))
+                value_list.append("'%s'" % device.displayed_name)
+                value_list.append("'%s'" % os.path.basename(self.file_path))
+                value_list.append("'%s'" % self.bed.room.name)
+                value_list.append("'%s'" % self.bed.name)
+                value_list.append("'%s'" % str(self.begin_date.astimezone(tz).replace(tzinfo=None)))
+                value_list.append("'%s'" % str(self.end_date.astimezone(tz).replace(tzinfo=None)))
+                value_list.append('1' if self.end_date - self.begin_date > datetime.timedelta(minutes=10) else '0')
+                for i in summary:
+                    if i is None:
+                        value_list.append('NULL')
+                    else:
+                        value_list.append(str(i))
+                query = 'INSERT IGNORE INTO %s (%s)' % ('summary_by_file', ', '.join(field_list))
+                query += ' VALUES (%s)' % ', '.join(value_list)
+
+                try:
+                    cursor.execute(query)
+                    db.commit()
+                except MySQLdb.Error as e:
+                    log_dict = dict()
+                    log_dict['SERVER_NAME'] = 'global' \
+                        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+                        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+                    log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
+                    log_dict['FILE_NAME'] = self.file_basename
+                    log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                    log_dict['EXCEPTION'] = str(e)
+                    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+                    return
+
+        db.close()
+        return
+
+    def load_number(self, reload=False):
+
+        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+        cursor = db.cursor()
+
+        for ni in NumberInfoFile.objects.filter(record=self):
+
+            query = 'DESCRIBE %s' % ni.device.db_table_name
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            column_info_db = list()
+            for i, column in enumerate(rows):
+                if column[0] != 'id':
+                    column_info_db.append(column[0])
+
+            npz = np.load(ni.file_path)
+            timestamp = np.array(npz['timestamp'])
+            number = np.array(npz['number'])
+            col_list = np.array(npz['col_list'])
+
+            col_dict = dict()
+            unknown_columns = list()
+            for col in col_list:
+                col_dict[col] = len(col_dict)
+                if col not in column_info_db:
+                    unknown_columns.append(col)
+
+            if reload:
+                query = "DELETE FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s'" % (
+                    ni.device.db_table_name, ni.record.bed.room.name, ni.record.bed.name,
+                    ni.record.begin_date.astimezone(tz).replace(tzinfo=None),
+                    ni.record.end_date.astimezone(tz).replace(tzinfo=None))
+                cursor.execute(query)
+                db.commit()
+
+            query = "INSERT IGNORE INTO %s (%s) VALUES " % (ni.device.db_table_name, ', '.join(column_info_db))
+
+            for i in range(len(timestamp)):
+                if i:
+                    query += ','
+                query += "(0, '%s', '%s', '%s'" % (
+                self.bed.room.name, self.bed.name, str(datetime.datetime.fromtimestamp(timestamp[i])))
+                for col in column_info_db:
+                    if col not in ('method', 'rosette', 'bed', 'dt'):
+                        if col not in col_dict:
+                            query += ', NULL'
+                        elif np.isnan(number[i, col_dict[col]]):
+                            query += ', NULL'
+                        else:
+                            query += ', %f' % number[i, col_dict[col]]
+                query += ")"
+
+            log_dict = dict()
+            log_dict['SERVER_NAME'] = 'global' \
+                if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+                else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+            log_dict['ACTION'] = 'LOAD_NUMBER'
+            log_dict['TARGET_FILE_VITAL'] = self.file_basename
+            log_dict['TARGET_FILE_DECOMPOSED'] = ni.file_path
+            log_dict['TARGET_DEVICE'] = ni.device.displayed_name
+            log_dict['NEW_CHANNEL'] = unknown_columns
+            log_dict['NUM_RECORDS_QUERY'] = len(npz['timestamp'])
+            insert_start = datetime.datetime.now()
+
+            try:
+                cursor.execute(query)
+                db.commit()
+
+                db_upload_execution_time = datetime.datetime.now() - insert_start
+
+                log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount
+                log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time)
+
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
+            except MySQLdb.Error as e:
+                log_dict['ACTION'] = 'LOAD_NUMBER'
+                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                log_dict['EXCEPTION'] = str(e)
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
+        db.close()
+        return True
 
     def decompose(self):
 
@@ -292,7 +473,7 @@ class FileRecorded(models.Model):
                     tmp_val_list[column_info[ad['device']][key]] = val
             val_number[ad['device']].append(tmp_val_list)
 
-        #dt_datetime = np.dtype(datetime.datetime)
+        # dt_datetime = np.dtype(datetime.datetime)
         dt_str = np.dtype(str)
 
         numberinfofiles = NumberInfoFile.objects.filter(record=self)
@@ -335,7 +516,8 @@ class FileRecorded(models.Model):
             else:
                 if not os.path.exists(decompose_path):
                     os.makedirs(decompose_path)
-                file_path = os.path.join(decompose_path, os.path.splitext(self.file_basename)[0] + '_%s.npz' % device.code)
+                file_path = os.path.join(decompose_path,
+                                         os.path.splitext(self.file_basename)[0] + '_%s.npz' % device.code)
                 end_dt.append(max(timestamp_number[found_device]))
                 np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
                                     timestamp=np.array(timestamp_number[found_device], dtype=np.float64),
@@ -361,7 +543,7 @@ class FileRecorded(models.Model):
                         os.makedirs(decompose_path)
                     dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
                     file_path = os.path.join(decompose_path, os.path.splitext(self.file_basename)[0] + '_%s_%s.npz' % (
-                                             device.code, track_info[1]))
+                        device.code, track_info[1]))
                     np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val)
 
                     WaveInfoFile.objects.create(record=self, device=device, channel_name=track_info[1],
@@ -405,7 +587,7 @@ class ClientBusSlot(models.Model):
     device = models.ForeignKey('Device', on_delete=models.SET_NULL, blank=True, null=True)
     active = models.BooleanField(default=True)
 
-    def __str__(self): # __str__ on Python 3
+    def __str__(self):  # __str__ on Python 3
         if self.device is None:
             device = 'Not Connected'
         else:
