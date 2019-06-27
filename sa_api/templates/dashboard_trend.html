@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>  <title>AMC Bio Signal</title>
-  </title>
+  <title>AMC Bio Signal</title>
   <!-- Tell the browser to be responsive to screen width -->
   <meta content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" name="viewport">
   <!-- Bootstrap 3.3.7 -->
@@ -64,12 +63,53 @@
   </header>
   <!-- Left side column. contains the logo and sidebar -->
   <aside class="main-sidebar">
-    {% include "sidebar.html" %}
+    <!-- sidebar: style can be found in sidebar.less -->
+    <section class="sidebar">
+
+      <!-- sidebar menu: : style can be found in sidebar.less -->
+      <ul class="sidebar-menu" data-widget="tree">
+        {% for key, val in sidebar_menu.items %}
+          {% if val.active %}
+            <li class="treeview active">
+              {% else %}
+            <li class="treeview">
+          {% endif %}
+          <li class="treeview">
+            <a href="#">
+              <i class="fa fa-dashboard"></i> <span>{{ key }}</span>
+              <span class="pull-right-container">
+                  <i class="fa fa-angle-left pull-right"></i>
+              </span>
+            </a>
+            <ul class="treeview-menu">
+              {% for menu in val.submenu %}
+                {% if menu.0 %}
+                  <li class="active"><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
+                {% else %}
+                  <li><a href="{{ menu.2 }}"><i class="fa fa-circle-o"></i>{{ menu.1 }}</a></li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+    <!-- /.sidebar -->
   </aside>
 
   <!-- Content Wrapper. Contains page content -->
   <div class="content-wrapper">
-    {% include "content_header.html" %}
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <h1>
+        Dashboard Trend
+      </h1>
+      <ol class="breadcrumb">
+        <li><a href="dashboard"><i class="fa fa-dashboard"></i> Home</a></li>
+        <li><a href="#">Dashboard</a></li>
+        <li class="active">Dashboard Trend</li>
+      </ol>
+    </section>
 
     <!-- Main content -->
     <section class="content">
@@ -77,24 +117,11 @@
         <div class="col-md-12">
           <div class="box">
             <div class="box-header">
-              <!-- tools box -->
-              <div class="pull-right box-tools">
-                <button type="button" class="btn btn-primary btn-sm daterange pull-right" id="daterange-btn"
-                        title="Date range">
-                  <i class="fa fa-calendar"></i></button>
-                <button type="button" class="btn btn-primary btn-sm pull-right" data-widget="collapse"
-                        data-toggle="tooltip" title="Collapse" style="margin-right: 5px;">
-                  <i class="fa fa-minus"></i></button>
-              </div>
-              <!-- /. tools -->
-
               <i class="fa fa-map-marker"></i>
-
               <h3 class="box-title">
                 Visitors
               </h3>
             </div>
-
             <div class ="box-body">
               <div class="row">
                 <div class="col-lg-6">
@@ -102,16 +129,38 @@
                   <div class="box box-default">
                     <div class="box-header with-border">
                       <h3 class="box-title">Collected files</h3>
-
-                      <div class="box-tools pull-right">
-                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
-                        </button>
-                        <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-                      </div>
                     </div>
                     <div class="box-body">
-                      <div class="chart">
-                        <canvas id="collected_files" style="height:250px"></canvas>
+                      <div class="row">
+                        <div class="col-md-10">
+                          <div class="chart">
+                            <canvas id="FileChart" style="height:250px"></canvas>
+                          </div>
+                        </div>
+                        <div class="col-md-2">
+                          <ul class="chart-legend clearfix">
+                            <li>
+                              <i class="fa fa-circle-o text-aqua"></i>
+                              B
+                            </li>
+                            <li>
+                              <i class="fa fa-circle-o text-red"></i>
+                              C
+                            </li>
+                            <li>
+                              <i class="fa fa-circle-o text-yellow"></i>
+                              D
+                            </li>
+                            <li>
+                              <i class="fa fa-circle-o text-blue"></i>
+                              E
+                            </li>
+                            <li>
+                              <i class="fa fa-circle-o text-green"></i>
+                              F
+                            </li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                     <!-- /.box-body -->
@@ -123,16 +172,38 @@
                   <div class="box box-default">
                     <div class="box-header with-border">
                       <h3 class="box-title">Collected hours</h3>
-
-                      <div class="box-tools pull-right">
-                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
-                        </button>
-                        <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-                      </div>
                     </div>
                     <div class="box-body">
-                      <div class="chart">
-                        <canvas id="collected_hours" style="height:250px"></canvas>
+                      <div class="row">
+                        <div class="col-md-10">
+                          <div class="chart">
+                            <canvas id="HourChart" style="height:250px"></canvas>
+                          </div>
+                        </div>
+                        <div class="col-md-2">
+                          <ul class="chart-legend clearfix">
+                            <li>
+                              <i class="fa fa-circle-o text-aqua"></i>
+                              B
+                            </li>
+                            <li>
+                              <i class="fa fa-circle-o text-red"></i>
+                              C
+                            </li>
+                            <li>
+                              <i class="fa fa-circle-o text-yellow"></i>
+                              D
+                            </li>
+                            <li>
+                              <i class="fa fa-circle-o text-blue"></i>
+                              E
+                            </li>
+                            <li>
+                              <i class="fa fa-circle-o text-green"></i>
+                              F
+                            </li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                     <!-- /.box-body -->
@@ -147,41 +218,49 @@
       <!-- /.row-->
       <!-- row down-->
       <div class="row">
-        <div class="col-lg-8">
+        <div class="col-lg-4">
           <!-- AREA CHART -->
           <div class="box box-default">
             <div class="box-header with-border">
-              <h3 class="box-title">Total Files and Hours</h3>
-
-              <div class="box-tools pull-right">
-                <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
-                </button>
-                <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-              </div>
+              <h3 class="box-title">Total Files </h3>
             </div>
             <div class="box-body">
               <div class="chart">
-                <canvas id="areaChart" style="height:250px"></canvas>
+                <canvas id="AccFileChart" style="height:265px"></canvas>
               </div>
             </div>
             <!-- /.box-body -->
           </div>
           <!-- /.box -->
         </div>
+        <!-- /.col-->
+        <div class="col-lg-4">
+          <!-- AREA CHART -->
+          <div class="box box-default">
+            <div class="box-header with-border">
+              <h3 class="box-title">Total Hours</h3>
+            </div>
+            <div class="box-body">
+              <div class="chart">
+                <canvas id="AccHourChart" style="height:265px"></canvas>
+              </div>
+            </div>
+            <!-- /.box-body -->
+          </div>
+          <!-- /.box -->
+        </div>
+        <!-- /.col-->
+
         <div class="col-lg-4">
           <!-- DONUT CHART -->
           <div class="box box-default">
             <div class="box-header with-border">
-              <h3 class="box-title">Storage Usage</h3>
-
-              <div class="box-tools pull-right">
-                <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i>
-                </button>
-                <button type="button" class="btn btn-box-tool" data-widget="remove"><i class="fa fa-times"></i></button>
-              </div>
+              <h3 class="box-title">Storage Usage in TB</h3>
             </div>
             <div class="box-body">
-              <canvas id="pieChart" style="height:250px"></canvas>
+              <div class="chart">
+                <canvas id="StorageChart" style="height:250px"></canvas>
+              </div>
             </div>
             <!-- /.box-body -->
           </div>
@@ -260,47 +339,80 @@
             }
         );
 
-        let data = {{ data_json|safe }};
-
         /* ChartJS
          * -------
          * Here we will create a few charts using ChartJS
          */
 
+        const colors = [
+            'rgb(0,192,239',
+            'rgb(241,92,92',
+            'rgb(246,179,82',
+            'rgb(79,134,198',
+            'rgb(0,166,90',
+            'rgb(221,223,230',
+            'rgb(165,147,224',
+            'rgb(247,170,151',
+            'rgb(208,232,107',
+            'rgb(136,22,0',
+            'rgb(59,78,50',
+            'rgb(63,64,64'
+        ];
+
+        data = {{ data_json|safe }};
+
         //-------------
         //- LINE CHART DATA-
         //--------------
         // Get context with jQuery - using jQuery's .get() method.
-        let CollectedFileCanvas          = $('#collected_files').get(0).getContext('2d');
+        let FileChartCanvas          = $('#FileChart').get(0).getContext('2d');
         // This will get the first returned node in the jQuery collection.
-        let CollectedFileChart                = new Chart(CollectedFileCanvas);
+        let FileChart                = new Chart(FileChartCanvas);
 
-        let CollectedFileChartDatasets = [];
+        datasets_FileChartData = [];
+        datasets_HourChartData = [];
+
+        let i = 0;
 
         Object.entries(data.collected_files).forEach(entry => {
             let key = entry[0];
             let value = entry[1];
+            datasets_FileChartData.push({
+                label                   : key,
+                fillColor               : colors[i] + ',0.9)',
+                strokeColor             : colors[i] + ',0.8)',
+                pointColor              : colors[i] + ')',
+                pointStrokeColor        : colors[i] + ',1)',
+                pointHighlightFill      : colors[i] + ')',
+                pointHighlightStroke    : colors[i] + ',1)',
+                data                    : value
+            });
+            i++;
             //use key and value here
-            CollectedFileChartDatasets.push(
-                {
-                    label               : key,
-                    fillColor           : 'rgba(0,192,239,0.9)',
-                    strokeColor         : 'rgba(0,192,239,0.8)',
-                    pointColor          : '#00c0ef',
-                    pointStrokeColor    : 'rgba(0,192,239,1)',
-                    pointHighlightFill  : '#00c0ef',
-                    pointHighlightStroke: 'rgba(0,192,239,1)',
-                    data                : value
-                }
-            )
         });
 
-        let CollectedFileChartData = {
-            labels: data.label_dates,
-            datasets: CollectedFileChartDatasets
-        };
+        i = 0;
+        Object.entries(data.collected_hours).forEach(entry => {
+            let key = entry[0];
+            let value = entry[1];
+            datasets_HourChartData.push({
+                label                   : key,
+                fillColor               : colors[i] + ',0.9)',
+                strokeColor             : colors[i] + ',0.8)',
+                pointColor              : colors[i] + ')',
+                pointStrokeColor        : colors[i] + ',1)',
+                pointHighlightFill      : colors[i] + ')',
+                pointHighlightStroke    : colors[i] + ',1)',
+                data                    : value
+            });
+            i++
+        });
 
-        let CollectedFileChartChartOptions = {
+        let FileChartData = {
+            labels      : data.label_dates,
+            datasets    : datasets_FileChartData
+        };
+        let FileChartOptions = {
             //Boolean - If we should show the scale at all
             showScale               : true,
             //Boolean - Whether grid lines are shown across the chart
@@ -330,49 +442,31 @@
             //Number - Pixel width of dataset stroke
             datasetStrokeWidth      : 2,
             //Boolean - Whether to fill the dataset with a color
-            datasetFill             : true,
-            //String - A legend template
+            datasetFill             : false,
+            //Boolean - whether to maintain the starting aspect ratio or not when responsive, if set to false, will take up entire container
             maintainAspectRatio     : true,
             //Boolean - whether to make the chart responsive to window resizing
-            responsive              : true
+            responsive              : true,
+            legend                  : {
+                display: true
+            }
         };
-        CollectedFileChartChartOptions.datasetFill = false;
-        CollectedFileChart.Line(CollectedFileChartData, CollectedFileChartChartOptions);
+        FileChart.Line(FileChartData, FileChartOptions);
+
 
         //-------------
         //- LINE CHART_1 DATA-
         //--------------
         // Get context with jQuery - using jQuery's .get() method.
-        let CollectedHourChartCanvas          = $('#collected_hours').get(0).getContext('2d')
+        let lineChartCanvas          = $('#HourChart').get(0).getContext('2d');
         // This will get the first returned node in the jQuery collection.
-        let CollectedHourChart                = new Chart(CollectedHourChartCanvas);
+        let HourChart                = new Chart(lineChartCanvas);
 
-        let CollectedHourChartDatasets = [];
-
-        Object.entries(data.collected_hours).forEach(entry => {
-            let key = entry[0];
-            let value = entry[1];
-            //use key and value here
-            CollectedHourChartDatasets.push(
-                {
-                    label               : key,
-                    fillColor           : 'rgba(0,192,239,0.9)',
-                    strokeColor         : 'rgba(0,192,239,0.8)',
-                    pointColor          : '#00c0ef',
-                    pointStrokeColor    : 'rgba(0,192,239,1)',
-                    pointHighlightFill  : '#00c0ef',
-                    pointHighlightStroke: 'rgba(0,192,239,1)',
-                    data                : value
-                }
-            )
-        });
-
-        let CollectedHourChartData = {
-            labels: data.label_dates,
-            datasets: CollectedHourChartDatasets
+        let HourChartData = {
+            labels      : data.label_dates,
+            datasets    : datasets_HourChartData
         };
-
-        var CollectedHourChartOptions = {
+        let HourChartOptions = {
             //Boolean - If we should show the scale at all
             showScale               : true,
             //Boolean - Whether grid lines are shown across the chart
@@ -402,25 +496,24 @@
             //Number - Pixel width of dataset stroke
             datasetStrokeWidth      : 2,
             //Boolean - Whether to fill the dataset with a color
-            datasetFill             : true,
-            //String - A legend template
+            datasetFill             : false,
+            //Boolean - whether to maintain the starting aspect ratio or not when responsive, if set to false, will take up entire container
             maintainAspectRatio     : true,
             //Boolean - whether to make the chart responsive to window resizing
             responsive              : true
         };
-        CollectedHourChartOptions.datasetFill = false;
-        CollectedHourChart.Line(CollectedHourChartData, CollectedHourChartOptions)
+        HourChart.Line(HourChartData, HourChartOptions);
 
         //-------------
         //- AREA CHART DATA-
         //-------------
         // Get context with jQuery - using jQuery's .get() method.
-        var areaChartCanvas = $('#areaChart').get(0).getContext('2d')
+        let AccFileChartCanvas = $('#AccFileChart').get(0).getContext('2d');
         // This will get the first returned node in the jQuery collection.
-        var areaChart       = new Chart(areaChartCanvas)
+        let AccFileChart       = new Chart(AccFileChartCanvas);
 
-        var areaChartData = {
-            labels  : ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+        let AccFileChartData = {
+            labels  : data.accumulative.label_dates,
             datasets: [
                 {
                     label               : 'Files',
@@ -430,8 +523,70 @@
                     pointStrokeColor    : 'rgba(0,192,239,1)',
                     pointHighlightFill  : '#00c0ef',
                     pointHighlightStroke: 'rgba(0,192,239,1)',
-                    data                : [120, 150, 180, 210, 300, 505, 640]
-                },
+                    data                : data.accumulative.collected_files
+                }
+            ]
+        };
+
+        let AccFileChartOptions = {
+            //Boolean - If we should show the scale at all
+            showScale               : true,
+            //Boolean - Whether grid lines are shown across the chart
+            scaleShowGridLines      : false,
+            //String - Colour of the grid lines
+            scaleGridLineColor      : 'rgba(0,0,0,.05)',
+            //Number - Width of the grid lines
+            scaleGridLineWidth      : 1,
+            //Boolean - Whether to show horizontal lines (except X axis)
+            scaleShowHorizontalLines: true,
+            //Boolean - Whether to show vertical lines (except Y axis)
+            scaleShowVerticalLines  : true,
+            //Boolean - Whether the line is curved between points
+            bezierCurve             : true,
+            //Number - Tension of the bezier curve between points
+            bezierCurveTension      : 0.3,
+            //Boolean - Whether to show a dot for each point
+            pointDot                : false,
+            //Number - Radius of each point dot in pixels
+            pointDotRadius          : 4,
+            //Number - Pixel width of point dot stroke
+            pointDotStrokeWidth     : 1,
+            //Number - amount extra to add to the radius to cater for hit detection outside the drawn point
+            pointHitDetectionRadius : 20,
+            //Boolean - Whether to show a stroke for datasets
+            datasetStroke           : true,
+            //Number - Pixel width of dataset stroke
+            datasetStrokeWidth      : 2,
+            //Boolean - Whether to fill the dataset with a color
+            datasetFill             : true,
+            //Boolean - whether to maintain the starting aspect ratio or not when responsive, if set to false, will take up entire container
+            maintainAspectRatio     : true,
+            //Boolean - whether to make the chart responsive to window resizing
+            responsive              : true,
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    time: {
+                        unit: 'month'
+                    }
+                }]
+            }
+        };
+
+        //Create the Area chart
+        AccFileChart.Line(AccFileChartData, AccFileChartOptions);
+
+        //-------------
+        //- AREA CHART DATA_1-
+        //-------------
+        // Get context with jQuery - using jQuery's .get() method.
+        let AccHourChartCanvas = $('#AccHourChart').get(0).getContext('2d');
+        // This will get the first returned node in the jQuery collection.
+        let AccHourChart       = new Chart(AccHourChartCanvas);
+
+        let AccHourChartData = {
+            labels  : data.accumulative.label_dates,
+            datasets: [
                 {
                     label               : 'Hours',
                     fillColor           : 'rgba(193,199,209,0.9)',
@@ -440,12 +595,12 @@
                     pointStrokeColor    : 'rgba(193,199,209,1)',
                     pointHighlightFill  : '#c1c7d1',
                     pointHighlightStroke: 'rgba(193,199,209,1)',
-                    data                : [100, 120, 140, 190, 250, 350, 500]
+                    data                : data.accumulative.collected_hours
                 }
             ]
         };
 
-        var areaChartOptions = {
+        let AccHourChartOptions = {
             //Boolean - If we should show the scale at all
             showScale               : true,
             //Boolean - Whether grid lines are shown across the chart
@@ -480,58 +635,75 @@
             maintainAspectRatio     : true,
             //Boolean - whether to make the chart responsive to window resizing
             responsive              : true
-        }
+        };
 
         //Create the Area chart
-        areaChart.Line(areaChartData, areaChartOptions)
+        AccHourChart.Line(AccHourChartData, AccHourChartOptions);
 
-        //-------------
-        //- PIE CHART -
-        //-------------
-        // Get context with jQuery - using jQuery's .get() method.
-        var pieChartCanvas = $('#pieChart').get(0).getContext('2d')
-        var pieChart       = new Chart(pieChartCanvas)
-        var PieData        = [
-            {
-                value    : 300,
-                color    : '#3b8bba',
-                highlight: '#3b8bba',
-                label    : 'Storage'
-            },
-            {
-                value    : 100,
-                color    : '#d2d6de',
-                highlight: '#d2d6de',
-                label    : 'Available'
-            }
-        ]
-        var pieOptions     = {
-            //Boolean - Whether we should show a stroke on each segment
-            segmentShowStroke    : true,
-            //String - The colour of each segment stroke
-            segmentStrokeColor   : '#fff',
-            //Number - The width of each segment stroke
-            segmentStrokeWidth   : 2,
-            //Number - The percentage of the chart that we cut out of the middle
-            percentageInnerCutout: 50, // This is 0 for Pie charts
-            //Number - Amount of animation steps
-            animationSteps       : 100,
-            //String - Animation easing effect
-            animationEasing      : 'easeOutBounce',
-            //Boolean - Whether we animate the rotation of the Doughnut
-            animateRotate        : true,
-            //Boolean - Whether we animate scaling the Doughnut from the centre
-            animateScale         : false,
-            //Boolean - whether to make the chart responsive to window resizing
-            responsive           : true,
-            // Boolean - whether to maintain the starting aspect ratio or not when responsive, if set to false, will take up entire container
-            maintainAspectRatio  : true,
-        }
-        //Create pie or douhnut chart
-        // You can switch between pie and douhnut using the method below.
-        pieChart.Doughnut(PieData, pieOptions)
+        //--------------
+        //- bar CHART -
+        //--------------
 
-    })
+        let StorageChartData = {
+            labels  : data.storage_usage.labels,
+            datasets: [
+                {
+                    label               : 'Total',
+                    fillColor           : 'rgba(210, 214, 222, 1)',
+                    strokeColor         : 'rgba(210, 214, 222, 1)',
+                    pointColor          : 'rgba(210, 214, 222, 1)',
+                    pointStrokeColor    : '#c1c7d1',
+                    pointHighlightFill  : '#fff',
+                    pointHighlightStroke: 'rgba(220,220,220,1)',
+                    data                : data.storage_usage.total
+                },
+                {
+                    label               : 'Available',
+                    fillColor           : '#00c0ef',
+                    strokeColor         : '#00c0ef',
+                    pointColor          : '#00c0ef',
+                    pointStrokeColor    : 'rgba(60,141,188,1)',
+                    pointHighlightFill  : '#fff',
+                    pointHighlightStroke: 'rgba(60,141,188,1)',
+                    data                : data.storage_usage.free
+                }
+            ]
+        };
+
+        let StorageChartCanvas               = document.getElementById('StorageChart').getContext('2d');
+        let StorageChart                     = new Chart(StorageChartCanvas);
+        let StorageChartOptions              = {
+            //Boolean - If we should show the scale at all
+            showScale               : true,
+            //Boolean - Whether the scale should start at zero, or an order of magnitude down from the lowest value
+            scaleBeginAtZero        : true,
+            //Boolean - Whether grid lines are shown across the chart
+            scaleShowGridLines      : false,
+            //String - Colour of the grid lines
+            scaleGridLineColor      : 'rgba(0,0,0,.05)',
+            //Number - Width of the grid lines
+            scaleGridLineWidth      : 1,
+            //Boolean - Whether to show horizontal lines (except X axis)
+            scaleShowHorizontalLines: true,
+            //Boolean - Whether to show vertical lines (except Y axis)
+            scaleShowVerticalLines  : true,
+            //Boolean - If there is a stroke on each bar
+            barShowStroke           : true,
+            //Number - Pixel width of the bar stroke
+            barStrokeWidth          : 2,
+            //Number - Spacing between each of the X value sets
+            barValueSpacing         : 5,
+            //Number - Spacing between data sets within X values
+            barDatasetSpacing       : 1,
+            //Boolean - whether to make the chart responsive
+            responsive              : true,
+            datasetFill             : false,
+            maintainAspectRatio     : true
+        };
+
+        StorageChart.Bar(StorageChartData, StorageChartOptions);
+
+    });
 
 </script>
 </body>

@@ -28,7 +28,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
 
-        for record in search_vital_files(beds_migration):
-            record.decompose()
+        with Pool(4) as p:
+            p.map(FileRecorded.migrate_vital, search_vital_files(beds_migration))
 
         return

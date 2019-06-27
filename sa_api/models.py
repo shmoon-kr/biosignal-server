@@ -214,7 +214,7 @@ class FileRecorded(models.Model):
     begin_date = models.DateTimeField()
     end_date = models.DateTimeField(null=True)
     file_path = models.CharField(max_length=256, blank=True)
-    file_basename = models.CharField(max_length=256, blank=True)
+    file_basename = models.CharField(max_length=256, blank=True, unique=True)
     METHOD_CHOICES = (
         (0, "client"),
         (1, "migration"),
@@ -222,6 +222,9 @@ class FileRecorded(models.Model):
     method = models.IntegerField(choices=METHOD_CHOICES, default=0)
 
     def load_summary(self):
+
+        if self.end_date is None:
+            return
 
         agg_list = ('MIN', 'MAX', 'AVG', 'COUNT')
 
@@ -295,7 +298,7 @@ class FileRecorded(models.Model):
                     log_dict['SERVER_NAME'] = 'global' \
                         if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
                         else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-                    log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
+                    log_dict['ACTION'] = 'LOAD_SUMMARY'
                     log_dict['FILE_NAME'] = self.file_basename
                     log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
                     log_dict['EXCEPTION'] = str(e)
@@ -401,10 +404,9 @@ class FileRecorded(models.Model):
 
     def decompose(self):
 
-        connection.connect()
-
         filename_split = self.file_basename.split('_')
         decompose_path = os.path.join('decompose', filename_split[0], filename_split[1])
+        os.makedirs(decompose_path, mode=0o775, exist_ok=True)
 
         timestamp_interval = 0.5
 
@@ -548,6 +550,15 @@ class FileRecorded(models.Model):
 
                     WaveInfoFile.objects.create(record=self, device=device, channel_name=track_info[1],
                                                 file_path=file_path, num_packets=len(dt), sampling_rate=track_info[3])
+
+        return
+
+    def migrate_vital(self):
+
+        connection.connect()
+        self.decompose()
+        self.load_number(reload=True)
+        self.load_summary()
 
     def __str__(self):
         return self.file_path

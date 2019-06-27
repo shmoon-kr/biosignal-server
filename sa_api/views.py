@@ -20,7 +20,7 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, DeviceAlias
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
@@ -673,12 +673,12 @@ def dashboard(request):
         total = list()
         free = list()
         for storage in storages:
-            total.append(storage[0] // 2**30)
-            free.append(storage[2] // 2**30)
+            total.append(storage[0] // 2**40)
+            free.append(storage[2] // 2**40)
         data['storage_usage']['total'] = total
         data['storage_usage']['free'] = free
 
-        template = loader.get_template('dashboard_chart.html')
+        template = loader.get_template('dashboard_trend.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_trend')
         context = {
             'loc': loc,
@@ -773,6 +773,10 @@ def summary_rosette(request):
         for i in range(3, len(tmp)):
             if tmp[i] is not None:
                 tmp[i] = format(tmp[i], '.2f')
+        device_list = list()
+        for ni in NumberInfoFile.objects.filter(record__file_basename=tmp[1]):
+            device_list.append(ni.device.code)
+        tmp.append(', '.join(device_list))
         data[rosette]['files'].append(tmp)
         data[row[0]]['files'].append(tmp)
 
