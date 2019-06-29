@@ -516,33 +516,33 @@ def review(request):
 
         for device in main_devices:
             query = "SELECT dt, %s FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
-                    (', '.join(table_col_list[device]), device.db_table_name, rosette, bed, str(begin_date), str(end_date))
+                    (', '.join(table_col_list[device.displayed_name]), device.db_table_name, rosette, bed, str(begin_date), str(end_date))
             cursor.execute(query)
             query_results = cursor.fetchall()
             if len(query_results):
-                chart_data[device] = dict()
-                chart_data[device]['csv_download_params'] = 'rosette=%s&bed=%s&begin_date=%s&end_date=%s&device=%s' % (
+                chart_data[device.displayed_name] = dict()
+                chart_data[device.displayed_name]['csv_download_params'] = 'rosette=%s&bed=%s&begin_date=%s&end_date=%s&device=%s' % (
                     rosette, bed, begin_date, end_date, device
                 )
-                chart_data[device]['timestamp'] = list()
-                for col in table_col_list[device]:
-                    chart_data[device][col] = list()
+                chart_data[device.displayed_name]['timestamp'] = list()
+                for col in table_col_list[device.displayed_name]:
+                    chart_data[device.displayed_name][col] = list()
                 for row in query_results:
-                    chart_data[device]['timestamp'].append(str(row[0]))
+                    chart_data[device.displayed_name]['timestamp'].append(str(row[0]))
                     for i, val in enumerate(row[1:]):
-                        chart_data[device][table_col_list[device][i]].append(float('nan') if val is None else val)
-                chart_data[device]['timestamp'] = json.dumps(chart_data[device]['timestamp'])
+                        chart_data[device.displayed_name][table_col_list[device.displayed_name][i]].append(float('nan') if val is None else val)
+                chart_data[device.displayed_name]['timestamp'] = json.dumps(chart_data[device.displayed_name]['timestamp'])
                 dataset = list()
-                for i, col in enumerate(table_col_list[device]): # rgb(75, 192, 192)
+                for i, col in enumerate(table_col_list[device.displayed_name]): # rgb(75, 192, 192)
                     tmp_dataset = dict()
                     tmp_dataset["label"] = col
-                    tmp_dataset["data"] = chart_data[device][col]
+                    tmp_dataset["data"] = chart_data[device.displayed_name][col]
                     tmp_dataset["fill"] = False
                     tmp_dataset["pointRadius"] = 0
                     tmp_dataset["borderColor"] = color_preview[i]
                     tmp_dataset["lineTension"] = 0
                     dataset.append(tmp_dataset)
-                chart_data[device]['dataset'] = json.dumps(dataset)
+                chart_data[device.displayed_name]['dataset'] = json.dumps(dataset)
         db.close()
 
         events = ManualInputEventItem.objects.filter(record__bed__name=bed, dt__range=(begin_date, end_date))
@@ -582,15 +582,14 @@ def dashboard(request):
 
         for client in clients_all:
             if bed_re.match(client.bed.name):
-                tmp_bed_name = client.bed.name.replace('-', '').lower()
                 if client.color_info()[1] == 'red':
-                    beds_red.append(tmp_bed_name)
+                    beds_red.append(client.bed.name)
                 elif client.color_info()[1] == 'orange':
-                    beds_orange.append(tmp_bed_name)
+                    beds_orange.append(client.bed.name)
                 elif client.status == Client.STATUS_RECORDING:
-                    beds_blue.append(tmp_bed_name)
+                    beds_blue.append(client.bed.name)
                 else:
-                    beds_green.append(tmp_bed_name)
+                    beds_green.append(client.bed.name)
 
         template = loader.get_template('dashboard_rosette.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_rosette')

@@ -214,7 +214,7 @@ class FileRecorded(models.Model):
     begin_date = models.DateTimeField()
     end_date = models.DateTimeField(null=True)
     file_path = models.CharField(max_length=256, blank=True)
-    file_basename = models.CharField(max_length=256, blank=True, unique=True)
+    file_basename = models.CharField(max_length=256, blank=True)
     METHOD_CHOICES = (
         (0, "client"),
         (1, "migration"),
