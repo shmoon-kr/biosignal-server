@@ -575,6 +575,7 @@ def dashboard(request):
         beds_orange = list()
         beds_green = list()
         beds_blue = list()
+        beds_client = set()
 
         bed_re = re.compile('[B-L]-[0-9]{2}')
 
@@ -582,6 +583,7 @@ def dashboard(request):
 
         for client in clients_all:
             if bed_re.match(client.bed.name):
+                beds_client.add(client.bed.name)
                 if client.color_info()[1] == 'red':
                     beds_red.append(client.bed.name)
                 elif client.color_info()[1] == 'orange':
@@ -590,6 +592,23 @@ def dashboard(request):
                     beds_blue.append(client.bed.name)
                 else:
                     beds_green.append(client.bed.name)
+
+        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+        cursor = db.cursor()
+        query = 'SELECT bed, status FROM legacy_bed_status'
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        for row in rows:
+            if row[0] not in beds_client:
+                if row[1] == 'Green':
+                    beds_green.append(row[0])
+                elif row[1] == 'Red':
+                    beds_red.append(row[0])
+
 
         template = loader.get_template('dashboard_rosette.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_rosette')

@@ -54,8 +54,13 @@ class VitalFileHandler(object):
         self.fp = gzip.open(file, "rb")
         self.devices = dict()
         self.tracks = dict()
+        self.devices[0] = vdevice()
+        self.devices[0].typename = 'Client'
+        self.devices[0].devname = 'Client'
+        self.devices[0].port = 'N/A'
         self.read_header()
         self.read_metadata()
+        self.merge_duplicate_track()
 
     def get_gzip_size(self):
         with open(self.filename, 'rb') as f:
@@ -103,6 +108,23 @@ class VitalFileHandler(object):
             r.append((self.devices[track.did].typename, track.name, track.rec_type, track.srate))
         return r
 
+    def get_track_info_device(self, typename):
+        r = dict()
+        for tid, track in self.tracks.items():
+            if self.devices[track.did].typename == typename:
+                r[track.name] = dict()
+                r[track.name]['rec_type'] = track.rec_type
+                r[track.name]['rec_fmt'] = track.rec_fmt
+                r[track.name]['unit'] = track.unit
+                r[track.name]['minval'] = track.minval
+                r[track.name]['maxval'] = track.maxval
+                r[track.name]['color'] = track.color
+                r[track.name]['srate'] = track.srate
+                r[track.name]['adc_gain'] = track.adc_gain
+                r[track.name]['adc_offset'] = track.adc_offset
+                r[track.name]['mon_type'] = track.mon_type
+        return r
+
     def get_timestamp_range(self):
         min_dt = list()
         max_dt = list()
@@ -111,6 +133,14 @@ class VitalFileHandler(object):
                 min_dt.append(min(track.dt))
                 max_dt.append(max(track.dt))
         return min(min_dt), max(max_dt)
+
+    def merge_duplicate_track(self):
+        for i1, t1 in self.tracks.items():
+            for i2, t2 in self.tracks.items():
+                if self.devices[t1.did].typename == self.devices[t2.did].typename and t1.name == t2.name and i1 != i2:
+                    self.tracks.pop(i2, None)
+                    # When there are two tracks with the same device_type and track name, Only the first one will be decomposed.
+        return
 
     def read_metadata(self, timestamp='unix'):
 

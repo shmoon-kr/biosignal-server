@@ -195,7 +195,7 @@ class Channel(models.Model):
         unique_together = (("name", "device"),)
 
     def __str__(self):
-        return '%s, %s' % (self.device.device_type, self.name)
+        return '%s, %s' % (self.device.displayed_name, self.abbreviation)
 
 
 class ChannelAlias(models.Model):
@@ -355,7 +355,7 @@ class FileRecorded(models.Model):
                 if i:
                     query += ','
                 query += "(0, '%s', '%s', '%s'" % (
-                self.bed.room.name, self.bed.name, str(datetime.datetime.fromtimestamp(timestamp[i])))
+                    self.bed.room.name, self.bed.name, str(datetime.datetime.fromtimestamp(timestamp[i])))
                 for col in column_info_db:
                     if col not in ('method', 'rosette', 'bed', 'dt'):
                         if col not in col_dict:
@@ -404,6 +404,7 @@ class FileRecorded(models.Model):
 
     def decompose(self):
 
+        connection.connect()
         filename_split = self.file_basename.split('_')
         decompose_path = os.path.join('decompose', filename_split[0], filename_split[1])
         os.makedirs(decompose_path, mode=0o775, exist_ok=True)
@@ -541,11 +542,11 @@ class FileRecorded(models.Model):
                     except DeviceAlias.DoesNotExist:
                         device = None
                 if device is not None:
+                    file_path = os.path.join(decompose_path, os.path.splitext(self.file_basename)[0] + '_%s_%s.npz' % (
+                        device.code, track_info[1]))
                     if not os.path.exists(decompose_path):
                         os.makedirs(decompose_path)
                     dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
-                    file_path = os.path.join(decompose_path, os.path.splitext(self.file_basename)[0] + '_%s_%s.npz' % (
-                        device.code, track_info[1]))
                     np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val)
 
                     WaveInfoFile.objects.create(record=self, device=device, channel_name=track_info[1],
