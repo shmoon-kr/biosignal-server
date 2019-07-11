@@ -55,20 +55,6 @@ class Device(models.Model):
         return self.displayed_name
 
 
-class DeviceAlias(models.Model):
-    dt_update = models.DateTimeField(auto_now=True)
-    alias = models.CharField(max_length=64, unique=True)
-    device = models.ForeignKey('Device', on_delete=models.CASCADE)
-
-    def __str__(self):
-        return '%s -> %s' % (self.alias, self.device.displayed_name)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=['alias'], name='idx_alias'),
-        ]
-
-
 class Room(models.Model):
     name = models.CharField(max_length=64)
 
@@ -215,15 +201,6 @@ class Channel(models.Model):
 
     def __str__(self):
         return '%s, %s' % (self.device.displayed_name, self.abbreviation)
-
-
-class ChannelAlias(models.Model):
-    dt_update = models.DateTimeField(auto_now=True)
-    alias = models.CharField(max_length=64, unique=True)
-    channel = models.ForeignKey('Channel', on_delete=models.CASCADE)
-
-    def __str__(self):
-        return '%s, %s -> %s' % (self.channel.device.displayed_name, self.alias, self.channel.abbreviation)
 
 
 class FileRecorded(models.Model):
