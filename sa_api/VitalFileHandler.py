@@ -135,11 +135,14 @@ class VitalFileHandler(object):
         return min(min_dt), max(max_dt)
 
     def merge_duplicate_track(self):
-        for i1, t1 in self.tracks.items():
-            for i2, t2 in self.tracks.items():
-                if self.devices[t1.did].typename == self.devices[t2.did].typename and t1.name == t2.name and i1 != i2:
-                    self.tracks.pop(i2, None)
+        dup = list()
+        for k1, v1 in self.tracks.items():
+            for k2, v2 in self.tracks.items():
+                if self.devices[v1.did].typename == self.devices[v2.did].typename and v1.name == v2.name and k1 < k2:
+                    dup.append(k2)
                     # When there are two tracks with the same device_type and track name, Only the first one will be decomposed.
+        while len(dup):
+            self.tracks.pop(dup.pop(), None)
         return
 
     def read_metadata(self, timestamp='unix'):

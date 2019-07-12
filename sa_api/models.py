@@ -272,7 +272,6 @@ class FileRecorded(models.Model):
                 'PLETH_IR_AMP': 'PLETH_IRAMP',
                 'PLETH2_SPO2': 'PLETH_SPO2',
                 'RR_CO2': 'CO2_RR',
-                'HR': 'ECG_HR',
                 'HR_ECG': 'ECG_HR',
                 'HR_MIN': 'ECG_HR_MIN',
                 'HR_MAX': 'ECG_HR_MAX',
@@ -315,29 +314,87 @@ class FileRecorded(models.Model):
             mapping = {
                 'AWAY_CO2_ET': 'CO2_ET',
                 'AWAY_CO2_INSP_MIN': 'CO2_INSP_MIN',
+                'MEAN': 'ABP_MBP',
+                'SYS': 'ABP_SBP',
+                'DIA': 'ABP_DBP',
+                'ABP_MEAN': 'ABP_MBP',
+                'ABP_SYS': 'ABP_SBP',
+                'ABP_DIA': 'ABP_DBP',
+                'ART_MEAN': 'ABP_MBP',
+                'ART_SYS': 'ABP_SBP',
+                'ART_DIA': 'ABP_DBP',
+                'AOP_MEAN': 'AOP_MBP',
+                'AOP_SYS': 'AOP_SBP',
+                'AOP_DIA': 'AOP_DBP',
+                'BT_ESOPH': 'TEMP_ESOPH',
                 'CO_CTS': 'CO',
                 'CI_CTS': 'CI',
-                'CVP_MEAN': 'CVP',
+                'CVP_MEAN': 'CVP_MBP',
+                'CVP_SYS': 'CVP_SBP',
+                'CVP_DIA': 'CVP_DBP',
+                'DES_ET_PERC': 'DESFL_ET',
+                'DES_INSP_PERC': 'DESFL_INSP',
+                'ENF_ET_PERC': 'ENFL_ET',
+                'ENF_INSP_PERC': 'ENFL_INSP',
+                'HAL_ET_PERC': 'HAL_ET',
+                'HAL_INSP_PERC': 'HAL_INSP',
+                'ICP_MEAN': 'ICP_MBP',
+                'LAP_MEAN': 'LAP_MBP',
+                'LAP_SYS': 'LAP_SBP',
+                'LAP_DIA': 'LAP_DBP',
+                'PRESS_CEREB_PERF': 'CPP',
+                'PERF_REL': 'PLETH_PERF_REL',
+                'RAP_MEAN': 'RAP_MBP',
+                'RAP_SYS': 'RAP_SBP',
+                'RAP_DIA': 'RAP_DBP',
+                'ST_I': 'ECG_ST_I',
                 'ST_II': 'ECG_ST_II',
+                'ST_III': 'ECG_ST_III',
+                'ST_V': 'ECG_ST_V',
+                'ST_AVF': 'ECG_ST_AVF',
+                'ST_AVL': 'ECG_ST_AVL',
+                'ST_AVR': 'ECG_ST_AVR',
+                'ST_MCL': 'ECG_ST_MCL',
+                'TOF1': 'TOF_1',
+                'TOF2': 'TOF_2',
+                'TOF3': 'TOF_3',
+                'TOF4': 'TOF_4',
                 'EEG_BIS': 'BIS_BIS',
                 'EEG_BIS_SQI': 'BIS_SQI',
                 'EEG_FREQ_PWR_SPEC_CRTX_SPECTRAL_EDGE': 'BIS_SEF',
                 'EEG_RATIO_SUPPRN': 'BIS_SR',
                 'EMG_ELEC_POTL_MUSCL': 'BIS_EMG',
+                'NIBP_MEAN': 'NIBP_MBP',
+                'NIBP_SYS': 'NIBP_SBP',
+                'NIBP_DIA': 'NIBP_DBP',
                 'O2_ET_PERC': 'O2_ET',
                 'O2_INSP_PERC': 'O2_INSP',
+                'PAP_MEAN': 'PAP_MBP',
+                'PAP_SYS': 'PAP_SBP',
+                'PAP_DIA': 'PAP_DBP',
+                'QT_HR': 'ECG_QT_HR',
                 'QT_GL': 'ECG_QT_GL',
                 'QTc': 'ECG_QTc',
                 'QTc_DELTA': 'ECG_QTc_DELTA',
                 'SEVO_ET_PERC': 'SEVOFL_ET',
                 'SEVO_INSP_PERC': 'SEVOFL_INSP',
-                'ABP_MEAN': 'ABP_MBP',
-                'ABP_SYS': 'ABP_SBP',
-                'ABP_DIA': 'ABP_DBP',
-                'NIBP_MEAN': 'NIBP_MBP',
-                'NIBP_SYS': 'NIBP_SBP',
-                'NIBP_DIA': 'NIBP_DBP',
+                'UA_MEAN': 'UA_MBP',
+                'UA_SYS': 'UA_SBP',
+                'UA_DIA': 'UA_DBP',
+                'VOL_BLD_STROKE': 'SV',
+                'VOL_BLD_STROKE_INDEX': 'SI',
                 'VOL_BLD_STROKE_VAR': 'SVV'
+            }
+            if r in mapping.keys():
+                r = mapping[r]
+        elif displayed_name == 'Masimo/Root':
+            mapping = {
+                'EEG_SEFL': 'SEFL',
+                'EEG_SEFR': 'SEFR',
+                'EEG_ARTF': 'ARTF',
+                'EEG_SR': 'SR',
+                'EEG_EMG': 'EMG',
+                'EEG_PSI': 'PSI'
             }
             if r in mapping.keys():
                 r = mapping[r]
@@ -352,8 +409,8 @@ class FileRecorded(models.Model):
         agg_list = ('MIN', 'MAX', 'AVG', 'COUNT')
 
         table_col_list = dict()
-        table_col_list['summary_by_file'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
-        table_col_list['Philips/IntelliVue'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SAT_O2']
+        table_col_list['summary_by_file'] = ['ECG_HR', 'TEMP', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SPO2']
+        table_col_list['Philips/IntelliVue'] = ['ECG_HR', 'TEMP', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SAT_O2']
         table_col_list['GE/Carescape'] = ['ECG_HR', 'BT', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SPO2']
 
         table_val_list = dict()
@@ -436,7 +493,21 @@ class FileRecorded(models.Model):
     def load_number(self, reload=False):
 
         for ni in NumberInfoFile.objects.filter(record=self):
-            ni.load_number(reload)
+            try:
+                ni.load_number(reload)
+            except Exception as e:
+                log_dict = dict()
+                log_dict['SERVER_NAME'] = 'global' \
+                    if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+                    else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+                log_dict['ACTION'] = 'LOAD_NUMBER'
+                log_dict['FILE_NAME'] = self.file_basename
+                log_dict['MESSAGE'] = 'An exception was raised during a DB loading process.'
+                log_dict['EXCEPTION'] = str(e)
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
         return
 
     def decompose(self):
@@ -543,7 +614,6 @@ class FileRecorded(models.Model):
                 log_dict['ACTION'] = 'DECOMPOSE'
                 log_dict['EVENT'] = 'UNDEFINED_DEVICE'
                 log_dict['FILE_BASENAME'] = self.file_basename
-                print(found_device, device, device.code)
                 if device is None:
                     log_dict['MESSAGE'] = 'A new device %s was found.' % found_device
                 else:
@@ -590,7 +660,7 @@ class FileRecorded(models.Model):
 
         self.decompose()
         self.load_number(reload=True)
-        self.load_summary()
+        #self.load_summary()
 
     def __str__(self):
         return self.file_path
@@ -631,6 +701,9 @@ class NumberInfoFile(models.Model):
                     col_dict[converted_col] = i
                     if converted_col not in column_info_db:
                         unknown_columns.append(col)
+                elif converted_col in ('ABP_SBP', 'ABP_MBP', 'ABP_DBP', 'ABP_HR'):
+                    if col.startswith('ABP_'):
+                        col_dict[converted_col] = i
                 else:
                     duplicated_columns.append(col)
         return unknown_columns, duplicated_columns
@@ -669,6 +742,9 @@ class NumberInfoFile(models.Model):
                     col_dict[converted_col] = i
                     if converted_col not in column_info_db:
                         unknown_columns.append(col)
+                elif converted_col in ('ABP_SBP', 'ABP_MBP', 'ABP_DBP', 'ABP_HR'):
+                    if col.startswith('ABP_'):
+                        col_dict[converted_col] = i
                 else:
                     duplicated_columns.append(col)
 
