@@ -62,6 +62,7 @@
         <td class="field-bed_name">{{ event.description }}</td>
 
         </tr>
+
     {% endfor %}
 
 </tbody>
@@ -69,6 +70,21 @@
 </div>
 
 {% endif %}
+
+
+{% for ch in wave %}
+    <label><input type="checkbox" id="cbx_{{ forloop.counter0 }}" onclick="update_wave_list()"> {{ ch.device }}, {{ ch.channel }} <br></label>
+{% endfor %}
+
+<div class="slidecontainer">
+  <input type="range" min="0" max="100" value="50" class="slider" id="waveTimeSlider">
+</div>
+
+{% for ch in wave %}
+    <div id="div_{{ forloop.counter0 }}">
+    <canvas id="cvs_{{ forloop.counter0 }}"> width="400" height="50"></canvas>
+    </div>
+{% endfor %}
 
 {% for device, val in data.items %}
 
@@ -79,6 +95,65 @@
 {% endfor %}
 
 <script>
+
+    let begin_date = new Date('{{ begin_date }}');
+    let end_date = new Date('{{ end_date }}');
+
+    let wave_begin_date = new Date(begin_date);
+    wave_begin_date.setSeconds(Math.ceil(wave_begin_date.getSeconds()/10)*10);
+
+    let wave_dt_list = [];
+    // loop for every day
+    for (let dt = wave_begin_date; dt <= end_date; dt.setSeconds(dt.getSeconds()+10)) {
+        wave_dt_list.push(new Date(dt));
+    }
+    let dt_pointer = Math.floor(wave_dt_list.length/2);
+
+    let slider = document.getElementById("waveTimeSlider");
+    slider.max = wave_dt_list.length;
+    slider.value = dt_pointer;
+    slider.oninput = function() {
+        dt_pointer = this.value;
+        update_wave_data();
+    };
+
+    function update_wave_list() {
+        for (let i=0; i<wave_charts.length; i++) {
+            if ( document.getElementById(wave_charts[i].cbx_id).checked ) {
+                document.getElementById(wave_charts[i].div_id).style.display="block";
+                wave_charts[i].chart.update();
+            } else {
+                document.getElementById(wave_charts[i].div_id).style.display="none";
+            }
+        }
+    }
+
+    function update_wave_data() {
+        let xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (this.readyState === 4 && this.status === 200) {
+                wave_data = JSON.parse(xhttp.responseText);
+                for (let i=0; i<wave_charts.length; i++) {
+                    let d = wave_data[wave_charts[i].device][wave_charts[i].channel];
+                    let init_dt = new Date(d.timestamp[0]);
+                    wave_charts[i].chart.data.labels = [];
+                    wave_charts[i].chart.data.datasets = [];
+                    tmp_dataset = { label: wave_charts[i].channel, data: [] };
+                    for (let j=0; j<d['data'][0].length; j++) {
+                        c_dt = new Date(init_dt);
+                        c_dt.setMilliseconds(init_dt.getMilliseconds()+j*1000/d['sampling_rate']);
+                        wave_charts[i].chart.data.labels.push(c_dt);
+                        tmp_dataset.data.push(d['data'][0][j]);
+                    }
+                    wave_charts[i].chart.data.datasets.push(tmp_dataset);
+                }
+                update_wave_list();
+            }
+        };
+        xhttp.open("GET", "get_wavedata?file={{ vital_file }}&dt=" + wave_dt_list[dt_pointer].toISOString(), true);
+        xhttp.send();
+    }
+
     let event_info = {
         drawTime: 'afterDatasetsDraw',
         annotations: []
@@ -138,6 +213,57 @@
     {% endfor %}
     //number_chart[0].options.annotation = event_info
     //number_chart[0].update()
+
+    let waves = {{ wave_json | safe }};
+    let wave_charts = [];
+
+    for (let i=0; i<waves.length; i++) {
+        let tmp_wave = {};
+        tmp_wave.device = waves[i].device;
+        tmp_wave.channel = waves[i].channel;
+        tmp_wave.sampling_rate = waves[i].sampling_rate;
+        tmp_wave.num_packets = waves[i].num_packets;
+        tmp_wave.file_path = waves[i].file_path;
+        tmp_wave.div_id = "div_" + i;
+        tmp_wave.cvs_id = "cvs_" + i;
+        tmp_wave.cbx_id = "cbx_" + i;
+        tmp_wave.chart = new Chart(document.getElementById(tmp_wave.cvs_id), {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [],
+                fill: false,
+                pointRadius: 0,
+                borderColor: 'black',
+                lineTension: 0
+            },
+            options: {
+                scales: {
+                    xAxes: [{
+                        type: "time",
+                        time: {
+                            unit: "second"
+                        }
+                    }]
+                },
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 10,
+                        top: 10,
+                        bottom: 10
+                    }
+                },
+                animation: {
+                    duration: 0 // general animation time
+                },
+                annotation: event_info
+            }
+        });
+        wave_charts.push(tmp_wave);
+    }
+
+    update_wave_data();
 
 </script>
 

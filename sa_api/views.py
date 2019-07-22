@@ -10,17 +10,20 @@ import tempfile
 import random
 import shutil
 import pandas
+import bisect
+import dateutil
 import numpy as np
 import sa_api.VitalFileHandler as VFH
 from .forms import UploadFileForm, UploadReviewForm
 from pyfluent.client import FluentSender
 from ftplib import FTP
 from itertools import product
+from django.core.cache import cache
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile
 from django.views.decorators.csrf import csrf_exempt
 
 tz = pytz.timezone(settings.TIME_ZONE)
@@ -81,8 +84,8 @@ def get_table_col_val_list():
 
     table_col_list = dict()
     table_col_list['summary_by_file'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
-    table_col_list['Philips/IntelliVue'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SAT_O2']
-    table_col_list['GE/Carescape'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
+    table_col_list['Philips/IntelliVue'] = ['ECG_HR', 'TEMP', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SAT_O2']
+    table_col_list['GE/Carescape'] = ['ECG_HR', 'BT_PA', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SPO2']
 
     table_val_list = dict()
     table_val_list['summary_by_file'] = product(table_col_list['summary_by_file'], get_agg_list())
@@ -197,223 +200,37 @@ def file_upload_storage(date_string, bed_name, filepath):
     return True
 
 
-def db_upload_summary(record):
+@csrf_exempt
+def get_wavedata(request):
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+    dt = dateutil.parser.parse(request.GET.get("dt"))
 
-    table_col_list, table_val_list = get_table_col_val_list()
+    r_dict = dict()
+    response_status = 200
 
-    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-    cursor = db.cursor()
+    for wif in WaveInfoFile.objects.filter(record=record):
+        npz = cache.get(wif.file_path)
+        if npz is None:
+            npz = np.load(wif.file_path)
+            cache.set(wif.file_path, npz)
 
-    main_devices = Device.objects.filter(is_main=True, db_table_name__isnull=False)
+        if wif.device.displayed_name not in r_dict:
+            r_dict[wif.device.displayed_name] = dict()
+        r_dict[wif.device.displayed_name][wif.channel_name] = dict()
+        ch = r_dict[wif.device.displayed_name][wif.channel_name]
+        ch['sampling_rate'] = wif.sampling_rate
+        ch['timestamp'] = list()
+        ch['data'] = list()
 
-    for device in main_devices: #device_displayed_name, table
-        field_list = list()
-        for val in table_val_list[device.displayed_name]:
-            field_list.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
+        st = bisect.bisect(npz['timestamp'], dt.timestamp() - 10)
+        ed = bisect.bisect(npz['timestamp'], dt.timestamp() + 10)
 
-        query = 'SELECT COUNT(*) TOTAL_COUNT, %s' % ', '.join(field_list)
-        query += " FROM %s WHERE rosette = '%s' AND bed = '%s' AND" % (device.db_table_name, record.bed.room.name, record.bed.name)
-        query += " dt BETWEEN '%s' and '%s'" % (record.begin_date.astimezone(tz), record.end_date.astimezone(tz))
+        ch['timestamp'].append(str(datetime.datetime.fromtimestamp(npz['timestamp'][st])))
+        ch['data'].append(list())
+        for v in npz['val'][npz['packet_pointer'][st]:npz['packet_pointer'][ed]]:
+            ch['data'][-1].append(round(float(v), 4))
 
-        cursor.execute(query)
-
-        summary = cursor.fetchall()[0]
-        if summary[0]:
-            field_list = list()
-            field_list.append('method')
-            field_list.append('device_displayed_name')
-            field_list.append('file_basename')
-            field_list.append('rosette')
-            field_list.append('bed')
-            field_list.append('begin_date')
-            field_list.append('end_date')
-            field_list.append('effective')
-            field_list.append('TOTAL_COUNT')
-            for val in table_val_list['summary_by_file']:
-                field_list.append('%s_%s' % (val[0], val[1]))
-            value_list = list()
-            value_list.append(str(0))
-            value_list.append("'%s'" % device.displayed_name)
-            value_list.append("'%s'" % os.path.basename(record.file_path))
-            value_list.append("'%s'" % record.bed.room.name)
-            value_list.append("'%s'" % record.bed.name)
-            value_list.append("'%s'" % record.begin_date.astimezone(tz).isoformat())
-            value_list.append("'%s'" % record.end_date.astimezone(tz).isoformat())
-            value_list.append('1' if record.end_date - record.begin_date > datetime.timedelta(minutes=10) else '0')
-            for i in summary:
-                if i is None:
-                    value_list.append('NULL')
-                else:
-                    value_list.append(str(i))
-            query = 'INSERT IGNORE INTO %s (%s)' % ('summary_by_file', ', '.join(field_list))
-            query += ' VALUES (%s)' % ', '.join(value_list)
-
-            try:
-                cursor.execute(query)
-                db.commit()
-            except MySQLdb.Error as e:
-                log_dict = dict()
-                log_dict['SERVER_NAME'] = 'global' \
-                    if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
-                    else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-                log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
-                log_dict['FILE_NAME'] = record.file_path
-                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
-                log_dict['EXCEPTION'] = str(e)
-                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-                return
-
-    db.close()
-    return
-
-
-# Create your views here.
-
-def db_upload_main_numeric(recorded, method=0, db_writing=True):
-
-    timestamp_interval = 0.5
-
-    device_numeric_db = Device.objects.filter(db_table_name__isnull=False)
-
-    device_list = list()
-
-    for device in device_numeric_db:
-        device_list.append(device.displayed_name)
-
-    read_start = datetime.datetime.now()
-    handle = VFH.VitalFileHandler(recorded.file_path)
-    raw_data = handle.export_number(device_list)
-    len_raw_data = len(raw_data)
-    del handle
-
-    if not len(raw_data):
-        raise ValueError('No number data was found in vital file.')
-
-    def sort_by_time(val):
-        return val[:3]
-
-    raw_data.sort(key=sort_by_time)
-
-    aligned_data = list()
-    tmp_aligned = dict()
-    column_info = dict()
-    for i, ri in enumerate(raw_data):
-        if not ri[0] in column_info:
-            column_info[ri[0]] = dict()
-        if not ri[2] in column_info[ri[0]]:
-            column_info[ri[0]][ri[2]] = len(column_info[ri[0]])
-        if not i:
-            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
-        elif tmp_aligned['device'] != ri[0] or ri[1]-tmp_aligned['timestamp'] > timestamp_interval or ri[2] in tmp_aligned:
-            aligned_data.append(tmp_aligned)
-            tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
-        else:
-            tmp_aligned[ri[2]] = ri[3]
-    aligned_data.append(tmp_aligned)
-    del raw_data
-
-    file_read_execution_time = datetime.datetime.now() - read_start
-
-    log_dict = dict()
-    log_dict['SERVER_NAME'] = 'global' \
-        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
-        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-    log_dict['ACTION'] = 'DB_UPLOAD_FILE_READ'
-    log_dict['FILE_NAME'] = recorded.file_basename
-    log_dict['NUM_RECORDS_FILE'] = len_raw_data
-    log_dict['NUM_RECORDS_ALIGNED'] = len(aligned_data)
-    log_dict['READING_EXECUTION_TIME'] = str(file_read_execution_time)
-    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-    del log_dict
-
-    insert_query = dict()
-    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-    cursor = db.cursor()
-
-    column_info_db = dict()
-    num_records = dict()
-
-    for device_type in column_info.keys():
-        device = Device.objects.get(displayed_name=device_type)
-
-        num_records[device_type] = 0
-        query = 'DESCRIBE %s' % device.db_table_name
-        cursor.execute(query)
-        rows = cursor.fetchall()
-
-        insert_query[device_type] = 'INSERT IGNORE INTO %s (' % device.db_table_name
-        column_info_db[device_type] = dict()
-        for i, column in enumerate(rows):
-            if column[0] != 'id':
-                column_info_db[device_type][len(column_info_db[device_type])] = column[0]
-                if len(column_info_db[device_type]) == 1:
-                    insert_query[device_type] += column[0]
-                else:
-                    insert_query[device_type] += ', ' + column[0]
-        insert_query[device_type] += ') VALUES '
-
-    for i, ad in enumerate(aligned_data):
-        tmp_query = "(%d, '%s', '%s'" % (method, recorded.bed.room.name, recorded.bed.name)
-        tmp_query += ", '%s'" % (datetime.datetime.fromtimestamp(ad['timestamp']).isoformat())
-        device_type = ad['device']
-        num_records[device_type] += 1
-        for key, val in column_info_db[device_type].items():
-            if val not in ['method', 'rosette', 'bed', 'dt']:
-                tmp_query += ', NULL' if val not in ad else ', %f' % (ad[val])
-        tmp_query += ')'
-        if i == 0:
-            insert_query[device_type] += tmp_query
-        else:
-            insert_query[device_type] += ',' + tmp_query
-
-    for device_type in [*column_info_db]:
-        for key, val in column_info_db[device_type].items():
-            column_info[device_type].pop(val, None)
-
-    for key, val in insert_query.items():
-        log_dict = dict()
-        log_dict['SERVER_NAME'] = 'global'\
-            if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global'\
-            else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-        log_dict['ACTION'] = 'DB_UPLOAD_%s' % ('REAL' if db_writing else 'FAKE')
-        log_dict['TARGET_DEVICE'] = key
-        log_dict['NEW_CHANNEL'] = [*column_info[key]]
-        log_dict['NUM_RECORDS_QUERY'] = num_records[key]
-        insert_start = datetime.datetime.now()
-        try:
-            if db_writing:
-                cursor.execute(val)
-        except MySQLdb.Error as e:
-            log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
-            log_dict['EXCEPTION'] = str(e)
-            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-
-            return
-        db.commit()
-        db_upload_execution_time = datetime.datetime.now() - insert_start
-        log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount if db_writing else 0
-        log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time) if db_writing else 0
-
-        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-        del log_dict
-
-    db.close()
-
-    return
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 
 @csrf_exempt
@@ -545,13 +362,28 @@ def review(request):
                 chart_data[device.displayed_name]['dataset'] = json.dumps(dataset)
         db.close()
 
+        wave_metadata = list()
+        for wif in WaveInfoFile.objects.filter(record=record):
+            tmp_wif = dict()
+            tmp_wif['device'] = wif.device.displayed_name
+            tmp_wif['channel'] = wif.channel_name
+            tmp_wif['sampling_rate'] = wif.sampling_rate
+            tmp_wif['num_packets'] = wif.num_packets
+            tmp_wif['file_path'] = wif.file_path
+            wave_metadata.append(tmp_wif)
+
         events = ManualInputEventItem.objects.filter(record__bed__name=bed, dt__range=(begin_date, end_date))
 
         context = dict()
+        context['vital_file'] = file
         context['data'] = chart_data
+        context['wave'] = wave_metadata
+        context['wave_json'] = json.dumps(wave_metadata, indent=4)
         context['bed'] = bed
         context['events'] = events
         context['date'] = begin_date.strftime('%Y-%m-%d')
+        context['begin_date'] = str(begin_date)
+        context['end_date'] = str(end_date)
         template = loader.get_template('preview.html')
         return HttpResponse(template.render(context, request))
     else:
@@ -577,12 +409,12 @@ def dashboard(request):
         beds_blue = list()
         beds_client = set()
 
-        bed_re = re.compile('([B-L]|IPACU|OB|WREC|EREC|NREC)-[0-9]{2}')
+        bed_re = re.compile('([B-L]|IPACU|OB|WREC|EREC|NREC|PICU1)-[0-9]{2}')
 
         clients_all = Client.objects.all()
 
         for client in clients_all:
-            if bed_re.match(client.bed.name):
+            if bed_re.match(client.bed.name) if client.bed is not None else False:
                 beds_client.add(client.bed.name)
                 if client.color_info()[1] == 'red':
                     beds_red.append(client.bed.name)
@@ -1509,17 +1341,7 @@ def recording_info_body(request):
                         recorded.save(update_fields=['file_path', 'file_basename'])
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
-                        recorded.decompose()
-                        if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
-                            try:
-                                recorded.load_number()
-                                recorded.load_summary()
-                                r_dict['success'] = True
-                                r_dict['message'] = 'Recording info was added and file was uploaded correctly.'
-                            except Exception as e:
-                                r_dict['success'] = True
-                                r_dict['exception'] = str(e)
-                                r_dict['message'] = 'Recording info was added and file was uploaded correctly. But DB upload was failed.'
+                        recorded.migrate_vital()
                     except Exception as e:
                         r_dict['success'] = False
                         r_dict['exception'] = str(e)

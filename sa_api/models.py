@@ -659,8 +659,12 @@ class FileRecorded(models.Model):
     def migrate_vital(self):
 
         self.decompose()
-        self.load_number(reload=True)
-        #self.load_summary()
+        if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
+            try:
+                self.load_number(reload=True)
+                self.load_summary()
+            except Exception as e:
+                pass
 
     def __str__(self):
         return self.file_path
