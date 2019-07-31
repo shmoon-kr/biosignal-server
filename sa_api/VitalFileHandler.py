@@ -317,5 +317,5 @@ class VitalFileHandler(object):
             elif track.rec_fmt == 5 or track.rec_fmt == 6:
                 listval = list(struct.unpack('<'+'h'*num, packet_data.read(2*num))) # Little Endian
                 for j, v in enumerate(listval):
-                    track.val[track.packet_pointer[i]+j] = v
+                    track.val[track.packet_pointer[i]+j] = v*track.adc_gain + track.adc_offset
         return True

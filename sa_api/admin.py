@@ -147,6 +147,10 @@ class ManualInputEventAdmin(admin.ModelAdmin):
     inlines = [ManualInputEventItemInline]
 
 
+class DeviceAdmin(admin.ModelAdmin):
+    list_display = ('device_type', 'displayed_name', 'code', 'db_table_name')
+
+
 class ChannelAdmin(admin.ModelAdmin):
     list_display = ('id', 'device', 'unk', 'name', 'colored_abbreviation', 'rec_fmt', 'unit', 'min', 'max', 'srate')
     list_filter = ('device', 'is_unknown')
@@ -240,7 +244,7 @@ class ReviewAdmin(admin.ModelAdmin):
 
 
 # Register your models here.
-admin.site.register(Device)
+admin.site.register(Device, DeviceAdmin)
 admin.site.register(Channel, ChannelAdmin)
 admin.site.register(Room)
 admin.site.register(Bed, BedAdmin)

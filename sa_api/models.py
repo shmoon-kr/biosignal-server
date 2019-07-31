@@ -1,14 +1,17 @@
-from django.db import models, connection
+from django.db import models, connection, utils, transaction
 from django.utils import timezone
 from django.utils.html import format_html
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from pyfluent.client import FluentSender
 from itertools import product
+from scipy import stats
 import re
 import os
-import datetime
 import pytz
+import stat
+import math
+import datetime
 import MySQLdb
 import numpy as np
 import sa_api.VitalFileHandler as VFH
@@ -16,6 +19,16 @@ import sa_api.VitalFileHandler as VFH
 # Create your models here.
 
 tz = pytz.timezone(settings.TIME_ZONE)
+
+
+class FloatFieldSingle(models.Field):
+    def db_type(self, connection):
+        return 'float'
+
+
+class SingleFloatField(models.Field):
+    def db_type(self, connection):
+        return 'float'
 
 
 class OverwriteStorage(FileSystemStorage):
@@ -50,6 +63,39 @@ class Device(models.Model):
             'Drager/Primus': 'Dräger/Primus'
         }
         return mapping[alias] if alias in mapping.keys() else alias
+
+    def cleansing(self, timestamp, col_dict, val):
+
+        if self.displayed_name in ('GE/Carescape', 'Philips/IntelliVue'):
+            if 'NIBP_SBP' in col_dict.keys() and 'NIBP_DBP' in col_dict.keys() and 'NIBP_MBP' in col_dict.keys():
+                for i in range(len(val)):
+                    if np.isnan(val[i, col_dict['NIBP_SBP']]) or np.isnan(val[i, col_dict['NIBP_DBP']]) or np.isnan(val[i, col_dict['NIBP_MBP']]):
+                        val[i, col_dict['NIBP_SBP']] = val[i, col_dict['NIBP_DBP']] = val[i, col_dict['NIBP_MBP']] = np.nan
+                    elif not val[i, col_dict['NIBP_SBP']] > val[i, col_dict['NIBP_MBP']] > val[i, col_dict['NIBP_DBP']]:
+                        val[i, col_dict['NIBP_SBP']] = val[i, col_dict['NIBP_DBP']] = val[i, col_dict['NIBP_MBP']] = np.nan
+            if 'ABP_SBP' in col_dict.keys() and 'ABP_DBP' in col_dict.keys() and 'ABP_MBP' in col_dict.keys():
+                for i in range(len(val)):
+                    if np.isnan(val[i, col_dict['ABP_SBP']]) or np.isnan(val[i, col_dict['ABP_DBP']]) or np.isnan(val[i, col_dict['ABP_MBP']]):
+                        val[i, col_dict['ABP_SBP']] = val[i, col_dict['ABP_DBP']] = val[i, col_dict['ABP_MBP']] = np.nan
+                    elif not val[i, col_dict['ABP_SBP']] > val[i, col_dict['ABP_MBP']] > val[i, col_dict['ABP_DBP']]:
+                        val[i, col_dict['ABP_SBP']] = val[i, col_dict['ABP_DBP']] = val[i, col_dict['ABP_MBP']] = np.nan
+                    elif not 300 > val[i, col_dict['ABP_SBP']] > 20:
+                        val[i, col_dict['ABP_SBP']] = val[i, col_dict['ABP_DBP']] = val[i, col_dict['ABP_MBP']] = np.nan
+                    elif not 225 > val[i, col_dict['ABP_DBP']] > 5:
+                        val[i, col_dict['ABP_SBP']] = val[i, col_dict['ABP_DBP']] = val[i, col_dict['ABP_MBP']] = np.nan
+                val[:, col_dict['ABP_SBP']] = NumberInfoFile.smoothing_number(val[:, col_dict['ABP_SBP']], timestamp)
+                val[:, col_dict['ABP_DBP']] = NumberInfoFile.smoothing_number(val[:, col_dict['ABP_DBP']], timestamp)
+                val[:, col_dict['ABP_MBP']] = NumberInfoFile.smoothing_number(val[:, col_dict['ABP_MBP']], timestamp)
+            if 'ABP_HR' in col_dict.keys():
+                val[:, col_dict['ABP_HR']] = NumberInfoFile.smoothing_number(val[:, col_dict['ABP_HR']], timestamp)
+            if 'PLETH_HR' in col_dict.keys():
+                val[:, col_dict['PLETH_HR']] = NumberInfoFile.smoothing_number(val[:, col_dict['PLETH_HR']], timestamp)
+            if 'HR' in col_dict.keys():
+                val[:, col_dict['HR']] = NumberInfoFile.smoothing_number(val[:, col_dict['HR']], timestamp)
+            if 'ECG_HR' in col_dict.keys():
+                val[:, col_dict['ECG_HR']] = NumberInfoFile.smoothing_number(val[:, col_dict['ECG_HR']], timestamp)
+
+        return val
 
     def __str__(self):
         return self.displayed_name
@@ -227,7 +273,7 @@ class FileRecorded(models.Model):
                 'ART_SBP': 'ABP_SBP',
                 'ART_DBP': 'ABP_DBP',
                 'ART_MBP': 'ABP_MBP',
-                'ART_HR': 'HR',
+                'ART_HR': 'ABP_HR',
                 'BT': 'BT_PA',
                 'CVP_MBP': 'CVP',
                 'CVP_SBP': None,
@@ -494,7 +540,7 @@ class FileRecorded(models.Model):
 
         for ni in NumberInfoFile.objects.filter(record=self):
             try:
-                ni.load_number(reload)
+                ni.load_number(reload=reload)
             except Exception as e:
                 log_dict = dict()
                 log_dict['SERVER_NAME'] = 'global' \
@@ -560,8 +606,7 @@ class FileRecorded(models.Model):
                 column_info[ri[0]][ri[2]] = len(column_info[ri[0]])
             if not i:
                 tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
-            elif tmp_aligned['device'] != ri[0] or ri[1] - tmp_aligned['timestamp'] > timestamp_interval or ri[
-                2] in tmp_aligned:
+            elif tmp_aligned['device'] != ri[0] or ri[1] - tmp_aligned['timestamp'] > timestamp_interval or ri[2] in tmp_aligned:
                 aligned_data.append(tmp_aligned)
                 tmp_aligned = {'device': ri[0], 'timestamp': ri[1], ri[2]: ri[3]}
             else:
@@ -600,7 +645,6 @@ class FileRecorded(models.Model):
         waveinfofiles.delete()
 
         unknown_device = set()
-
         end_dt = list()
 
         for found_device, cols in column_info.items():
@@ -659,12 +703,7 @@ class FileRecorded(models.Model):
     def migrate_vital(self):
 
         self.decompose()
-        if settings.SERVICE_CONFIGURATIONS['DB_SERVER']:
-            try:
-                self.load_number(reload=True)
-                self.load_summary()
-            except Exception as e:
-                pass
+        self.load_number(reload=True)
 
     def __str__(self):
         return self.file_path
@@ -673,7 +712,37 @@ class FileRecorded(models.Model):
 class NumberInfoFile(models.Model):
     record = models.ForeignKey('FileRecorded', null=True, on_delete=models.CASCADE)
     device = models.ForeignKey('Device', null=True, on_delete=models.CASCADE)
+    db_load = models.BooleanField(null=False, default=False)
     file_path = models.CharField(max_length=256, blank=True)
+
+    @staticmethod
+    def smoothing_number(before_smoothing, timestamp, propotiontocut=0.05, windowsize=30, side=2, type='unixtime'):
+        r = np.array(before_smoothing, dtype=np.float32)
+        p_start = 0
+        p_end = 0
+        for i in range(len(r)):
+            if type == 'unixtime':
+                while timestamp[p_start] + windowsize <= timestamp[i]:
+                    p_start += 1
+            elif type == 'datetime':
+                while timestamp[p_start] - timestamp[i] <= datetime.timedelta(seconds=-windowsize):
+                    p_start += 1
+            else:
+                assert False, 'Unknown timestamp type.'
+            if side == 1:
+                r[i] = stats.trim_mean(before_smoothing[p_start:i + 1], propotiontocut)
+            elif side == 2:
+                if type == 'unixtime':
+                    while timestamp[p_end] - windowsize <= timestamp[i] if p_end < len(r) else False:
+                        p_end += 1
+                elif type == 'datetime':
+                    while timestamp[p_end] - timestamp[i] <= datetime.timedelta(seconds=windowsize) if p_end < len(r) else False:
+                        p_end += 1
+                else:
+                    assert False, 'Unknown timestamp type.'
+
+                r[i] = stats.trim_mean(before_smoothing[p_start:p_end], propotiontocut)
+        return r
 
     def get_channel_info(self):
         db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
@@ -712,106 +781,165 @@ class NumberInfoFile(models.Model):
                     duplicated_columns.append(col)
         return unknown_columns, duplicated_columns
 
-    def load_number(self, reload=False):
+    def load_number(self, reload=True):
 
         connection.connect()
 
-        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-        cursor = db.cursor()
-
-        query = 'DESCRIBE %s' % self.device.db_table_name
-        cursor.execute(query)
-        rows = cursor.fetchall()
-
-        column_info_db = list()
-        for i, column in enumerate(rows):
-            if column[0] != 'id':
-                column_info_db.append(column[0])
-
-        npz = np.load(self.file_path)
-        timestamp = np.array(npz['timestamp'])
-        number = np.array(npz['number'])
-        col_list = np.array(npz['col_list'])
-
-        col_dict = dict()
-        unknown_columns = list()
-        duplicated_columns = list()
-        for i, col in enumerate(col_list):
-            converted_col = FileRecorded.map_channel_name(self.device.displayed_name, col)
-            if converted_col is not None:
-                if converted_col not in col_dict.keys():
-                    col_dict[converted_col] = i
-                    if converted_col not in column_info_db:
-                        unknown_columns.append(col)
-                elif converted_col in ('ABP_SBP', 'ABP_MBP', 'ABP_DBP', 'ABP_HR'):
-                    if col.startswith('ABP_'):
-                        col_dict[converted_col] = i
-                else:
-                    duplicated_columns.append(col)
-
-        if reload:
-            query = "DELETE FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s'" % (
-                self.device.db_table_name, self.record.bed.room.name, self.record.bed.name,
-                self.record.begin_date.astimezone(tz).replace(tzinfo=None),
-                self.record.end_date.astimezone(tz).replace(tzinfo=None))
-            cursor.execute(query)
-            db.commit()
-
-        query = "INSERT IGNORE INTO %s (%s) VALUES " % (self.device.db_table_name, ', '.join(column_info_db))
-
-        for i in range(len(timestamp)):
-            if i:
-                query += ','
-            query += "(0, '%s', '%s', '%s'" % (
-                self.record.bed.room.name, self.record.bed.name, str(datetime.datetime.fromtimestamp(timestamp[i])))
-            for col in column_info_db:
-                if col not in ('method', 'rosette', 'bed', 'dt'):
-                    if col not in col_dict:
-                        query += ', NULL'
-                    elif np.isnan(number[i, col_dict[col]]):
-                        query += ', NULL'
-                    else:
-                        query += ', %f' % number[i, col_dict[col]]
-            query += ")"
-
-        log_dict = dict()
-        log_dict['SERVER_NAME'] = 'global' \
-            if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
-            else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-        log_dict['ACTION'] = 'LOAD_NUMBER'
-        log_dict['TARGET_FILE_VITAL'] = self.record.file_basename
-        log_dict['TARGET_FILE_DECOMPOSED'] = self.file_path
-        log_dict['TARGET_DEVICE'] = self.device.displayed_name
-        log_dict['NEW_CHANNEL'] = unknown_columns
-        log_dict['DUPLICATED_CHANNEL'] = duplicated_columns
-        log_dict['NUM_RECORDS_QUERY'] = len(npz['timestamp'])
-        insert_start = datetime.datetime.now()
-
-        try:
-            cursor.execute(query)
-            db.commit()
-
-            db_upload_execution_time = datetime.datetime.now() - insert_start
-
-            log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount
-            log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time)
-
-            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-
-        except MySQLdb.Error as e:
+        if self.device.db_table_name is None:
+            log_dict = dict()
             log_dict['ACTION'] = 'LOAD_NUMBER'
-            log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
-            log_dict['EXCEPTION'] = str(e)
+            log_dict['FILE_PATH'] = self.file_path
+            log_dict['MESSAGE'] = 'DB table for device %s does not exists.' % self.device.displayed_name
             fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
                                   settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
             fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+            return False
+        
+        if not os.path.exists(self.file_path):
+            log_dict = dict()
+            log_dict['ACTION'] = 'LOAD_NUMBER'
+            log_dict['FILE_PATH'] = self.file_path
+            log_dict['MESSAGE'] = 'A decomposed number file does not exists.'
+            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+            return False
 
-        db.close()
+        with connection.cursor() as cursor:
+            query = 'DESCRIBE %s' % self.device.db_table_name
+            try:
+                cursor.execute(query)
+                self.db_load = False
+                self.save()
+            except MySQLdb.Error as e:
+                log_dict = dict()
+                log_dict['ACTION'] = 'LOAD_NUMBER'
+                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                log_dict['EXCEPTION'] = str(e)
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+                return False
+            except utils.OperationalError as e:
+                log_dict = dict()
+                log_dict['ACTION'] = 'LOAD_NUMBER'
+                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                log_dict['EXCEPTION'] = str(e)
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+                return False
+
+            rows = cursor.fetchall()
+
+            column_info_db = list()
+            for i, column in enumerate(rows):
+                if column[0] != 'id':
+                    column_info_db.append(column[0])
+
+            npz = np.load(self.file_path)
+            timestamp = np.array(npz['timestamp'])
+            number = np.array(npz['number'])
+            col_list = np.array(npz['col_list'])
+
+            col_dict = dict()
+            unknown_columns = list()
+            duplicated_columns = list()
+            for i, col in enumerate(col_list):
+                converted_col = FileRecorded.map_channel_name(self.device.displayed_name, col)
+                if converted_col is not None:
+                    if converted_col not in col_dict.keys():
+                        col_dict[converted_col] = i
+                        if converted_col not in column_info_db:
+                            unknown_columns.append(col)
+                    elif converted_col in ('ABP_SBP', 'ABP_MBP', 'ABP_DBP', 'ABP_HR'):
+                        if col.startswith('ABP_'):
+                            col_dict[converted_col] = i
+                    else:
+                        duplicated_columns.append(col)
+
+            if reload:
+                query = "DELETE FROM %s WHERE record_id=%d" % (self.device.db_table_name, self.record_id)
+                cursor.execute(query)
+                connection.commit()
+
+            number = self.device.cleansing(timestamp, col_dict, number)
+
+            query = "INSERT IGNORE INTO %s (%s) VALUES " % (self.device.db_table_name, ', '.join(column_info_db))
+
+            for i in range(len(timestamp)):
+                if i:
+                    query += ','
+                query += "('%s'" % str(datetime.datetime.fromtimestamp(timestamp[i]))
+                for col in column_info_db:
+                    if col != 'dt':
+                        if col == 'record_id':
+                            query += ', %d' % self.record_id
+                        elif col not in col_dict:
+                            query += ', NULL'
+                        elif np.isnan(number[i, col_dict[col]]) or number[i, col_dict[col]]==math.inf:
+                            query += ', NULL'
+                        else:
+                            query += ', %f' % number[i, col_dict[col]]
+                query += ")"
+
+            log_dict = dict()
+            log_dict['SERVER_NAME'] = 'global' \
+                if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+                else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+            log_dict['ACTION'] = 'LOAD_NUMBER'
+            log_dict['TARGET_FILE_VITAL'] = self.record.file_basename
+            log_dict['TARGET_FILE_DECOMPOSED'] = self.file_path
+            log_dict['TARGET_DEVICE'] = self.device.displayed_name
+            log_dict['NEW_CHANNEL'] = unknown_columns
+            log_dict['DUPLICATED_CHANNEL'] = duplicated_columns
+            log_dict['NUM_RECORDS_QUERY'] = len(npz['timestamp'])
+            insert_start = datetime.datetime.now()
+
+            try:
+                cursor.execute('SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0')
+                cursor.execute('SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0')
+                cursor.execute("SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO'")
+                cursor.execute('SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0')
+                cursor.execute('LOCK TABLES `%s` WRITE' % self.device.db_table_name)
+                cursor.execute(query)
+                connection.commit()
+                cursor.execute('UNLOCK TABLES')
+                cursor.execute('SET SQL_MODE=@OLD_SQL_MODE')
+                cursor.execute('SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS')
+                cursor.execute('SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS')
+                cursor.execute('SET SQL_NOTES=@OLD_SQL_NOTES')
+                self.db_load = True
+                self.save()
+                db_upload_execution_time = datetime.datetime.now() - insert_start
+
+                log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount
+                log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time)
+
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
+            except utils.OperationalError as e:
+                log_dict = dict()
+                log_dict['ACTION'] = 'LOAD_NUMBER'
+                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                log_dict['EXCEPTION'] = str(e)
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+                return False
+
+            except MySQLdb.Error as e:
+                log_dict['ACTION'] = 'LOAD_NUMBER'
+                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                log_dict['EXCEPTION'] = str(e)
+                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+
+            del query, npz, timestamp, number, col_list
+
         return True
 
     def __str__(self):
@@ -834,6 +962,545 @@ class WaveInfoFile(models.Model):
 
     class Meta:
         unique_together = ("record", "device", "channel_name")
+
+
+class NumberPIV(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    ABP_SBP = SingleFloatField(null=True)
+    ABP_DBP = SingleFloatField(null=True)
+    ABP_MBP = SingleFloatField(null=True)
+    AOP_SBP = SingleFloatField(null=True)
+    AOP_DBP = SingleFloatField(null=True)
+    AOP_MBP = SingleFloatField(null=True)
+    AWAY_RR = SingleFloatField(null=True)
+    AWAY_TOT = SingleFloatField(null=True)
+    AWAY_O2_INSP = SingleFloatField(null=True)
+    BIS_BIS = SingleFloatField(null=True)
+    BIS_EMG = SingleFloatField(null=True)
+    BIS_SQI = SingleFloatField(null=True)
+    BIS_SEF = SingleFloatField(null=True)
+    BIS_SR = SingleFloatField(null=True)
+    BT_BLD = SingleFloatField(null=True)
+    BT_NASOPH = SingleFloatField(null=True)
+    BT_RECT = SingleFloatField(null=True)
+    BT_SKIN = SingleFloatField(null=True)
+    CI = SingleFloatField(null=True)
+    CO = SingleFloatField(null=True)
+    CO2_ET = SingleFloatField(null=True)
+    CO2_INSP_MIN = SingleFloatField(null=True)
+    CPP = SingleFloatField(null=True)
+    CVP_SBP = SingleFloatField(null=True)
+    CVP_DBP = SingleFloatField(null=True)
+    CVP_MBP = SingleFloatField(null=True)
+    DESFL_INSP = SingleFloatField(null=True)
+    DESFL_ET = SingleFloatField(null=True)
+    ECG_HR = SingleFloatField(null=True)
+    ECG_ST_I = SingleFloatField(null=True)
+    ECG_ST_II = SingleFloatField(null=True)
+    ECG_ST_III = SingleFloatField(null=True)
+    ECG_ST_MCL = SingleFloatField(null=True)
+    ECG_ST_V = SingleFloatField(null=True)
+    ECG_ST_AVF = SingleFloatField(null=True)
+    ECG_ST_AVL = SingleFloatField(null=True)
+    ECG_ST_AVR = SingleFloatField(null=True)
+    ECG_QT_GL = SingleFloatField(null=True)
+    ECG_QT_HR = SingleFloatField(null=True)
+    ECG_QTc = SingleFloatField(null=True)
+    ECG_QTc_DELTA = SingleFloatField(null=True)
+    ECG_VPC_CNT = SingleFloatField(null=True)
+    ENFL_ET = SingleFloatField(null=True)
+    ENFL_INSP = SingleFloatField(null=True)
+    HAL_ET = SingleFloatField(null=True)
+    HAL_INSP = SingleFloatField(null=True)
+    HR = SingleFloatField(null=True)
+    ICP_MBP = SingleFloatField(null=True)
+    ISOFL_ET = SingleFloatField(null=True)
+    ISOFL_INSP = SingleFloatField(null=True)
+    LAP_MBP = SingleFloatField(null=True)
+    LAP_DBP = SingleFloatField(null=True)
+    LAP_SBP = SingleFloatField(null=True)
+    N2O_ET = SingleFloatField(null=True)
+    N2O_INSP = SingleFloatField(null=True)
+    NIBP_HR = SingleFloatField(null=True)
+    NIBP_SBP = SingleFloatField(null=True)
+    NIBP_DBP = SingleFloatField(null=True)
+    NIBP_MBP = SingleFloatField(null=True)
+    O2_ET = SingleFloatField(null=True)
+    O2_INSP = SingleFloatField(null=True)
+    PAP_SBP = SingleFloatField(null=True)
+    PAP_DBP = SingleFloatField(null=True)
+    PAP_MBP = SingleFloatField(null=True)
+    PLETH_PERF_REL = SingleFloatField(null=True)
+    PLETH_HR = SingleFloatField(null=True)
+    PLETH_SAT_O2 = SingleFloatField(null=True)
+    PLAT_TIME = SingleFloatField(null=True)
+    PPV = SingleFloatField(null=True)
+    PTC_CNT = SingleFloatField(null=True)
+    RAP_SBP = SingleFloatField(null=True)
+    RAP_DBP = SingleFloatField(null=True)
+    RAP_MBP = SingleFloatField(null=True)
+    RISE_TIME = SingleFloatField(null=True)
+    RR = SingleFloatField(null=True)
+    REF = SingleFloatField(null=True)
+    SET_SPEEP = SingleFloatField(null=True)
+    SET_INSP_TIME = SingleFloatField(null=True)
+    SEVOFL_ET = SingleFloatField(null=True)
+    SEVOFL_INSP = SingleFloatField(null=True)
+    SI = SingleFloatField(null=True)
+    SV = SingleFloatField(null=True)
+    SVV = SingleFloatField(null=True)
+    TEMP = SingleFloatField(null=True)
+    TEMP_ESOPH = SingleFloatField(null=True)
+    TV_IN = SingleFloatField(null=True)
+    TOF_RATIO = SingleFloatField(null=True)
+    TOF_CNT = SingleFloatField(null=True)
+    TOF_1 = SingleFloatField(null=True)
+    TOF_2 = SingleFloatField(null=True)
+    TOF_3 = SingleFloatField(null=True)
+    TOF_4 = SingleFloatField(null=True)
+    UA_MBP = SingleFloatField(null=True)
+    UA_DBP = SingleFloatField(null=True)
+    UA_SBP = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_piv'),
+        ]
+        db_table = 'number_piv'
+
+
+class NumberGEC(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    ABP_SBP = SingleFloatField(null=True)
+    ABP_DBP = SingleFloatField(null=True)
+    ABP_MBP = SingleFloatField(null=True)
+    ABP_HR = SingleFloatField(null=True)
+    AGENT_ET = SingleFloatField(null=True)
+    AGENT_FI = SingleFloatField(null=True)
+    AGENT_IN = SingleFloatField(null=True)
+    AGENT_MAC = SingleFloatField(null=True)
+    ARRH_ECG_HR = SingleFloatField(null=True)
+    BAL_GAS_ET = SingleFloatField(null=True)
+    BIS_BIS = SingleFloatField(null=True)
+    BIS_BSR = SingleFloatField(null=True)
+    BIS_EMG = SingleFloatField(null=True)
+    BIS_SQI = SingleFloatField(null=True)
+    BT_AXIL = SingleFloatField(null=True)
+    BT_PA = SingleFloatField(null=True)
+    BT_ROOM = SingleFloatField(null=True)
+    CO = SingleFloatField(null=True)
+    COMPLIANCE = SingleFloatField(null=True)
+    CO2_AMB_PRESS = SingleFloatField(null=True)
+    CO2_ET = SingleFloatField(null=True)
+    CO2_ET_PERCENT = SingleFloatField(null=True)
+    CO2_FI = SingleFloatField(null=True)
+    CO2_RR = SingleFloatField(null=True)
+    CO2_IN = SingleFloatField(null=True)
+    CO2_IN_PERCENT = SingleFloatField(null=True)
+    CVP = SingleFloatField(null=True)
+    ECG_HR = SingleFloatField(null=True)
+    ECG_HR_ECG = SingleFloatField(null=True)
+    ECG_HR_MAX = SingleFloatField(null=True)
+    ECG_HR_MIN = SingleFloatField(null=True)
+    ECG_IMP_RR = SingleFloatField(null=True)
+    ECG_ST = SingleFloatField(null=True)
+    ECG_ST_AVF = SingleFloatField(null=True)
+    ECG_ST_AVL = SingleFloatField(null=True)
+    ECG_ST_AVR = SingleFloatField(null=True)
+    ECG_ST_I = SingleFloatField(null=True)
+    ECG_ST_II = SingleFloatField(null=True)
+    ECG_ST_III = SingleFloatField(null=True)
+    ECG_ST_V = SingleFloatField(null=True)
+    EEG_FEMG = SingleFloatField(null=True)
+    ENT_BSR = SingleFloatField(null=True)
+    ENT_EEG = SingleFloatField(null=True)
+    ENT_EMG = SingleFloatField(null=True)
+    ENT_RD_BSR = SingleFloatField(null=True)
+    ENT_RD_EEG = SingleFloatField(null=True)
+    ENT_RD_EMG = SingleFloatField(null=True)
+    ENT_RE = SingleFloatField(null=True)
+    ENT_SE = SingleFloatField(null=True)
+    ENT_SR = SingleFloatField(null=True)
+    EPEEP = SingleFloatField(null=True)
+    FEM_SBP = SingleFloatField(null=True)
+    FEM_DBP = SingleFloatField(null=True)
+    FEM_MBP = SingleFloatField(null=True)
+    FEM_HR = SingleFloatField(null=True)
+    HR = SingleFloatField(null=True)
+    ICP = SingleFloatField(null=True)
+    IE_RATIO = SingleFloatField(null=True)
+    LAP = SingleFloatField(null=True)
+    MAC_AGE = SingleFloatField(null=True)
+    MV = SingleFloatField(null=True)
+    N2O_ET = SingleFloatField(null=True)
+    N2O_FI = SingleFloatField(null=True)
+    N2O_IN = SingleFloatField(null=True)
+    NIBP_DBP = SingleFloatField(null=True)
+    NIBP_SBP = SingleFloatField(null=True)
+    NIBP_HR = SingleFloatField(null=True)
+    NIBP_MBP = SingleFloatField(null=True)
+    NMT_CURRENT = SingleFloatField(null=True)
+    NMT_PTC_CNT = SingleFloatField(null=True)
+    NMT_PULSE_WIDTH = SingleFloatField(null=True)
+    NMT_T1 = SingleFloatField(null=True)
+    NMT_T4_T1 = SingleFloatField(null=True)
+    NMT_TOF_CNT = SingleFloatField(null=True)
+    O2_ET = SingleFloatField(null=True)
+    O2_FE = SingleFloatField(null=True)
+    O2_FI = SingleFloatField(null=True)
+    PA_SBP = SingleFloatField(null=True)
+    PA_DBP = SingleFloatField(null=True)
+    PA_MBP = SingleFloatField(null=True)
+    PA_HR = SingleFloatField(null=True)
+    PCWP = SingleFloatField(null=True)
+    PEEP = SingleFloatField(null=True)
+    PLETH_HR = SingleFloatField(null=True)
+    PLETH_IRAMP = SingleFloatField(null=True)
+    PLETH_SPO2 = SingleFloatField(null=True)
+    PPEAK = SingleFloatField(null=True)
+    PPLAT = SingleFloatField(null=True)
+    PPV = SingleFloatField(null=True)
+    RAP = SingleFloatField(null=True)
+    RR = SingleFloatField(null=True)
+    RR_VENT = SingleFloatField(null=True)
+    RVEF = SingleFloatField(null=True)
+    RVP = SingleFloatField(null=True)
+    SPI = SingleFloatField(null=True)
+    SPV = SingleFloatField(null=True)
+    TOF_T1 = SingleFloatField(null=True)
+    TOF_T2 = SingleFloatField(null=True)
+    TOF_T3 = SingleFloatField(null=True)
+    TOF_T4 = SingleFloatField(null=True)
+    TV_EXP = SingleFloatField(null=True)
+    TV_INSP = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_gec'),
+        ]
+        db_table = 'number_gec'
+
+
+class NumberINV(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    AUC_L = SingleFloatField(null=True)
+    AUC_R = SingleFloatField(null=True)
+    BASELINE_L = SingleFloatField(null=True)
+    BASELINE_R = SingleFloatField(null=True)
+    SCO2_L = SingleFloatField(null=True)
+    SCO2_R = SingleFloatField(null=True)
+    SCO2_S1 = SingleFloatField(null=True)
+    SCO2_S2 = SingleFloatField(null=True)
+    rSO2_L = SingleFloatField(null=True)
+    rSO2_R = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_inv'),
+        ]
+        db_table = 'number_inv'
+
+
+class NumberVIG(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    ART_MBP = SingleFloatField(null=True)
+    BT_PA = SingleFloatField(null=True)
+    CI = SingleFloatField(null=True)
+    CI_STAT = SingleFloatField(null=True)
+    CO = SingleFloatField(null=True)
+    CO_STAT = SingleFloatField(null=True)
+    CVP = SingleFloatField(null=True)
+    DO2 = SingleFloatField(null=True)
+    EDV = SingleFloatField(null=True)
+    EDVI = SingleFloatField(null=True)
+    EDVI_STAT = SingleFloatField(null=True)
+    EDV_STAT = SingleFloatField(null=True)
+    ESV = SingleFloatField(null=True)
+    ESVI = SingleFloatField(null=True)
+    HR_AVG = SingleFloatField(null=True)
+    ICI = SingleFloatField(null=True)
+    ICI_AVG = SingleFloatField(null=True)
+    ICO_AVG = SingleFloatField(null=True)
+    O2EI = SingleFloatField(null=True)
+    RVEF = SingleFloatField(null=True)
+    RVEF_STAT = SingleFloatField(null=True)
+    SAO2 = SingleFloatField(null=True)
+    SCVO2 = SingleFloatField(null=True)
+    SNR = SingleFloatField(null=True)
+    SQI = SingleFloatField(null=True)
+    SV = SingleFloatField(null=True)
+    SVI = SingleFloatField(null=True)
+    SVI_STAT = SingleFloatField(null=True)
+    SVO2 = SingleFloatField(null=True)
+    SVR = SingleFloatField(null=True)
+    SVRI = SingleFloatField(null=True)
+    SVV = SingleFloatField(null=True)
+    SV_STAT = SingleFloatField(null=True)
+    VO2 = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_vig'),
+        ]
+        db_table = 'number_vig'
+
+
+class NumberDCQ(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    CI = SingleFloatField(null=True)
+    CO = SingleFloatField(null=True)
+    FTc = SingleFloatField(null=True)
+    FTp = SingleFloatField(null=True)
+    HR = SingleFloatField(null=True)
+    MA = SingleFloatField(null=True)
+    MD = SingleFloatField(null=True)
+    PV = SingleFloatField(null=True)
+    SD = SingleFloatField(null=True)
+    SV = SingleFloatField(null=True)
+    SVI = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_dcq'),
+        ]
+        db_table = 'number_dcq'
+
+
+class NumberBIS(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    BIS = SingleFloatField(null=True)
+    EMG = SingleFloatField(null=True)
+    SR = SingleFloatField(null=True)
+    SEF = SingleFloatField(null=True)
+    SQI = SingleFloatField(null=True)
+    TOTPOW = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_bis'),
+        ]
+        db_table = 'number_bis'
+
+
+class NumberEEV(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    ADBP = SingleFloatField(null=True)
+    ART_MBP = SingleFloatField(null=True)
+    ART_MBP_INT = SingleFloatField(null=True)
+    ASBP = SingleFloatField(null=True)
+    BT_INT = SingleFloatField(null=True)
+    BT_PA = SingleFloatField(null=True)
+    CDBP = SingleFloatField(null=True)
+    CFI_INT = SingleFloatField(null=True)
+    CI = SingleFloatField(null=True)
+    CI_STAT = SingleFloatField(null=True)
+    CMBP = SingleFloatField(null=True)
+    CO = SingleFloatField(null=True)
+    CO_STAT = SingleFloatField(null=True)
+    CSBP = SingleFloatField(null=True)
+    CVP = SingleFloatField(null=True)
+    CVP_INT = SingleFloatField(null=True)
+    DO2 = SingleFloatField(null=True)
+    EDV = SingleFloatField(null=True)
+    EDVI = SingleFloatField(null=True)
+    EDVI_INT = SingleFloatField(null=True)
+    EDVI_STAT = SingleFloatField(null=True)
+    EDV_INT = SingleFloatField(null=True)
+    EDV_STAT = SingleFloatField(null=True)
+    EF_INT = SingleFloatField(null=True)
+    ESV = SingleFloatField(null=True)
+    ESVI = SingleFloatField(null=True)
+    EVLWI_INT = SingleFloatField(null=True)
+    EVLW_INT = SingleFloatField(null=True)
+    HR = SingleFloatField(null=True)
+    HR_AVG = SingleFloatField(null=True)
+    HR_INT = SingleFloatField(null=True)
+    ICI = SingleFloatField(null=True)
+    ICI_AVG = SingleFloatField(null=True)
+    ICO = SingleFloatField(null=True)
+    ICO_AVG = SingleFloatField(null=True)
+    INPUT_HB = SingleFloatField(null=True)
+    INPUT_SPO2 = SingleFloatField(null=True)
+    ITBVI_INT = SingleFloatField(null=True)
+    ITBV_INT = SingleFloatField(null=True)
+    O2EI = SingleFloatField(null=True)
+    RVEF = SingleFloatField(null=True)
+    RVEF_STAT = SingleFloatField(null=True)
+    SAO2 = SingleFloatField(null=True)
+    SCVO2 = SingleFloatField(null=True)
+    SNR = SingleFloatField(null=True)
+    SQI = SingleFloatField(null=True)
+    SV = SingleFloatField(null=True)
+    SVI = SingleFloatField(null=True)
+    SVI_STAT = SingleFloatField(null=True)
+    SVO2 = SingleFloatField(null=True)
+    SVR = SingleFloatField(null=True)
+    SVRI = SingleFloatField(null=True)
+    SVV = SingleFloatField(null=True)
+    SV_STAT = SingleFloatField(null=True)
+    VO2 = SingleFloatField(null=True)
+    VO2I_INT = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_eev'),
+        ]
+        db_table = 'number_eev'
+
+
+class NumberMRT(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    ARTF = SingleFloatField(null=True)
+    EMG = SingleFloatField(null=True)
+    PSI = SingleFloatField(null=True)
+    SEFL = SingleFloatField(null=True)
+    SEFR = SingleFloatField(null=True)
+    SR = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_mrt'),
+        ]
+        db_table = 'number_mrt'
+
+
+class NumberPRM(models.Model):
+    record = models.ForeignKey('FileRecorded', on_delete=models.CASCADE)
+    dt = models.DateTimeField()
+    ART_MBP = SingleFloatField(null=True)
+    CI = SingleFloatField(null=True)
+    CO = SingleFloatField(null=True)
+    COMPLIANCE = SingleFloatField(null=True)
+    CONSUMPTION_AIR = SingleFloatField(null=True)
+    CONSUMPTION_DES = SingleFloatField(null=True)
+    CONSUMPTION_ENF = SingleFloatField(null=True)
+    CONSUMPTION_HALO = SingleFloatField(null=True)
+    CONSUMPTION_ISO = SingleFloatField(null=True)
+    CONSUMPTION_N2O = SingleFloatField(null=True)
+    CONSUMPTION_O2 = SingleFloatField(null=True)
+    CONSUMPTION_SEVO = SingleFloatField(null=True)
+    ETCO2 = SingleFloatField(null=True)
+    ETCO2_KPA = SingleFloatField(null=True)
+    ETCO2_PERCENT = SingleFloatField(null=True)
+    EXP_DES = SingleFloatField(null=True)
+    EXP_ENF = SingleFloatField(null=True)
+    EXP_HALO = SingleFloatField(null=True)
+    EXP_ISO = SingleFloatField(null=True)
+    EXP_SEVO = SingleFloatField(null=True)
+    FEN2O = SingleFloatField(null=True)
+    FEO2 = SingleFloatField(null=True)
+    FIN2O = SingleFloatField(null=True)
+    FIO2 = SingleFloatField(null=True)
+    FLOW_AIR = SingleFloatField(null=True)
+    FLOW_N2O = SingleFloatField(null=True)
+    FLOW_O2 = SingleFloatField(null=True)
+    GAS2_EXPIRED = SingleFloatField(null=True)
+    INCO2 = SingleFloatField(null=True)
+    INCO2_KPA = SingleFloatField(null=True)
+    INCO2_PERCENT = SingleFloatField(null=True)
+    INSP_DES = SingleFloatField(null=True)
+    INSP_ENF = SingleFloatField(null=True)
+    INSP_HALO = SingleFloatField(null=True)
+    INSP_ISO = SingleFloatField(null=True)
+    INSP_SEVO = SingleFloatField(null=True)
+    MAC = SingleFloatField(null=True)
+    MAWP_MBAR = SingleFloatField(null=True)
+    MV = SingleFloatField(null=True)
+    MV_SPONT = SingleFloatField(null=True)
+    NIBP_DBP = SingleFloatField(null=True)
+    NIBP_MBP = SingleFloatField(null=True)
+    NIBP_SBP = SingleFloatField(null=True)
+    PAMB_MBAR = SingleFloatField(null=True)
+    PEEP_MBAR = SingleFloatField(null=True)
+    PIP_MBAR = SingleFloatField(null=True)
+    PLETH_SPO2 = SingleFloatField(null=True)
+    PPLAT_MBAR = SingleFloatField(null=True)
+    RESISTANCE = SingleFloatField(null=True)
+    RR_CO2 = SingleFloatField(null=True)
+    RR_MANDATORY = SingleFloatField(null=True)
+    RR_SPONT = SingleFloatField(null=True)
+    RR_VF = SingleFloatField(null=True)
+    RVSWI = SingleFloatField(null=True)
+    SET_EXP_AGENT = SingleFloatField(null=True)
+    SET_EXP_ENF = SingleFloatField(null=True)
+    SET_EXP_HALO = SingleFloatField(null=True)
+    SET_EXP_SEVO = SingleFloatField(null=True)
+    SET_EXP_TM = SingleFloatField(null=True)
+    SET_FIO2 = SingleFloatField(null=True)
+    SET_FLOW_TRIG = SingleFloatField(null=True)
+    SET_FRESH_AGENT = SingleFloatField(null=True)
+    SET_FRESH_DES = SingleFloatField(null=True)
+    SET_FRESH_ENF = SingleFloatField(null=True)
+    SET_FRESH_FLOW = SingleFloatField(null=True)
+    SET_FRESH_HALO = SingleFloatField(null=True)
+    SET_FRESH_ISO = SingleFloatField(null=True)
+    SET_FRESH_O2 = SingleFloatField(null=True)
+    SET_IE_E = SingleFloatField(null=True)
+    SET_IE_I = SingleFloatField(null=True)
+    SET_INSP_PAUSE = SingleFloatField(null=True)
+    SET_INSP_PRES = SingleFloatField(null=True)
+    SET_INSP_TM = SingleFloatField(null=True)
+    SET_INTER_PEEP = SingleFloatField(null=True)
+    SET_PEEP = SingleFloatField(null=True)
+    SET_PIP = SingleFloatField(null=True)
+    SET_RR_IPPV = SingleFloatField(null=True)
+    SET_SUPP_PRES = SingleFloatField(null=True)
+    SET_TV = SingleFloatField(null=True)
+    SET_TV_L = SingleFloatField(null=True)
+    ST_AVF = SingleFloatField(null=True)
+    ST_AVR = SingleFloatField(null=True)
+    ST_I = SingleFloatField(null=True)
+    ST_II = SingleFloatField(null=True)
+    ST_III = SingleFloatField(null=True)
+    ST_V5 = SingleFloatField(null=True)
+    ST_VPLUS = SingleFloatField(null=True)
+    SUPPLY_PRESSURE_O2 = SingleFloatField(null=True)
+    SV = SingleFloatField(null=True)
+    SVR = SingleFloatField(null=True)
+    TV = SingleFloatField(null=True)
+    TV_MANDATORY = SingleFloatField(null=True)
+    VENT_LEAK = SingleFloatField(null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['dt']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['record', 'dt'], name='unique_prm'),
+        ]
+        db_table = 'number_prm'
 
 
 class ClientBusSlot(models.Model):

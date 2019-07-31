@@ -20,11 +20,12 @@ from ftplib import FTP
 from itertools import product
 from django.core.cache import cache
 from django.conf import settings
+from django.db import connection
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile
 from django.views.decorators.csrf import csrf_exempt
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
@@ -83,9 +84,9 @@ def get_agg_list():
 def get_table_col_val_list():
 
     table_col_list = dict()
-    table_col_list['summary_by_file'] = ['ECG_HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
+    table_col_list['summary_by_file'] = ['HR', 'TEMP', 'NIBP_SYS', 'NIBP_DIA', 'NIBP_MEAN', 'PLETH_SPO2']
     table_col_list['Philips/IntelliVue'] = ['ECG_HR', 'TEMP', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SAT_O2']
-    table_col_list['GE/Carescape'] = ['ECG_HR', 'BT_PA', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SPO2']
+    table_col_list['GE/Carescape'] = ['HR', 'BT_PA', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SPO2']
 
     table_val_list = dict()
     table_val_list['summary_by_file'] = product(table_col_list['summary_by_file'], get_agg_list())
@@ -212,8 +213,8 @@ def get_wavedata(request):
         npz = cache.get(wif.file_path)
         if npz is None:
             npz = np.load(wif.file_path)
+            npz = {'timestamp': npz['timestamp'], 'packet_pointer': npz['packet_pointer'], 'val': npz['val']}
             cache.set(wif.file_path, npz)
-
         if wif.device.displayed_name not in r_dict:
             r_dict[wif.device.displayed_name] = dict()
         r_dict[wif.device.displayed_name][wif.channel_name] = dict()
@@ -325,42 +326,36 @@ def review(request):
 
     if rosette is not None and bed is not None and begin_date is not None and end_date is not None:
 
-        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-        cursor = db.cursor()
-
-        for device in main_devices:
-            query = "SELECT dt, %s FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
-                    (', '.join(table_col_list[device.displayed_name]), device.db_table_name, rosette, bed, str(begin_date), str(end_date))
-            cursor.execute(query)
-            query_results = cursor.fetchall()
-            if len(query_results):
-                chart_data[device.displayed_name] = dict()
-                chart_data[device.displayed_name]['csv_download_params'] = 'rosette=%s&bed=%s&begin_date=%s&end_date=%s&device=%s' % (
-                    rosette, bed, begin_date, end_date, device
-                )
-                chart_data[device.displayed_name]['timestamp'] = list()
-                for col in table_col_list[device.displayed_name]:
-                    chart_data[device.displayed_name][col] = list()
-                for row in query_results:
-                    chart_data[device.displayed_name]['timestamp'].append(str(row[0]))
-                    for i, val in enumerate(row[1:]):
-                        chart_data[device.displayed_name][table_col_list[device.displayed_name][i]].append(float('nan') if val is None else val)
-                chart_data[device.displayed_name]['timestamp'] = json.dumps(chart_data[device.displayed_name]['timestamp'])
-                dataset = list()
-                for i, col in enumerate(table_col_list[device.displayed_name]): # rgb(75, 192, 192)
-                    tmp_dataset = dict()
-                    tmp_dataset["label"] = col
-                    tmp_dataset["data"] = chart_data[device.displayed_name][col]
-                    tmp_dataset["fill"] = False
-                    tmp_dataset["pointRadius"] = 0
-                    tmp_dataset["borderColor"] = color_preview[i]
-                    tmp_dataset["lineTension"] = 0
-                    dataset.append(tmp_dataset)
-                chart_data[device.displayed_name]['dataset'] = json.dumps(dataset)
-        db.close()
+        with connection.cursor() as cursor:
+            for device in main_devices:
+                query = "SELECT dt, %s FROM %s WHERE record_id=%d ORDER BY dt" %\
+                        (', '.join(table_col_list[device.displayed_name]), device.get_number_table_name(), record.id)
+                cursor.execute(query)
+                query_results = cursor.fetchall()
+                if len(query_results):
+                    chart_data[device.displayed_name] = dict()
+                    chart_data[device.displayed_name]['csv_download_params'] = 'rosette=%s&bed=%s&begin_date=%s&end_date=%s&device=%s' % (
+                        rosette, bed, begin_date, end_date, device
+                    )
+                    chart_data[device.displayed_name]['timestamp'] = list()
+                    for col in table_col_list[device.displayed_name]:
+                        chart_data[device.displayed_name][col] = list()
+                    for row in query_results:
+                        chart_data[device.displayed_name]['timestamp'].append(str(row[0]))
+                        for i, val in enumerate(row[1:]):
+                            chart_data[device.displayed_name][table_col_list[device.displayed_name][i]].append(float('nan') if val is None else val)
+                    chart_data[device.displayed_name]['timestamp'] = json.dumps(chart_data[device.displayed_name]['timestamp'])
+                    dataset = list()
+                    for i, col in enumerate(table_col_list[device.displayed_name]): # rgb(75, 192, 192)
+                        tmp_dataset = dict()
+                        tmp_dataset["label"] = col
+                        tmp_dataset["data"] = chart_data[device.displayed_name][col]
+                        tmp_dataset["fill"] = False
+                        tmp_dataset["pointRadius"] = 0
+                        tmp_dataset["borderColor"] = color_preview[i]
+                        tmp_dataset["lineTension"] = 0
+                        dataset.append(tmp_dataset)
+                    chart_data[device.displayed_name]['dataset'] = json.dumps(dataset)
 
         wave_metadata = list()
         for wif in WaveInfoFile.objects.filter(record=record):
