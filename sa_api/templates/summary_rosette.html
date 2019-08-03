@@ -169,12 +169,14 @@
                             <th>Patient</th>
                             <th>Duration</th>
                             <th>Devices</th>
-                            <th>ECG_HR</th>
-                            <th>TEMP</th>
-                            <th>NIBP_SYS</th>
-                            <th>NIBP_DIA</th>
-                            <th>NIBP_MEAN</th>
-                            <th>PLETH_SPO2</th>
+                            <th>BP_Source</th>
+                            <th>HR_Source</th>
+                            <th>HR</th>
+                            <th>BT</th>
+                            <th>SPO2</th>
+                            <th>SBP</th>
+                            <th>DBP</th>
+                            <th>MBP</th>
                           </tr>
                           </thead>
 
@@ -183,13 +185,15 @@
                             <tr>
                               <td><a href="/review?file={{ file.1 }}">{{ file.1 }}</a></td>
                               <td>{{ file.2 }}</td>
-                              <td>{{ file.9 }}</td>
                               <td>{{ file.3 }}</td>
                               <td>{{ file.4 }}</td>
                               <td>{{ file.5 }}</td>
                               <td>{{ file.6 }}</td>
                               <td>{{ file.7 }}</td>
                               <td>{{ file.8 }}</td>
+                              <td>{{ file.9 }}</td>
+                              <td>{{ file.10 }}</td>
+                              <td>{{ file.11 }}</td>
                             </tr>
                           {% endfor %}
                           </tbody>

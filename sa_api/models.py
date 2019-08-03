@@ -1,4 +1,5 @@
 from django.db import models, connection, utils, transaction
+from django.db.models import Avg, Max, Min, Count
 from django.utils import timezone
 from django.utils.html import format_html
 from django.conf import settings
@@ -9,7 +10,6 @@ from scipy import stats
 import re
 import os
 import pytz
-import stat
 import math
 import datetime
 import MySQLdb
@@ -451,90 +451,152 @@ class FileRecorded(models.Model):
 
         if self.end_date is None:
             return
+        elif self.end_date - self.begin_date <= datetime.timedelta(seconds=600):
+            return
 
-        agg_list = ('MIN', 'MAX', 'AVG', 'COUNT')
+        try:
+            nif = NumberInfoFile.objects.get(record=self, device__is_main=True)
+        except NumberInfoFile.MultipleObjectsReturned as e:
+            log_dict = dict()
+            log_dict['SERVER_NAME'] = 'global' \
+                if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
+                else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
+            log_dict['ACTION'] = 'SUMMARY_MAIN'
+            log_dict['FILE_NAME'] = self.file_basename
+            log_dict['MESSAGE'] = 'Multiple main devices were found.'
+            log_dict['EXCEPTION'] = str(e)
+            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+            return
+        except NumberInfoFile.DoesNotExist as e:
+            return
 
-        table_col_list = dict()
-        table_col_list['summary_by_file'] = ['ECG_HR', 'TEMP', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SPO2']
-        table_col_list['Philips/IntelliVue'] = ['ECG_HR', 'TEMP', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SAT_O2']
-        table_col_list['GE/Carescape'] = ['ECG_HR', 'BT', 'NIBP_SBP', 'NIBP_DBP', 'NIBP_MBP', 'PLETH_SPO2']
+        summary, _ = SummaryFileRecorded.objects.get_or_create(record=self, main_device=nif.device)
+        if summary.main_device.displayed_name == 'GE/Carescape':
+            vals = NumberGEC.objects.filter(record=self)
+            summary.cnt_total = vals.count()
+            agg = vals.aggregate(Count('NIBP_SBP'), Min('NIBP_SBP'), Max('NIBP_SBP'), Avg('NIBP_SBP'),
+                                 Count('NIBP_DBP'), Min('NIBP_DBP'), Max('NIBP_DBP'), Avg('NIBP_DBP'),
+                                 Count('NIBP_MBP'), Min('NIBP_MBP'), Max('NIBP_MBP'), Avg('NIBP_MBP'),
+                                 Count('ABP_HR'), Min('ABP_HR'), Max('ABP_HR'), Avg('ABP_HR'),
+                                 Count('ABP_SBP'), Min('ABP_SBP'), Max('ABP_SBP'), Avg('ABP_SBP'),
+                                 Count('ABP_DBP'), Min('ABP_DBP'), Max('ABP_DBP'), Avg('ABP_DBP'),
+                                 Count('ABP_MBP'), Min('ABP_MBP'), Max('ABP_MBP'), Avg('ABP_MBP'),
+                                 Count('PLETH_HR'), Min('PLETH_HR'), Max('PLETH_HR'), Avg('PLETH_HR'),
+                                 Count('HR'), Min('HR'), Max('HR'), Avg('HR'),
+                                 Count('BT_PA'), Min('BT_PA'), Max('BT_PA'), Avg('BT_PA'),
+                                 Count('PLETH_SPO2'), Min('PLETH_SPO2'), Max('PLETH_SPO2'), Avg('PLETH_SPO2'))
+            if agg['ABP_MBP__count'] > summary.cnt_total / 2:
+                summary.bp_channel = 'ABP'
+            elif agg['NIBP_MBP__count'] > summary.cnt_total / 2:
+                summary.bp_channel = 'NIBP'
+            else:
+                summary.bp_channel = None
 
-        table_val_list = dict()
-        table_val_list['summary_by_file'] = product(table_col_list['summary_by_file'], agg_list)
-        table_val_list['Philips/IntelliVue'] = product(table_col_list['Philips/IntelliVue'], agg_list)
-        table_val_list['GE/Carescape'] = product(table_col_list['GE/Carescape'], agg_list)
+            if summary.bp_channel is not None:
+                summary.cnt_bp = agg[summary.bp_channel + '_MBP__count']
+                summary.min_sbp = agg[summary.bp_channel + '_SBP__min']
+                summary.max_sbp = agg[summary.bp_channel + '_SBP__max']
+                summary.avg_sbp = agg[summary.bp_channel + '_SBP__avg']
+                summary.min_dbp = agg[summary.bp_channel + '_DBP__min']
+                summary.max_dbp = agg[summary.bp_channel + '_DBP__max']
+                summary.avg_dbp = agg[summary.bp_channel + '_DBP__avg']
+                summary.min_mbp = agg[summary.bp_channel + '_MBP__min']
+                summary.max_mbp = agg[summary.bp_channel + '_MBP__max']
+                summary.avg_mbp = agg[summary.bp_channel + '_MBP__avg']
 
-        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-        cursor = db.cursor()
+            if agg['PLETH_HR__avg'] > 5 if agg['PLETH_HR__count'] else False:
+                summary.hr_channel = 'PLETH_HR'
+            elif summary.bp_channel == 'ABP':
+                summary.hr_channel = 'ABP_HR'
+            elif agg['HR__count']:
+                summary.hr_channel = 'HR'
+            else:
+                summary.hr_channel = None
 
-        main_devices = Device.objects.filter(is_main=True, db_table_name__isnull=False)
+            if summary.hr_channel is not None:
+                summary.cnt_hr = agg[summary.hr_channel + '__count']
+                summary.min_hr = agg[summary.hr_channel + '__min']
+                summary.max_hr = agg[summary.hr_channel + '__max']
+                summary.avg_hr = agg[summary.hr_channel + '__avg']
 
-        for device in main_devices:  # device_displayed_name, table
-            field_list = list()
-            for val in table_val_list[device.displayed_name]:
-                field_list.append('%s(%s) %s_%s' % (val[1], val[0], val[0], val[1]))
+            summary.cnt_bt = agg['BT_PA__count']
+            summary.min_bt = agg['BT_PA__min']
+            summary.max_bt = agg['BT_PA__max']
+            summary.avg_bt = agg['BT_PA__avg']
 
-            query = 'SELECT COUNT(*) TOTAL_COUNT, %s' % ', '.join(field_list)
-            query += " FROM %s WHERE rosette = '%s' AND bed = '%s' AND" % (
-                device.db_table_name, self.bed.room.name, self.bed.name)
-            query += " dt BETWEEN '%s' and '%s'" % (self.begin_date.astimezone(tz).replace(tzinfo=None),
-                                                    self.end_date.astimezone(tz).replace(tzinfo=None))
+            summary.cnt_spo2 = agg['PLETH_SPO2__count']
+            summary.min_spo2 = agg['PLETH_SPO2__min']
+            summary.max_spo2 = agg['PLETH_SPO2__max']
+            summary.avg_spo2 = agg['PLETH_SPO2__avg']
 
-            cursor.execute(query)
+            summary.save()
+            return True
 
-            summary = cursor.fetchall()[0]
-            if summary[0]:
-                field_list = list()
-                field_list.append('method')
-                field_list.append('device_displayed_name')
-                field_list.append('file_basename')
-                field_list.append('rosette')
-                field_list.append('bed')
-                field_list.append('begin_date')
-                field_list.append('end_date')
-                field_list.append('effective')
-                field_list.append('TOTAL_COUNT')
-                for val in table_val_list['summary_by_file']:
-                    field_list.append('%s_%s' % (val[0], val[1]))
-                value_list = list()
-                value_list.append(str(0))
-                value_list.append("'%s'" % device.displayed_name)
-                value_list.append("'%s'" % os.path.basename(self.file_path))
-                value_list.append("'%s'" % self.bed.room.name)
-                value_list.append("'%s'" % self.bed.name)
-                value_list.append("'%s'" % str(self.begin_date.astimezone(tz).replace(tzinfo=None)))
-                value_list.append("'%s'" % str(self.end_date.astimezone(tz).replace(tzinfo=None)))
-                value_list.append('1' if self.end_date - self.begin_date > datetime.timedelta(minutes=10) else '0')
-                for i in summary:
-                    if i is None:
-                        value_list.append('NULL')
-                    else:
-                        value_list.append(str(i))
-                query = 'INSERT IGNORE INTO %s (%s)' % ('summary_by_file', ', '.join(field_list))
-                query += ' VALUES (%s)' % ', '.join(value_list)
+        elif summary.main_device.displayed_name == 'Philips/IntelliVue':
+            vals = NumberPIV.objects.filter(record=self)
+            summary.cnt_total = vals.count()
+            agg = vals.aggregate(Count('NIBP_SBP'), Min('NIBP_SBP'), Max('NIBP_SBP'), Avg('NIBP_SBP'),
+                                 Count('NIBP_DBP'), Min('NIBP_DBP'), Max('NIBP_DBP'), Avg('NIBP_DBP'),
+                                 Count('NIBP_MBP'), Min('NIBP_MBP'), Max('NIBP_MBP'), Avg('NIBP_MBP'),
+                                 Count('ABP_SBP'), Min('ABP_SBP'), Max('ABP_SBP'), Avg('ABP_SBP'),
+                                 Count('ABP_DBP'), Min('ABP_DBP'), Max('ABP_DBP'), Avg('ABP_DBP'),
+                                 Count('ABP_MBP'), Min('ABP_MBP'), Max('ABP_MBP'), Avg('ABP_MBP'),
+                                 Count('PLETH_HR'), Min('PLETH_HR'), Max('PLETH_HR'), Avg('PLETH_HR'),
+                                 Count('HR'), Min('HR'), Max('HR'), Avg('HR'),
+                                 Count('ECG_HR'), Min('ECG_HR'), Max('ECG_HR'), Avg('ECG_HR'),
+                                 Count('TEMP'), Min('TEMP'), Max('TEMP'), Avg('TEMP'),
+                                 Count('PLETH_SAT_O2'), Min('PLETH_SAT_O2'), Max('PLETH_SAT_O2'), Avg('PLETH_SAT_O2'))
+            if agg['ABP_MBP__count'] > summary.cnt_total / 2:
+                summary.bp_channel = 'ABP'
+            elif agg['NIBP_MBP__count'] > summary.cnt_total / 2:
+                summary.bp_channel = 'NIBP'
+            else:
+                summary.bp_channel = None
 
-                try:
-                    cursor.execute(query)
-                    db.commit()
-                except MySQLdb.Error as e:
-                    log_dict = dict()
-                    log_dict['SERVER_NAME'] = 'global' \
-                        if settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'] == 'global' \
-                        else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
-                    log_dict['ACTION'] = 'LOAD_SUMMARY'
-                    log_dict['FILE_NAME'] = self.file_basename
-                    log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
-                    log_dict['EXCEPTION'] = str(e)
-                    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-                    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-                    return
+            if summary.bp_channel is not None:
+                summary.cnt_bp = agg[summary.bp_channel + '_MBP__count']
+                summary.min_sbp = agg[summary.bp_channel + '_SBP__min']
+                summary.max_sbp = agg[summary.bp_channel + '_SBP__max']
+                summary.avg_sbp = agg[summary.bp_channel + '_SBP__avg']
+                summary.min_dbp = agg[summary.bp_channel + '_DBP__min']
+                summary.max_dbp = agg[summary.bp_channel + '_DBP__max']
+                summary.avg_dbp = agg[summary.bp_channel + '_DBP__avg']
+                summary.min_mbp = agg[summary.bp_channel + '_MBP__min']
+                summary.max_mbp = agg[summary.bp_channel + '_MBP__max']
+                summary.avg_mbp = agg[summary.bp_channel + '_MBP__avg']
 
-        db.close()
-        return
+            if agg['PLETH_HR__avg'] > 5 if agg['PLETH_HR__avg'] is not None else False:
+                summary.hr_channel = 'PLETH_HR'
+            elif summary.bp_channel == 'ABP':
+                summary.hr_channel = 'HR'
+            elif agg['ECG_HR__count']:
+                summary.hr_channel = 'ECG_HR'
+            else:
+                summary.hr_channel = None
+
+            if summary.hr_channel is not None:
+                summary.cnt_hr = agg[summary.hr_channel + '__count']
+                summary.min_hr = agg[summary.hr_channel + '__min']
+                summary.max_hr = agg[summary.hr_channel + '__max']
+                summary.avg_hr = agg[summary.hr_channel + '__avg']
+
+            summary.cnt_bt = agg['TEMP__count']
+            summary.min_bt = agg['TEMP__min']
+            summary.max_bt = agg['TEMP__max']
+            summary.avg_bt = agg['TEMP__avg']
+
+            summary.cnt_spo2 = agg['PLETH_SAT_O2__count']
+            summary.min_spo2 = agg['PLETH_SAT_O2__min']
+            summary.max_spo2 = agg['PLETH_SAT_O2__max']
+            summary.avg_spo2 = agg['PLETH_SAT_O2__avg']
+
+            summary.save()
+            return True
+
+        else:
+            return False
 
     def load_number(self, reload=False):
 
@@ -704,9 +766,43 @@ class FileRecorded(models.Model):
 
         self.decompose()
         self.load_number(reload=True)
+        self.load_summary()
 
     def __str__(self):
         return self.file_path
+
+
+class SummaryFileRecorded(models.Model):
+    record = models.OneToOneField('FileRecorded', on_delete=models.CASCADE, primary_key=True)
+    main_device = models.ForeignKey('Device', on_delete=models.CASCADE)
+    bp_channel = models.CharField(max_length=64, null=True, blank=True)
+    hr_channel = models.CharField(max_length=64, null=True, blank=True)
+    cnt_total = models.IntegerField(default=0)
+    cnt_bp = models.IntegerField(default=0)
+    cnt_hr = models.IntegerField(default=0)
+    cnt_bt = models.IntegerField(default=0)
+    cnt_spo2 = models.IntegerField(default=0)
+    min_sbp = SingleFloatField(null=True)
+    max_sbp = SingleFloatField(null=True)
+    avg_sbp = SingleFloatField(null=True)
+    min_dbp = SingleFloatField(null=True)
+    max_dbp = SingleFloatField(null=True)
+    avg_dbp = SingleFloatField(null=True)
+    min_mbp = SingleFloatField(null=True)
+    max_mbp = SingleFloatField(null=True)
+    avg_mbp = SingleFloatField(null=True)
+    min_hr = SingleFloatField(null=True)
+    max_hr = SingleFloatField(null=True)
+    avg_hr = SingleFloatField(null=True)
+    min_bt = SingleFloatField(null=True)
+    max_bt = SingleFloatField(null=True)
+    avg_bt = SingleFloatField(null=True)
+    min_spo2 = SingleFloatField(null=True)
+    max_spo2 = SingleFloatField(null=True)
+    avg_spo2 = SingleFloatField(null=True)
+
+    def __str__(self):
+        return self.record.file_basename
 
 
 class NumberInfoFile(models.Model):
@@ -794,7 +890,7 @@ class NumberInfoFile(models.Model):
                                   settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
             fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
             return False
-        
+
         if not os.path.exists(self.file_path):
             log_dict = dict()
             log_dict['ACTION'] = 'LOAD_NUMBER'
@@ -806,9 +902,8 @@ class NumberInfoFile(models.Model):
             return False
 
         with connection.cursor() as cursor:
-            query = 'DESCRIBE %s' % self.device.db_table_name
             try:
-                cursor.execute(query)
+                cursor.execute('DESCRIBE %s' % self.device.db_table_name)
                 self.db_load = False
                 self.save()
             except MySQLdb.Error as e:
@@ -870,7 +965,7 @@ class NumberInfoFile(models.Model):
             for i in range(len(timestamp)):
                 if i:
                     query += ','
-                query += "('%s'" % str(datetime.datetime.fromtimestamp(timestamp[i]))
+                query += "('%s'" % str(datetime.datetime.utcfromtimestamp(timestamp[i]))
                 for col in column_info_db:
                     if col != 'dt':
                         if col == 'record_id':

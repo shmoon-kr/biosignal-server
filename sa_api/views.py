@@ -25,7 +25,7 @@ from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFou
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile, SummaryFileRecorded, NumberGEC, NumberPIV
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
@@ -259,50 +259,33 @@ def download_vital_file(request):
 @csrf_exempt
 def download_csv_device(request):
 
-    bed = request.GET.get("bed")
-    rosette = request.GET.get("rosette")
-    begin_date = request.GET.get("begin_date")
-    end_date = request.GET.get("end_date")
-    device = Device.objects.get(displayed_name=request.GET.get("device"))
+    file = request.GET.get("file")
+    device = request.GET.get("device")
 
-    if rosette is None or bed is None or begin_date is None or end_date is None:
-        r_dict = dict()
-        r_dict['REQUEST_PATH'] = request.path
-        r_dict['METHOD'] = request.method
-        r_dict['PARAM'] = request.GET
-        r_dict['MESSAGE'] = 'Invalid parameters.'
-        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
-    else:
-        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-        cursor = db.cursor()
+    nif = get_object_or_404(NumberInfoFile, record__file_basename=file, device__code=device)
 
-        query = "SELECT * FROM %s WHERE rosette='%s' AND bed='%s' AND dt BETWEEN '%s' AND '%s' ORDER BY dt" %\
-                (device.db_table_name, rosette, bed, begin_date, end_date)
-        cursor.execute(query)
-        title = list()
-        for col in cursor.description:
-            title.append(col[0])
-        query_results = cursor.fetchall()
-        db.close()
-
+    try:
+        npz = np.load(nif.file_path)
         csvfile = tempfile.TemporaryFile(mode='w+')
         cyclewriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        title = list()
+        title.append('dt')
+        title.extend(npz['col_list'])
         cyclewriter.writerow(title)
-        for r in query_results:
-            cyclewriter.writerow(r)
+        for i in range(len(npz['timestamp'])):
+            tmp_row = list()
+            tmp_row.append(str(datetime.datetime.fromtimestamp(npz['timestamp'][i])))
+            tmp_row.extend(npz['number'][i, :])
+            cyclewriter.writerow(tmp_row)
         csvfile.seek(0)
 
-        start_dt = datetime.datetime.strptime(begin_date, '%Y-%m-%d %H:%M:%S')
-
-        filename = '%s_%s_%s.csv' % (bed, start_dt.strftime('%y%m%d_%H%M%S'), device.replace('/', '_'))
+        filename = '%s_%s_%s.csv' % (nif.record.bed.name, nif.record.begin_date.astimezone(tz).strftime('%y%m%d_%H%M%S'), nif.device.code)
 
         response = HttpResponse(csvfile, content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename=%s' % filename
-
         return response
+    except Exception as e:
+        return HttpResponseBadRequest
 
 
 @csrf_exempt
@@ -310,53 +293,93 @@ def review(request):
 
     file = request.GET.get("file")
 
-    record = get_object_or_404(FileRecorded, file_basename=file)
+    summary = get_object_or_404(SummaryFileRecorded, record__file_basename=file)
+    record = summary.record
 
     bed = record.bed.name
     rosette = record.bed.room.name
     begin_date = record.begin_date.astimezone(tz)
     end_date = record.end_date.astimezone(tz)
 
-    main_devices = Device.objects.filter(is_main=True, db_table_name__isnull=False)
     table_col_list, table_val_list = get_table_col_val_list()
+    
+    col_list = list()
+    col_list.append(summary.hr_channel)
+    col_list.append('BT_PA' if summary.main_device.displayed_name == 'GE/Carescape' else 'TEMP')
+    col_list.append(summary.bp_channel + '_SBP' if summary.bp_channel is not None else None)
+    col_list.append(summary.bp_channel + '_DBP' if summary.bp_channel is not None else None)
+    col_list.append(summary.bp_channel + '_MBP' if summary.bp_channel is not None else None)
+    col_list.append('PLETH_SPO2' if summary.main_device.displayed_name == 'GE/Carescape' else 'PLETH_SAT_O2')
 
     color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
 
     chart_data = dict()
 
     if rosette is not None and bed is not None and begin_date is not None and end_date is not None:
-
-        with connection.cursor() as cursor:
-            for device in main_devices:
-                query = "SELECT dt, %s FROM %s WHERE record_id=%d ORDER BY dt" %\
-                        (', '.join(table_col_list[device.displayed_name]), device.get_number_table_name(), record.id)
-                cursor.execute(query)
-                query_results = cursor.fetchall()
-                if len(query_results):
-                    chart_data[device.displayed_name] = dict()
-                    chart_data[device.displayed_name]['csv_download_params'] = 'rosette=%s&bed=%s&begin_date=%s&end_date=%s&device=%s' % (
-                        rosette, bed, begin_date, end_date, device
-                    )
-                    chart_data[device.displayed_name]['timestamp'] = list()
-                    for col in table_col_list[device.displayed_name]:
-                        chart_data[device.displayed_name][col] = list()
-                    for row in query_results:
-                        chart_data[device.displayed_name]['timestamp'].append(str(row[0]))
-                        for i, val in enumerate(row[1:]):
-                            chart_data[device.displayed_name][table_col_list[device.displayed_name][i]].append(float('nan') if val is None else val)
-                    chart_data[device.displayed_name]['timestamp'] = json.dumps(chart_data[device.displayed_name]['timestamp'])
-                    dataset = list()
-                    for i, col in enumerate(table_col_list[device.displayed_name]): # rgb(75, 192, 192)
-                        tmp_dataset = dict()
-                        tmp_dataset["label"] = col
-                        tmp_dataset["data"] = chart_data[device.displayed_name][col]
-                        tmp_dataset["fill"] = False
-                        tmp_dataset["pointRadius"] = 0
-                        tmp_dataset["borderColor"] = color_preview[i]
-                        tmp_dataset["lineTension"] = 0
-                        dataset.append(tmp_dataset)
-                    chart_data[device.displayed_name]['dataset'] = json.dumps(dataset)
-
+        
+        if summary.main_device.displayed_name == 'GE/Carescape':
+            data = NumberGEC.objects.filter(record=record).order_by('dt')
+        elif summary.main_device.displayed_name == 'Philips/IntelliVue':
+            data = NumberPIV.objects.filter(record=record).order_by('dt')
+        else:
+            assert False
+            
+        if len(data):
+            chart_data[summary.main_device.displayed_name] = dict()
+            chart_data[summary.main_device.displayed_name]['csv_download_params'] = 'file=%s&device=%s' % (summary.record.file_basename, summary.main_device.code)
+            chart_data[summary.main_device.displayed_name]['timestamp'] = list()
+            for col in col_list:
+                if col is not None:
+                    chart_data[summary.main_device.displayed_name][col] = list()
+            for row in data:
+                chart_data[summary.main_device.displayed_name]['timestamp'].append(str(row.dt))
+                for col in col_list:
+                    if col is not None:
+                        if col == 'HR':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.HR is None else row.HR)
+                        elif col == 'ABP_HR':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_HR is None else row.ABP_HR)
+                        elif col == 'PLETH_HR':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.PLETH_HR is None else row.PLETH_HR)
+                        elif col == 'ABP_HR':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_HR is None else row.ABP_HR)
+                        elif col == 'ABP_SBP':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_SBP is None else row.ABP_SBP)
+                        elif col == 'ABP_DBP':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_DBP is None else row.ABP_DBP)
+                        elif col == 'ABP_MBP':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_MBP is None else row.ABP_MBP)
+                        elif col == 'NIBP_SBP':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.NIBP_SBP is None else row.NIBP_SBP)
+                        elif col == 'NIBP_DBP':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.NIBP_DBP is None else row.NIBP_DBP)
+                        elif col == 'NIBP_MBP':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.NIBP_MBP is None else row.NIBP_MBP)
+                        elif col == 'PLETH_SPO2':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.PLETH_SPO2 is None else row.PLETH_SPO2)
+                        elif col == 'PLETH_SAT_O2':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.PLETH_SAT_O2 is None else row.PLETH_SAT_O2)
+                        elif col == 'BT_PA':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.BT_PA is None else row.BT_PA)
+                        elif col == 'TEMP':
+                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.TEMP is None else row.TEMP)
+                        else:
+                            print(col)
+                            assert False
+            chart_data[summary.main_device.displayed_name]['timestamp'] = json.dumps(chart_data[summary.main_device.displayed_name]['timestamp'])
+            dataset = list()
+            for i, col in enumerate(col_list):  # rgb(75, 192, 192)
+                if col is not None:
+                    tmp_dataset = dict()
+                    tmp_dataset["label"] = col
+                    tmp_dataset["data"] = chart_data[summary.main_device.displayed_name][col]
+                    tmp_dataset["fill"] = False
+                    tmp_dataset["pointRadius"] = 0
+                    tmp_dataset["borderColor"] = color_preview[i]
+                    tmp_dataset["lineTension"] = 0
+                    dataset.append(tmp_dataset)
+            chart_data[summary.main_device.displayed_name]['dataset'] = json.dumps(dataset)
+        
         wave_metadata = list()
         for wif in WaveInfoFile.objects.filter(record=record):
             tmp_wif = dict()
@@ -436,7 +459,6 @@ def dashboard(request):
                 elif row[1] == 'Red':
                     beds_red.append(row[0])
 
-
         template = loader.get_template('dashboard_rosette.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_rosette')
         context = {
@@ -454,28 +476,21 @@ def dashboard(request):
         sidebar_menu, loc = get_sidebar_menu('dashboard_etc')
         raise Http404()
     elif target == 'trend':
-        begin_date = request.GET.get('begin_date')
-        end_date = request.GET.get('end_date')
-        if begin_date is None:
-            begin_date = datetime.date.today() - datetime.timedelta(days=7)
-            end_date = datetime.datetime.now()
-        elif end_date is None:
-            end_date = begin_date + datetime.timedelta(days=7)
-        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-        cursor = db.cursor()
-        query = 'SELECT DATE(begin_date) dt, rosette, COUNT(*) files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) DUR, SUM(TOTAL_COUNT) TOTAL_COUNT'
-        query += " FROM summary_by_file WHERE begin_date BETWEEN '%s' AND '%s' GROUP BY dt, rosette" % (begin_date, end_date)
-        cursor.execute(query)
-        rows = cursor.fetchall()
+        dt_from = request.GET.get('begin_date')
+        dt_to = request.GET.get('end_date')
+        if dt_from is None:
+            dt_from = datetime.datetime.now() - datetime.timedelta(days=7)
+            dt_to = datetime.datetime.now()
+        elif dt_to is None:
+            dt_to = dt_from + datetime.timedelta(days=7)
+        dt_from = dt_from.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(tz)
+        dt_to = dt_to.astimezone(tz)
 
-        label_dates = set()
-        for row in rows:
-            label_dates.add(str(row[0]))
-        label_dates = list(label_dates)
-        label_dates.sort()
+        print(dt_from, dt_to)
+
+        label_dates = list()
+        for i_dt in pandas.date_range(dt_from, dt_to):
+            label_dates.append(str(i_dt.date()))
         label_dates_dict = dict()
         for i, label in enumerate(label_dates):
             label_dates_dict[label] = i
@@ -486,29 +501,37 @@ def dashboard(request):
         data['collected_hours'] = dict()
         data['total_hours'] = dict()
 
-        for row in rows:
-            if row[1] not in data['total_hours']:
-                data['collected_files'][row[1]] = [0] * len(label_dates)
-                data['collected_hours'][row[1]] = [0] * len(label_dates)
-                data['total_hours'][row[1]] = [0] * len(label_dates)
-            data['collected_files'][row[1]][label_dates_dict[str(row[0])]] = row[2]
-            data['collected_hours'][row[1]][label_dates_dict[str(row[0])]] = float(row[3])/3600
+        for summary in SummaryFileRecorded.objects.filter(record__begin_date__range=(dt_from, dt_to)):
+            if summary.record.bed.room.name not in data['total_hours']:
+                data['collected_files'][summary.record.bed.room.name] = [0] * len(label_dates)
+                data['collected_hours'][summary.record.bed.room.name] = [0] * len(label_dates)
+                data['total_hours'][summary.record.bed.room.name] = [0] * len(label_dates)
+            data['collected_files'][summary.record.bed.room.name][label_dates_dict[str(summary.record.begin_date.astimezone(tz).date())]] += 1
+            data['collected_hours'][summary.record.bed.room.name][label_dates_dict[str(summary.record.begin_date.astimezone(tz).date())]] += (summary.record.end_date - summary.record.begin_date).total_seconds()/3600
 
-        query = 'SELECT a.dt, COUNT(*) num_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION FROM '
-        query += "(SELECT DISTINCT DATE(begin_date) dt FROM summary_by_file WHERE begin_date >= '%s') AS a" % str(since)
-        query += " LEFT JOIN summary_by_file AS b ON a.dt >= DATE(b.begin_date) GROUP BY a.dt ORDER BY a.dt"
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        db.close()
+        tmp_data = dict()
+        for summary in SummaryFileRecorded.objects.all():
+            month = summary.record.begin_date.strftime('%Y-%m')
+            if month not in tmp_data.keys():
+                tmp_data[month] = {'collected_files': 0, 'collected_hours': 0}
+            tmp_data[month]['collected_files'] += 1
+            tmp_data[month]['collected_hours'] += (summary.record.end_date-summary.record.begin_date).total_seconds()/3600
+
+        tmp_data = dict(sorted(tmp_data.items()))
 
         data['accumulative'] = dict()
         data['accumulative']['label_dates'] = list()
         data['accumulative']['collected_hours'] = list()
         data['accumulative']['collected_files'] = list()
-        for row in rows:
-            data['accumulative']['label_dates'].append(str(row[0]))
-            data['accumulative']['collected_files'].append(row[1])
-            data['accumulative']['collected_hours'].append(int(row[2]/3600))
+
+        collected_hours = 0
+        collected_files = 0
+        for key, val in tmp_data.items():
+            data['accumulative']['label_dates'].append(key)
+            collected_hours += val['collected_hours']
+            collected_files += val['collected_files']
+            data['accumulative']['collected_hours'].append(collected_hours)
+            data['accumulative']['collected_files'].append(collected_files)
 
         data['storage_usage'] = dict()
         data['storage_usage']['labels'] = ['Main Storage', 'NAS1 (Vol1)']
@@ -545,8 +568,8 @@ def summary_rosette(request):
     dt_to = request.GET.get('end_date')
 
     if dt_from is None:
-        dt_from = datetime.date.today() - datetime.timedelta(days=7)
-        dt_to = datetime.date.today()
+        dt_from = datetime.date.today() - datetime.timedelta(days=6)
+        dt_to = datetime.date.today() + datetime.timedelta(days=1)
     if dt_to is None:
         dt_to = dt_from + datetime.timedelta(days=7)
 
@@ -568,64 +591,60 @@ def summary_rosette(request):
         val['num_effective_files'] = list()
         val['files'] = list()
 
-    db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                         user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                         password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                         db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+    tmp_data = dict()
+    tmp_data[rosette] = dict()
+    for bed in beds:
+        tmp_data[bed.name] = dict()
+    for key, val in tmp_data.items():
+        for dt in pandas.date_range(dt_from, dt_to + datetime.timedelta(days=-1)):
+            val[dt.date()] = dict()
+            val[dt.date()]['total_duration'] = datetime.timedelta()
+            val[dt.date()]['num_files'] = 0
+            val[dt.date()]['num_effective_files'] = 0
 
-    cursor = db.cursor()
-    query = "SELECT DATE(begin_date) dt, COUNT(*) num_files, SUM(IF(TIMESTAMPDIFF(SECOND, begin_date, end_date)>600,1,0)) num_effective_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION, "
-    query += "SUM(ECG_HR_AVG*ECG_HR_COUNT)/SUM(ECG_HR_COUNT), SUM(TEMP_AVG*TEMP_COUNT)/SUM(TEMP_COUNT), "
-    query += "SUM(NIBP_SYS_AVG*NIBP_SYS_COUNT)/SUM(NIBP_SYS_COUNT), SUM(NIBP_DIA_AVG*NIBP_DIA_COUNT)/SUM(NIBP_DIA_COUNT), "
-    query += "SUM(NIBP_MEAN_AVG*NIBP_MEAN_COUNT)/SUM(NIBP_MEAN_COUNT), SUM(PLETH_SPO2_AVG*PLETH_SPO2_COUNT)/SUM(PLETH_SPO2_COUNT) "
-    query += "FROM summary_by_file WHERE rosette='%s' AND bed IN ('%s') " % (rosette, "','".join(bed_name))
-    query += "AND begin_date BETWEEN '%s' AND '%s' GROUP BY DATE(begin_date) ORDER BY DATE(begin_date)" % (dt_from, dt_to)
-    cursor.execute(query)
-    trend_rosette = cursor.fetchall()
+    records = FileRecorded.objects.filter(bed__room__name=rosette, begin_date__range=(dt_from, dt_to))
+    for record in records:
+        try:
+            summary = SummaryFileRecorded.objects.get(record=record)
+            tmp_data[rosette][record.begin_date.date()]['total_duration'] += record.end_date - record.begin_date
+            tmp_data[record.bed.name][record.begin_date.date()]['total_duration'] += record.end_date - record.begin_date
+            tmp_data[rosette][record.begin_date.date()]['num_effective_files'] += 1
+            tmp_data[record.bed.name][record.begin_date.date()]['num_effective_files'] += 1
+        except SummaryFileRecorded.DoesNotExist:
+            pass
+        print(tmp_data[rosette].keys())
+        tmp_data[rosette][record.begin_date.date()]['num_files'] += 1
+        tmp_data[record.bed.name][record.begin_date.date()]['num_files'] += 1
 
-    for row in trend_rosette:
-        data[rosette]['date'].append(str(row[0]))
-        data[rosette]['num_files'].append(int(row[1]))
-        data[rosette]['num_effective_files'].append(int(row[2]))
-        data[rosette]['num_total_ops'].append(int(int(row[2])*random.uniform(1.1, 1.2)))
-        data[rosette]['total_duration'].append(int(row[3]))
+    for key, val_bed in tmp_data.items():
+        for dt, val in val_bed.items():
+            data[key]['date'].append(str(dt))
+            data[key]['total_duration'].append(str(val['total_duration']))
+            data[key]['num_files'].append(val['num_files'])
+            data[key]['num_total_ops'].append(val['num_effective_files']*random.uniform(1.1, 1.2))
+            data[key]['num_effective_files'].append(val['num_effective_files'])
 
-    query = "SELECT bed, DATE(begin_date) dt, COUNT(*) num_files, SUM(IF(TIMESTAMPDIFF(SECOND, begin_date, end_date)>600,1,0)) num_effective_files, SUM(TIMESTAMPDIFF(SECOND, begin_date, end_date)) TOTAL_DURATION, "
-    query += "SUM(ECG_HR_AVG*ECG_HR_COUNT)/SUM(ECG_HR_COUNT), SUM(TEMP_AVG*TEMP_COUNT)/SUM(TEMP_COUNT), "
-    query += "SUM(NIBP_SYS_AVG*NIBP_SYS_COUNT)/SUM(NIBP_SYS_COUNT), SUM(NIBP_DIA_AVG*NIBP_DIA_COUNT)/SUM(NIBP_DIA_COUNT), "
-    query += "SUM(NIBP_MEAN_AVG*NIBP_MEAN_COUNT)/SUM(NIBP_MEAN_COUNT), SUM(PLETH_SPO2_AVG*PLETH_SPO2_COUNT)/SUM(PLETH_SPO2_COUNT) "
-    query += "FROM summary_by_file WHERE rosette='%s' AND bed IN ('%s') " % (rosette, "','".join(bed_name))
-    query += "AND begin_date BETWEEN '%s' AND '%s' GROUP BY bed, DATE(begin_date)" % (dt_from, dt_to)
-    cursor.execute(query)
-    trend_bed = cursor.fetchall()
-
-    for row in trend_bed:
-        data[row[0]]['date'].append(str(row[1]))
-        data[row[0]]['num_files'].append(int(row[2]))
-        data[row[0]]['num_effective_files'].append(int(row[2]))
-        data[row[0]]['num_total_ops'].append(int(int(row[2])*random.uniform(1.1, 1.2)))
-        data[row[0]]['total_duration'].append(int(row[3]))
-
-    query = "SELECT bed, file_basename, TIMESTAMPDIFF(SECOND, begin_date, end_date), ECG_HR_AVG, TEMP_AVG, NIBP_SYS_AVG, NIBP_DIA_AVG, NIBP_MEAN_AVG, PLETH_SPO2_AVG "
-    query += "FROM summary_by_file WHERE rosette='%s' AND bed IN ('%s') " % (rosette, "','".join(bed_name))
-    query += "AND begin_date BETWEEN '%s' AND '%s' ORDER BY begin_date DESC" % (dt_from, dt_to)
-    cursor.execute(query)
-    summary_files = cursor.fetchall()
-
-    for row in summary_files:
-        tmp = list(row)
-        tmp[2] = str(datetime.timedelta(seconds=tmp[2]))
-        for i in range(3, len(tmp)):
-            if tmp[i] is not None:
-                tmp[i] = format(tmp[i], '.2f')
-        device_list = list()
-        for ni in NumberInfoFile.objects.filter(record__file_basename=tmp[1]):
-            device_list.append(ni.device.code)
-        tmp.append(', '.join(device_list))
+    for record in FileRecorded.objects.filter(bed__room__name=room, begin_date__range=(dt_from, dt_to)).order_by('-begin_date'):
+        tmp = [record.bed.name, record.file_basename]
+        try:
+            summary = SummaryFileRecorded.objects.get(record=record)
+            tmp.append(str(record.end_date-record.begin_date))
+            device_list = list()
+            for ni in NumberInfoFile.objects.filter(record=record):
+                device_list.append(ni.device.code)
+            tmp.append(', '.join(device_list))
+            tmp.append(summary.bp_channel)
+            tmp.append(summary.hr_channel)
+            tmp.append(format(summary.avg_hr, '.1f') if summary.avg_hr is not None else 'N/A')
+            tmp.append(format(summary.avg_bt, '.1f') if summary.avg_bt is not None else 'N/A')
+            tmp.append(format(summary.avg_spo2, '.1f') if summary.avg_spo2 is not None else 'N/A')
+            tmp.append(format(summary.avg_sbp, '.1f') if summary.avg_sbp is not None else 'N/A')
+            tmp.append(format(summary.avg_dbp, '.1f') if summary.avg_dbp is not None else 'N/A')
+            tmp.append(format(summary.avg_mbp, '.1f') if summary.avg_mbp is not None else 'N/A')
+        except SummaryFileRecorded.DoesNotExist:
+            tmp.extend(['N/A'] * 10)
         data[rosette]['files'].append(tmp)
-        data[row[0]]['files'].append(tmp)
-
-    db.close()
+        data[record.bed.name]['files'].append(tmp)
 
     sidebar_menu, loc = get_sidebar_menu(rosette)
 
@@ -1321,19 +1340,26 @@ def recording_info_body(request):
                     try:
                         begin = datetime.datetime.strptime(begin, "%Y-%m-%dT%H:%M:%S%z")
                         end = datetime.datetime.strptime(end, "%Y-%m-%dT%H:%M:%S%z")
-                        recorded = FileRecorded.objects.create(client=target_client, bed=target_client.bed, begin_date=begin, end_date=end)
                         date_str = begin.strftime("%y%m%d")
                         time_str = begin.strftime("%H%M%S")
-                        pathname = os.path.join(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], recorded.bed.name, date_str)
+                        pathname = os.path.join(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], target_client.bed.name, date_str)
+                        filename = '%s_%s_%s.vital' % (target_client.bed.name, date_str, time_str)
+                        recorded, created = FileRecorded.objects.get_or_create(file_basename=filename, defaults={
+                            'client': target_client, 'bed': target_client.bed, 'begin_date': begin,
+                            'end_date': end, 'file_path': os.path.join(pathname, filename)
+                        })
+                        if not created:
+                            recorded.client = target_client
+                            recorded.bed = target_client.bed
+                            recorded.begin_date = begin
+                            recorded.end_date = end
+                            recorded.file_path = os.path.join(pathname, filename)
+                            recorded.save()
                         if not os.path.exists(pathname):
                             os.makedirs(pathname)
-                        filename = '%s_%s_%s.vital' % (recorded.client.bed.name, date_str, time_str)
                         with open(os.path.join(pathname, filename), 'wb+') as destination:
                             for chunk in request.FILES['attachment'].chunks():
                                 destination.write(chunk)
-                        recorded.file_path = os.path.join(pathname, filename)
-                        recorded.file_basename = filename
-                        recorded.save(update_fields=['file_path', 'file_basename'])
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
                         recorded.migrate_vital()
