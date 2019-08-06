@@ -5,7 +5,9 @@
     <link rel="stylesheet" type="text/css" href="/static/Chart.js-2.8.0/dist/Chart.css">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/base.css">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/changelists.css">
+    <link rel="stylesheet" type="text/css" href="/static/review.css">
     <script type="text/javascript" src="/admin/jsi18n/"></script>
+    <script type="text/javascript" src="/static/jquery-3.4.1.min.js"></script>
     <script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
     <script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
     <script type="text/javascript" src="/static/admin/js/core.js"></script>
@@ -17,7 +19,7 @@
     <script type="text/javascript" src="/static/Chart.js-2.8.0/dist/Chart.bundle.js"></script>
     <script type="text/javascript" src="/static/Chart.js-2.8.0/dist/chartjs-plugin-annotation.js"></script>
 
-    <title>Preview, {{ bed }}, {{ date }}</title>
+    <title>Review, {{ bed }}, {{ date }}</title>
 </head>
 <body>
 
@@ -86,11 +88,16 @@
     </div>
 {% endfor %}
 
-{% for device, val in data.items %}
+{% for n in num %}
+    <div id="num_div_{{ forloop.counter0 }}">
+        <h4 align="center"> {{ n.device_displayed_name }}, <a href="/download_csv_device?{{ n.csv_download_params | safe }}">Download CSV</a> </h4>
+        <canvas id="num_cvs_{{ forloop.counter0 }}" class="chartjs" width="400" height="200"></canvas>
+    </div>
 
-    <h4 align="center"> {{ device }}, <a href="/download_csv_device?{{ val.csv_download_params | safe }}">Download CSV</a> </h4>
-
-<canvas id="{{ device }}" class="chartjs" width="400" height="200"></canvas>
+    <ul id="contextMenu" style="display:none;">
+        <li class="menu-item" onclick="menu(1)">Menu 1</li>
+        <li class="menu-item" onclick="menu(2)">Menu 2</li>
+    </ul>
 
 {% endfor %}
 
@@ -132,15 +139,15 @@
         let xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function () {
             if (this.readyState === 4 && this.status === 200) {
-                wave_data = JSON.parse(xhttp.responseText);
+                let wave_data = JSON.parse(xhttp.responseText);
                 for (let i=0; i<wave_charts.length; i++) {
                     let d = wave_data[wave_charts[i].device][wave_charts[i].channel];
                     let init_dt = new Date(d.timestamp[0]);
                     wave_charts[i].chart.data.labels = [];
                     wave_charts[i].chart.data.datasets = [];
-                    tmp_dataset = { label: wave_charts[i].channel, data: [] };
+                    let tmp_dataset = { label: wave_charts[i].channel, data: [] };
                     for (let j=0; j<d['data'][0].length; j++) {
-                        c_dt = new Date(init_dt);
+                        let c_dt = new Date(init_dt);
                         c_dt.setMilliseconds(init_dt.getMilliseconds()+j*1000/d['sampling_rate']);
                         wave_charts[i].chart.data.labels.push(c_dt);
                         tmp_dataset.data.push(d['data'][0][j]);
@@ -176,44 +183,46 @@
         event_info.annotations.push(single_event);
     {% endfor %}
 
+    let num_data = {{ num_json | safe }};
     let number_charts = [];
 
-    {% for device, val in data.items %}
-
-        tmp_chart = new Chart(document.getElementById("{{ device }}"), {
-          type: "line",
-          data: {
-              labels: {{ val.timestamp | safe }},
-              datasets: {{ val.dataset | safe }}
-          },
-          options: {
-              scales: {
-                  xAxes: [{
-                      type: "time",
-                      time: {
-                          unit: "hour"
-                      }
-                  }]
-              },
-              layout: {
-                  padding: {
-                      left: 10,
-                      right: 10,
-                      top: 10,
-                      bottom: 10
-                  }
-              },
-              animation: {
-                  duration: 0 // general animation time
-              },
-              annotation: event_info
-          }
+    for (let i=0; i<num_data.length; i++) {
+        let tmp_num = {};
+        tmp_num.device = num_data[i].device;
+        tmp_num.div_id = "num_div_" + i;
+        tmp_num.cvs_id = "num_cvs_" + i;
+        tmp_num.chart = new Chart(document.getElementById(tmp_num.cvs_id), {
+            type: "line",
+            data: {
+                labels: num_data[i].timestamp,
+                datasets: num_data[i].dataset
+            },
+            options: {
+                scales: {
+                    xAxes: [{
+                        type: "time",
+                        distribution: "linear",
+                        time: {
+                            unit: "hour"
+                        }
+                    }]
+                },
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 10,
+                        top: 10,
+                        bottom: 10
+                    }
+                },
+                animation: {
+                    duration: 0 // general animation time
+                },
+                annotation: event_info
+            }
         });
-        number_charts.push(tmp_chart);
-
-    {% endfor %}
-    //number_chart[0].options.annotation = event_info
-    //number_chart[0].update()
+        number_charts.push(tmp_num);
+    }
 
     let waves = {{ wave_json | safe }};
     let wave_charts = [];
@@ -263,6 +272,79 @@
         });
         wave_charts.push(tmp_wave);
     }
+
+    let $menu = $('#contextMenu');
+    for (let i=0; i<number_charts.length; i++) {
+        let canvas = document.getElementById(number_charts[i].cvs_id);
+        canvas.addEventListener('contextmenu', handleContextMenu, false);
+        canvas.addEventListener('mousedown', handleMouseDown, false);
+    }
+    for (let i=0; i<wave_charts.length; i++) {
+        let canvas = document.getElementById(wave_charts[i].cvs_id);
+        canvas.addEventListener('contextmenu', handleContextMenu, false);
+        canvas.addEventListener('mousedown', handleMouseDown, false);
+    }
+
+    function AddAnnotation(dt, description){
+        let xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (this.readyState === 4 && this.status === 200) {
+                let annotation_data = JSON.parse(xhttp.responseText);
+                event_info.annotations = [];
+                for (let i=0; i<annotation_data.length; i++) {
+                    let single_event = {
+                        type: 'line',
+                        mode: 'vertical',
+                        scaleID: 'x-axis-0',
+                        value: annotation_data[i].dt,
+                        borderColor: 'green',
+                        borderWidth: 1,
+                        label: {
+                            enabled: true,
+                            position: "top",
+                            content: i
+                        }
+                    };
+                    event_info.annotations.push(single_event);
+                }
+                for (let i=0; i<number_charts.length; i++) {
+                    number_charts[i].chart.options.annotation = event_info;
+                }
+                for (let i=0; i<wave_charts.length; i++) {
+                    wave_charts[i].chart.options.annotation = event_info;
+                    if (document.getElementById(wave_charts[i].cbx_id).checked) {
+                        wave_charts[i].chart.update();
+                    }
+                }
+            }
+        };
+        xhttp.open("GET", "add_annotation?file={{ vital_file }}&dt=" + dt + "&desc=" + description, true);
+        xhttp.send();
+    }
+
+    function handleContextMenu(e){
+        e.preventDefault();
+        e.stopPropagation();
+        let canvas = document.getElementById(number_charts[0].cvs_id);
+        let BB = canvas.getBoundingClientRect(), offsetX = BB.left, offsetY = BB.top;
+        let x = parseInt(e.clientX-offsetX);
+        let y = parseInt(e.clientY-offsetY);
+        let firstpoint = number_charts[0].chart.data.labels[number_charts[0].chart.getElementAtEvent(e)[0]._index];
+        console.log(x, y, offsetX, offsetY);
+        console.log(firstpoint);
+        $menu.css({left:x,top:e.clientY});
+        $menu.show();
+        return false;
+    }
+
+    function handleMouseDown(e){
+        $menu.hide();
+    }
+
+    menu = function(n){
+        console.log("select menu "+n);
+        $menu.hide();
+    };
 
     update_wave_data();
 

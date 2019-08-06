@@ -1676,6 +1676,19 @@ class AnesthesiaRecord(models.Model):
     raw_record = models.TextField(blank=True)
 
 
+class Annotation(models.Model):
+    dt = models.DateTimeField(default=timezone.now)
+    bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, null=True)
+    ANNOTATION_METHOD_CHOICES = (
+        (0, "offline"),
+        (1, "online"),
+        (2, "api"),
+        (3, "migration"),
+    )
+    method = models.IntegerField(choices=ANNOTATION_METHOD_CHOICES, default=0)
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+
 class ManualInputEventItem(models.Model):
     dt = models.DateTimeField(default=timezone.now)
     record = models.ForeignKey('ManualInputEvent', on_delete=models.CASCADE)

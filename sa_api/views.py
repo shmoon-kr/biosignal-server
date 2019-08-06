@@ -301,8 +301,6 @@ def review(request):
     begin_date = record.begin_date.astimezone(tz)
     end_date = record.end_date.astimezone(tz)
 
-    table_col_list, table_val_list = get_table_col_val_list()
-    
     col_list = list()
     col_list.append(summary.hr_channel)
     col_list.append('BT_PA' if summary.main_device.displayed_name == 'GE/Carescape' else 'TEMP')
@@ -313,7 +311,7 @@ def review(request):
 
     color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
 
-    chart_data = dict()
+    number_data = list()
 
     if rosette is not None and bed is not None and begin_date is not None and end_date is not None:
         
@@ -325,65 +323,65 @@ def review(request):
             assert False
             
         if len(data):
-            chart_data[summary.main_device.displayed_name] = dict()
-            chart_data[summary.main_device.displayed_name]['csv_download_params'] = 'file=%s&device=%s' % (summary.record.file_basename, summary.main_device.code)
-            chart_data[summary.main_device.displayed_name]['timestamp'] = list()
+            number_data.append(dict())
+            number_data[-1]['device_displayed_name'] = summary.main_device.displayed_name
+            number_data[-1]['csv_download_params'] = 'file=%s&device=%s' % (summary.record.file_basename, summary.main_device.code)
+            number_data[-1]['timestamp'] = list()
             for col in col_list:
                 if col is not None:
-                    chart_data[summary.main_device.displayed_name][col] = list()
+                    number_data[-1][col] = list()
             for row in data:
-                chart_data[summary.main_device.displayed_name]['timestamp'].append(str(row.dt))
+                number_data[-1]['timestamp'].append(str(row.dt.astimezone(tz)))
                 for col in col_list:
                     if col is not None:
                         if col == 'HR':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.HR is None else row.HR)
+                            number_data[-1][col].append(float('nan') if row.HR is None else row.HR)
                         elif col == 'ABP_HR':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_HR is None else row.ABP_HR)
+                            number_data[-1][col].append(float('nan') if row.ABP_HR is None else row.ABP_HR)
                         elif col == 'PLETH_HR':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.PLETH_HR is None else row.PLETH_HR)
+                            number_data[-1][col].append(float('nan') if row.PLETH_HR is None else row.PLETH_HR)
                         elif col == 'ABP_HR':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_HR is None else row.ABP_HR)
+                            number_data[-1][col].append(float('nan') if row.ABP_HR is None else row.ABP_HR)
                         elif col == 'ABP_SBP':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_SBP is None else row.ABP_SBP)
+                            number_data[-1][col].append(float('nan') if row.ABP_SBP is None else row.ABP_SBP)
                         elif col == 'ABP_DBP':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_DBP is None else row.ABP_DBP)
+                            number_data[-1][col].append(float('nan') if row.ABP_DBP is None else row.ABP_DBP)
                         elif col == 'ABP_MBP':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.ABP_MBP is None else row.ABP_MBP)
+                            number_data[-1][col].append(float('nan') if row.ABP_MBP is None else row.ABP_MBP)
                         elif col == 'NIBP_SBP':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.NIBP_SBP is None else row.NIBP_SBP)
+                            number_data[-1][col].append(float('nan') if row.NIBP_SBP is None else row.NIBP_SBP)
                         elif col == 'NIBP_DBP':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.NIBP_DBP is None else row.NIBP_DBP)
+                            number_data[-1][col].append(float('nan') if row.NIBP_DBP is None else row.NIBP_DBP)
                         elif col == 'NIBP_MBP':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.NIBP_MBP is None else row.NIBP_MBP)
+                            number_data[-1][col].append(float('nan') if row.NIBP_MBP is None else row.NIBP_MBP)
                         elif col == 'PLETH_SPO2':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.PLETH_SPO2 is None else row.PLETH_SPO2)
+                            number_data[-1][col].append(float('nan') if row.PLETH_SPO2 is None else row.PLETH_SPO2)
                         elif col == 'PLETH_SAT_O2':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.PLETH_SAT_O2 is None else row.PLETH_SAT_O2)
+                            number_data[-1][col].append(float('nan') if row.PLETH_SAT_O2 is None else row.PLETH_SAT_O2)
                         elif col == 'BT_PA':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.BT_PA is None else row.BT_PA)
+                            number_data[-1][col].append(float('nan') if row.BT_PA is None else row.BT_PA)
                         elif col == 'TEMP':
-                            chart_data[summary.main_device.displayed_name][col].append(float('nan') if row.TEMP is None else row.TEMP)
+                            number_data[-1][col].append(float('nan') if row.TEMP is None else row.TEMP)
                         else:
-                            print(col)
                             assert False
-            chart_data[summary.main_device.displayed_name]['timestamp'] = json.dumps(chart_data[summary.main_device.displayed_name]['timestamp'])
             dataset = list()
             for i, col in enumerate(col_list):  # rgb(75, 192, 192)
                 if col is not None:
                     tmp_dataset = dict()
                     tmp_dataset["label"] = col
-                    tmp_dataset["data"] = chart_data[summary.main_device.displayed_name][col]
+                    tmp_dataset["data"] = number_data[-1][col]
                     tmp_dataset["fill"] = False
                     tmp_dataset["pointRadius"] = 0
                     tmp_dataset["borderColor"] = color_preview[i]
                     tmp_dataset["lineTension"] = 0
                     dataset.append(tmp_dataset)
-            chart_data[summary.main_device.displayed_name]['dataset'] = json.dumps(dataset)
+            number_data[-1]['dataset'] = dataset
         
         wave_metadata = list()
         for wif in WaveInfoFile.objects.filter(record=record):
             tmp_wif = dict()
             tmp_wif['device'] = wif.device.displayed_name
+            tmp_wif['device_code'] = wif.device.code
             tmp_wif['channel'] = wif.channel_name
             tmp_wif['sampling_rate'] = wif.sampling_rate
             tmp_wif['num_packets'] = wif.num_packets
@@ -394,7 +392,8 @@ def review(request):
 
         context = dict()
         context['vital_file'] = file
-        context['data'] = chart_data
+        context['num'] = number_data
+        context['num_json'] = json.dumps(number_data, indent=4)
         context['wave'] = wave_metadata
         context['wave_json'] = json.dumps(wave_metadata, indent=4)
         context['bed'] = bed
