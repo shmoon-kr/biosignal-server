@@ -25,7 +25,7 @@ from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFou
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, ManualInputEventItem, NumberInfoFile, WaveInfoFile, SummaryFileRecorded, NumberGEC, NumberPIV
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, NumberInfoFile, WaveInfoFile, SummaryFileRecorded, NumberGEC, NumberPIV, Annotation
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
@@ -204,34 +204,86 @@ def file_upload_storage(date_string, bed_name, filepath):
 @csrf_exempt
 def get_wavedata(request):
     record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+    device_code = request.GET.get("device_code")
+    channel = request.GET.get("channel")
     dt = dateutil.parser.parse(request.GET.get("dt"))
 
     r_dict = dict()
     response_status = 200
-
-    for wif in WaveInfoFile.objects.filter(record=record):
+    if device_code is not None and channel is not None:
+        wif = get_object_or_404(WaveInfoFile, record=record, device__code=device_code, channel_name=channel)
         npz = cache.get(wif.file_path)
         if npz is None:
             npz = np.load(wif.file_path)
             npz = {'timestamp': npz['timestamp'], 'packet_pointer': npz['packet_pointer'], 'val': npz['val']}
             cache.set(wif.file_path, npz)
-        if wif.device.displayed_name not in r_dict:
-            r_dict[wif.device.displayed_name] = dict()
-        r_dict[wif.device.displayed_name][wif.channel_name] = dict()
-        ch = r_dict[wif.device.displayed_name][wif.channel_name]
-        ch['sampling_rate'] = wif.sampling_rate
-        ch['timestamp'] = list()
-        ch['data'] = list()
-
+        r_dict['sampling_rate'] = wif.sampling_rate
+        r_dict['timestamp'] = list()
+        r_dict['data'] = list()
         st = bisect.bisect(npz['timestamp'], dt.timestamp() - 10)
         ed = bisect.bisect(npz['timestamp'], dt.timestamp() + 10)
-
-        ch['timestamp'].append(str(datetime.datetime.fromtimestamp(npz['timestamp'][st])))
-        ch['data'].append(list())
+    
+        r_dict['timestamp'].append(str(datetime.datetime.fromtimestamp(npz['timestamp'][st])))
+        r_dict['data'].append(list())
         for v in npz['val'][npz['packet_pointer'][st]:npz['packet_pointer'][ed]]:
-            ch['data'][-1].append(round(float(v), 4))
+            r_dict['data'][-1].append(round(float(v), 4))
+    else:
+        return HttpResponseBadRequest()
 
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
+
+
+def get_annotation_body(record):
+    r = list()
+    for item in Annotation.objects.filter(record=record, dt__range=(record.begin_date, record.end_date)).order_by('dt'):
+        tmp_annotation = dict()
+        tmp_annotation['id'] = item.id
+        tmp_annotation['dt'] = str(item.dt)
+        tmp_annotation['method'] = item.method
+        tmp_annotation['desc'] = item.description
+        r.append(tmp_annotation)
+    return r
+
+
+@csrf_exempt
+def get_annotation(request):
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+    result = get_annotation_body(record)
+    return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+                        status=200)
+
+
+@csrf_exempt
+def add_annotation(request):
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file")) if request.GET.get("file") is not None else None
+    bed = get_object_or_404(Bed, name=request.GET.get("bed")) if request.GET.get("bed") is not None else None
+    if record is None and bed is None:
+        return HttpResponseNotFound()
+    if bed is None:
+        bed = record.bed
+
+    dt = request.GET.get("dt")
+    desc = request.GET.get("desc")
+    method = request.GET.get("method")
+    if dt is None or method is None:
+        return HttpResponseBadRequest()
+    dt = datetime.datetime.strptime(dt.replace('Z', '+0000'), "%Y-%m-%dT%H:%M:%S.%f%z")
+    if desc is None:
+        desc = ''
+
+    Annotation.objects.create(dt=dt, bed=bed, method=method, description=desc, record=record)
+
+    r_dict = dict()
+    if record is not None:
+        r_dict['annotations'] = get_annotation_body(record)
+        r_dict['message'] = 'Annotations were returned.'
+    else:
+        r_dict['message'] = 'Annotations were not returned.'
+
+    print(r_dict)
+    response_status = 200
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+                        status=response_status)
 
 
 @csrf_exempt
@@ -381,14 +433,13 @@ def review(request):
         for wif in WaveInfoFile.objects.filter(record=record):
             tmp_wif = dict()
             tmp_wif['device'] = wif.device.displayed_name
+            tmp_wif['is_main'] = wif.device.is_main
             tmp_wif['device_code'] = wif.device.code
             tmp_wif['channel'] = wif.channel_name
             tmp_wif['sampling_rate'] = wif.sampling_rate
             tmp_wif['num_packets'] = wif.num_packets
             tmp_wif['file_path'] = wif.file_path
             wave_metadata.append(tmp_wif)
-
-        events = ManualInputEventItem.objects.filter(record__bed__name=bed, dt__range=(begin_date, end_date))
 
         context = dict()
         context['vital_file'] = file
@@ -397,7 +448,6 @@ def review(request):
         context['wave'] = wave_metadata
         context['wave_json'] = json.dumps(wave_metadata, indent=4)
         context['bed'] = bed
-        context['events'] = events
         context['date'] = begin_date.strftime('%Y-%m-%d')
         context['begin_date'] = str(begin_date)
         context['end_date'] = str(end_date)
@@ -447,8 +497,7 @@ def dashboard(request):
                              password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
                              db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
         cursor = db.cursor()
-        query = 'SELECT bed, status FROM legacy_bed_status'
-        cursor.execute(query)
+        cursor.execute('SELECT bed, status FROM legacy_bed_status')
         rows = cursor.fetchall()
 
         for row in rows:
@@ -470,10 +519,6 @@ def dashboard(request):
             'beds_blue': json.dumps(beds_blue),
         }
         return HttpResponse(template.render(context, request))
-    elif target == 'etc':
-        template = loader.get_template('dashboard_etc.html')
-        sidebar_menu, loc = get_sidebar_menu('dashboard_etc')
-        raise Http404()
     elif target == 'trend':
         dt_from = request.GET.get('begin_date')
         dt_to = request.GET.get('end_date')
@@ -484,8 +529,6 @@ def dashboard(request):
             dt_to = dt_from + datetime.timedelta(days=7)
         dt_from = dt_from.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(tz)
         dt_to = dt_to.astimezone(tz)
-
-        print(dt_from, dt_to)
 
         label_dates = list()
         for i_dt in pandas.date_range(dt_from, dt_to):

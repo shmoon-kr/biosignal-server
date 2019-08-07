@@ -5,7 +5,6 @@ from django.utils.html import format_html
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from pyfluent.client import FluentSender
-from itertools import product
 from scipy import stats
 import re
 import os
@@ -1678,6 +1677,7 @@ class AnesthesiaRecord(models.Model):
 
 class Annotation(models.Model):
     dt = models.DateTimeField(default=timezone.now)
+    record = models.ForeignKey('FileRecorded', on_delete=models.SET_NULL, null=True)
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, null=True)
     ANNOTATION_METHOD_CHOICES = (
         (0, "offline"),
@@ -1687,15 +1687,3 @@ class Annotation(models.Model):
     )
     method = models.IntegerField(choices=ANNOTATION_METHOD_CHOICES, default=0)
     description = models.CharField(max_length=255, blank=True, null=True)
-
-
-class ManualInputEventItem(models.Model):
-    dt = models.DateTimeField(default=timezone.now)
-    record = models.ForeignKey('ManualInputEvent', on_delete=models.CASCADE)
-    category = models.CharField(max_length=255, blank=True, null=True, default='Manual')
-    description = models.CharField(max_length=255, blank=True, null=True)
-
-
-class ManualInputEvent(models.Model):
-    dt_operation = models.DateField(default=timezone.now)
-    bed = models.ForeignKey('Bed', on_delete=models.CASCADE)

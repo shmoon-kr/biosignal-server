@@ -25,57 +25,33 @@
 
 <h1 align="center"> {{ bed }}, {{ date }} </h1>
 
-{% if events %}
-    <div class="results">
-    <table id="result_list">
-    <thead>
-    <tr>
-        <th scope="col"  class="column-bed_name">
-        <div class="text"><span>number</span></div>
-        <div class="clear"></div>
-        </th>
-        <th scope="col"  class="column-bed_name">
-        <div class="text"><span>dt</span></div>
-        <div class="clear"></div>
-        </th>
-        <th scope="col"  class="column-bed_name">
-        <div class="text"><span>category</span></div>
-        <div class="clear"></div>
-        </th>
-        <th scope="col"  class="column-bed_name">
-        <div class="text"><span>description</span></div>
-        <div class="clear"></div>
-        </th>
-    </tr>
-    </thead>
-    <tbody>
-
-    {% for event in events %}
-
-        {% if forloop.counter|divisibleby:"2" %}
-        <tr class="row2">
-        {% else %}
-        <tr class="row1">
-        {% endif %}
-
-        <td class="field-bed_name">{{ forloop.counter }}</td>
-        <td class="field-bed_name">{{ event.dt|date:"Y-m-d H:i:s" }}</td>
-        <td class="field-bed_name">{{ event.category }}</td>
-        <td class="field-bed_name">{{ event.description }}</td>
-
+<div class="results">
+    <table id="annotation_list">
+        <thead>
+        <tr>
+            <th scope="col"  class="column-bed_name">
+                <div class="text"><span>number</span></div>
+                <div class="clear"></div>
+            </th>
+            <th scope="col"  class="column-bed_name">
+                <div class="text"><span>dt</span></div>
+                <div class="clear"></div>
+            </th>
+            <th scope="col"  class="column-bed_name">
+                <div class="text"><span>method</span></div>
+                <div class="clear"></div>
+            </th>
+            <th scope="col"  class="column-bed_name">
+                <div class="text"><span>description</span></div>
+                <div class="clear"></div>
+            </th>
         </tr>
-
-    {% endfor %}
-
-</tbody>
-</table>
+        </thead>
+    </table>
 </div>
 
-{% endif %}
-
-
 {% for ch in wave %}
-    <label><input type="checkbox" id="cbx_{{ forloop.counter0 }}" onclick="update_wave_list()"> {{ ch.device }}, {{ ch.channel }} <br></label>
+    <label><input type="checkbox" id="cbx_{{ forloop.counter0 }}"{% if ch.is_main %} checked{% endif %} onclick="update_wave_list()"> {{ ch.device }}, {{ ch.channel }} <br></label>
 {% endfor %}
 
 <div class="slidecontainer">
@@ -94,12 +70,12 @@
         <canvas id="num_cvs_{{ forloop.counter0 }}" class="chartjs" width="400" height="200"></canvas>
     </div>
 
-    <ul id="contextMenu" style="display:none;">
-        <li class="menu-item" onclick="menu(1)">Menu 1</li>
-        <li class="menu-item" onclick="menu(2)">Menu 2</li>
-    </ul>
-
 {% endfor %}
+
+<ul id="contextMenu" style="display:none;">
+    <li class="menu-item" onclick="menu(1)">Add Event</li>
+    <li class="menu-item" onclick="menu(2)">Menu 2</li>
+</ul>
 
 <script>
 
@@ -121,6 +97,10 @@
     slider.value = dt_pointer;
     slider.oninput = function() {
         dt_pointer = this.value;
+        for (let i=0; i<number_charts.length; i++) {
+            number_charts[i].chart.options.annotation.annotations[0].value = wave_dt_list[dt_pointer];
+            number_charts[i].chart.update();
+        }
         update_wave_data();
     };
 
@@ -135,53 +115,60 @@
         }
     }
 
-    function update_wave_data() {
-        let xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = function () {
-            if (this.readyState === 4 && this.status === 200) {
-                let wave_data = JSON.parse(xhttp.responseText);
-                for (let i=0; i<wave_charts.length; i++) {
-                    let d = wave_data[wave_charts[i].device][wave_charts[i].channel];
-                    let init_dt = new Date(d.timestamp[0]);
-                    wave_charts[i].chart.data.labels = [];
-                    wave_charts[i].chart.data.datasets = [];
-                    let tmp_dataset = { label: wave_charts[i].channel, data: [] };
-                    for (let j=0; j<d['data'][0].length; j++) {
-                        let c_dt = new Date(init_dt);
-                        c_dt.setMilliseconds(init_dt.getMilliseconds()+j*1000/d['sampling_rate']);
-                        wave_charts[i].chart.data.labels.push(c_dt);
-                        tmp_dataset.data.push(d['data'][0][j]);
+    function update_wave() {
+        for (let i=0; i<wave_charts.length; i++) {
+            if ( document.getElementById(wave_charts[i].cbx_id).checked ) {
+                let xhttp = new XMLHttpRequest();
+                xhttp.onreadystatechange = function () {
+                    if (this.readyState === 4 && this.status === 200) {
+                        let d = JSON.parse(xhttp.responseText);
+                        let init_dt = new Date(d.timestamp[0]);
+                        wave_charts[i].chart.data.labels = [];
+                        wave_charts[i].chart.data.datasets = [];
+                        let tmp_dataset = {label: wave_charts[i].channel, data: []};
+                        for (let j = 0; j < d['data'][0].length; j++) {
+                            let c_dt = new Date(init_dt);
+                            c_dt.setMilliseconds(init_dt.getMilliseconds() + j * 1000 / d['sampling_rate']);
+                            wave_charts[i].chart.data.labels.push(c_dt);
+                            tmp_dataset.data.push(d['data'][0][j]);
+                        }
+                        wave_charts[i].chart.data.datasets.push(tmp_dataset);
                     }
-                    wave_charts[i].chart.data.datasets.push(tmp_dataset);
-                }
-                update_wave_list();
+                    wave_charts[i].chart.update();
+                };
+                xhttp.open("GET", "get_wavedata?file={{ vital_file }}&dt=" + wave_dt_list[dt_pointer].toISOString() +
+                    "&device_code=" + wave_charts[i].device_code + "&channel=" + wave_charts[i].channel, true);
+                xhttp.send();
             }
-        };
-        xhttp.open("GET", "get_wavedata?file={{ vital_file }}&dt=" + wave_dt_list[dt_pointer].toISOString(), true);
-        xhttp.send();
+        }
     }
+
+    let number_annotation = {
+        drawTime: 'afterDatasetsDraw',
+        annotations: [{
+            type: 'line',
+            mode: 'vertical',
+            scaleID: 'x-axis-0',
+            value: wave_dt_list[dt_pointer],
+            borderColor: 'red',
+            borderWidth: 1,
+            label: {
+                enabled: true,
+                position: "top",
+                content: false
+            }
+        }]
+    };
+
+    let wave_annoation = {
+        drawTime: 'afterDatasetsDraw',
+        annotations: []
+    };
 
     let event_info = {
         drawTime: 'afterDatasetsDraw',
         annotations: []
     };
-
-    {% for event in events %}
-        single_event = {
-          type: 'line',
-          mode: 'vertical',
-          scaleID: 'x-axis-0',
-          value: '{{ event.dt|date:"Y-m-d H:i:s" }}',
-          borderColor: 'green',
-          borderWidth: 1,
-          label: {
-              enabled: true,
-              position: "top",
-              content: {{ forloop.counter }}
-          }
-        };
-        event_info.annotations.push(single_event);
-    {% endfor %}
 
     let num_data = {{ num_json | safe }};
     let number_charts = [];
@@ -218,7 +205,7 @@
                 animation: {
                     duration: 0 // general animation time
                 },
-                annotation: event_info
+                annotation: number_annotation
             }
         });
         number_charts.push(tmp_num);
@@ -230,6 +217,7 @@
     for (let i=0; i<waves.length; i++) {
         let tmp_wave = {};
         tmp_wave.device = waves[i].device;
+        tmp_wave.device_code = waves[i].device_code;
         tmp_wave.channel = waves[i].channel;
         tmp_wave.sampling_rate = waves[i].sampling_rate;
         tmp_wave.num_packets = waves[i].num_packets;
@@ -267,13 +255,13 @@
                 animation: {
                     duration: 0 // general animation time
                 },
-                annotation: event_info
+                annotation: wave_annoation
             }
         });
         wave_charts.push(tmp_wave);
     }
 
-    let $menu = $('#contextMenu');
+    let $menu = $('#contextMenu'), dt_context_menu;
     for (let i=0; i<number_charts.length; i++) {
         let canvas = document.getElementById(number_charts[i].cvs_id);
         canvas.addEventListener('contextmenu', handleContextMenu, false);
@@ -285,40 +273,55 @@
         canvas.addEventListener('mousedown', handleMouseDown, false);
     }
 
+    function UpdateAnnotationData(annotation_data){
+        number_annotation.annotations.length = 1;
+        let annotation_table = document.getElementById('annotation_list');
+        let row_count = annotation_table.rows.length;
+        while (--row_count) {
+            annotation_table.deleteRow(row_count);
+        }
+        for (let i=0; i<annotation_data.length; i++) {
+            let row = annotation_table.insertRow(i+1);
+            row.insertCell(0).innerHTML = i+1;
+            row.insertCell(1).innerHTML = new Date(annotation_data[i].dt).toLocaleString();
+            row.insertCell(2).innerHTML = annotation_data[i].method;
+            row.insertCell(3).innerHTML = annotation_data[i].description;
+            let single_event = {
+                type: 'line',
+                mode: 'vertical',
+                scaleID: 'x-axis-0',
+                value: annotation_data[i].dt,
+                borderColor: 'green',
+                borderWidth: 1,
+                label: {
+                    enabled: true,
+                    position: "top",
+                    content: i+1
+                }
+            };
+            number_annotation.annotations.push(single_event);
+        }
+
+        for (let i=0; i<wave_charts.length; i++) {
+            if (document.getElementById(wave_charts[i].cbx_id).checked) {
+                wave_charts[i].chart.update();
+            }
+        }
+        for (let i=0; i<number_charts.length; i++) {
+            number_charts[i].chart.options.annotation = number_annotation;
+            number_charts[i].chart.update();
+        }
+    }
+
     function AddAnnotation(dt, description){
         let xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function () {
             if (this.readyState === 4 && this.status === 200) {
-                let annotation_data = JSON.parse(xhttp.responseText);
-                event_info.annotations = [];
-                for (let i=0; i<annotation_data.length; i++) {
-                    let single_event = {
-                        type: 'line',
-                        mode: 'vertical',
-                        scaleID: 'x-axis-0',
-                        value: annotation_data[i].dt,
-                        borderColor: 'green',
-                        borderWidth: 1,
-                        label: {
-                            enabled: true,
-                            position: "top",
-                            content: i
-                        }
-                    };
-                    event_info.annotations.push(single_event);
-                }
-                for (let i=0; i<number_charts.length; i++) {
-                    number_charts[i].chart.options.annotation = event_info;
-                }
-                for (let i=0; i<wave_charts.length; i++) {
-                    wave_charts[i].chart.options.annotation = event_info;
-                    if (document.getElementById(wave_charts[i].cbx_id).checked) {
-                        wave_charts[i].chart.update();
-                    }
-                }
+                let result = JSON.parse(xhttp.responseText);
+                UpdateAnnotationData(result.annotations);
             }
         };
-        xhttp.open("GET", "add_annotation?file={{ vital_file }}&dt=" + dt + "&desc=" + description, true);
+        xhttp.open("GET", "add_annotation?file={{ vital_file }}&dt=" + dt.toISOString() + "&method=0&desc=" + description, true);
         xhttp.send();
     }
 
@@ -329,9 +332,9 @@
         let BB = canvas.getBoundingClientRect(), offsetX = BB.left, offsetY = BB.top;
         let x = parseInt(e.clientX-offsetX);
         let y = parseInt(e.clientY-offsetY);
-        let firstpoint = number_charts[0].chart.data.labels[number_charts[0].chart.getElementAtEvent(e)[0]._index];
+        dt_context_menu = new Date(number_charts[0].chart.data.labels[number_charts[0].chart.getElementAtEvent(e)[0]._index]);
         console.log(x, y, offsetX, offsetY);
-        console.log(firstpoint);
+        console.log(dt_context_menu);
         $menu.css({left:x,top:e.clientY});
         $menu.show();
         return false;
@@ -343,10 +346,22 @@
 
     menu = function(n){
         console.log("select menu "+n);
+        AddAnnotation(dt_context_menu, 'Test');
         $menu.hide();
     };
 
-    update_wave_data();
+    let xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function () {
+        if (this.readyState === 4 && this.status === 200) {
+            let result = JSON.parse(xhttp.responseText);
+            UpdateAnnotationData(result);
+        }
+    };
+    xhttp.open("GET", "get_annotation?file={{ vital_file }}", true);
+    xhttp.send();
+
+    update_wave();
+    update_wave_list();
 
 </script>
 

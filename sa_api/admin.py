@@ -3,7 +3,7 @@ from django.contrib.admin.widgets import AdminFileWidget
 from django.utils.translation import ugettext as _
 from django.utils.safestring import mark_safe
 from django.contrib import admin
-from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord, DeviceConfigItem, DeviceConfigPreset, DeviceConfigPresetBed, ManualInputEvent, ManualInputEventItem
+from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord, DeviceConfigItem, DeviceConfigPreset, DeviceConfigPresetBed, Annotation
 
 
 def parse_anesthesia_record(text):
@@ -134,17 +134,8 @@ class AnesthesiaRecordAdmin(admin.ModelAdmin):
         super(AnesthesiaRecordAdmin, self).save_model(request, obj, form, change)
 
 
-class ManualInputEventItemInline(admin.TabularInline):
-    model = ManualInputEventItem
-    extra = 0
-    readonly_fields = ('category',)
-    can_delete = False
-
-
-class ManualInputEventAdmin(admin.ModelAdmin):
-    list_display = ('id', 'bed', 'dt_operation')
-
-    inlines = [ManualInputEventItemInline]
+class AnnotationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'bed', 'record', 'dt', 'method', 'description')
 
 
 class DeviceAdmin(admin.ModelAdmin):
@@ -247,10 +238,10 @@ class ReviewAdmin(admin.ModelAdmin):
 admin.site.register(Device, DeviceAdmin)
 admin.site.register(Channel, ChannelAdmin)
 admin.site.register(Room)
+admin.site.register(Annotation, AnnotationAdmin)
 admin.site.register(Bed, BedAdmin)
 admin.site.register(Client, ClientAdmin)
 admin.site.register(FileRecorded, FileRecordedAdmin)
 admin.site.register(DeviceConfigPreset, DeviceConfigPresetAdmin)
 admin.site.register(Review, ReviewAdmin)
 admin.site.register(AnesthesiaRecord, AnesthesiaRecordAdmin)
-admin.site.register(ManualInputEvent, ManualInputEventAdmin)
