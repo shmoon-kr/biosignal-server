@@ -56,13 +56,13 @@
 
 {% for key, val in meta_data.items %}
     {% if val.number %}
-    <label><input type="checkbox" id="cbx_chart_{{ val.id }}"{% if val.is_main %} checked{% endif %} onclick="UpdateNumberList('cbx_chart_{{ val.id }}')"> {{ key }} <a href="/download_csv_device?{{ val.csv_download_params | safe }}">Download CSV</a> <br></label>
+    <label><input type="checkbox" id="cbx_chart_{{ val.id }}"{% if val.is_main %} checked{% endif %} onclick="ToggleNumberChart('{{ val.id }}')"> {{ key }} <a href="/download_csv_device?{{ val.csv_download_params | safe }}">Download CSV</a> <br></label>
     {% endif %}
 {% endfor %}
 
 {% for device, info in meta_data.items %}
     {% for waveinfo in info.waves %}
-        <label><input type="checkbox" id="cbx_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}"{% if waveinfo.is_main %} checked{% endif %} onclick="UpdateNumberList('cbx_chart_{{ waveinfo.id }}')"> {{ device }} <br></label>
+        <label><input type="checkbox" id="cbx_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}"{% if waveinfo.is_main %} checked{% endif %} onclick="ToggleWaveChart('{{ waveinfo.id }}_{{ waveinfo.channel }}')"> {{ device }}_{{ waveinfo.channel }} <br></label>
     {% endfor %}
 {% endfor %}
 
@@ -130,14 +130,14 @@
     slider.value = dt_pointer;
     slider.oninput = function() {
         dt_pointer = this.value;
-        for (let i=0; i<number_charts.length; i++) {
-            number_charts[i].chart.options.annotation.annotations[0].value = wave_dt_list[dt_pointer];
-            number_charts[i].chart.update();
+        for (let [key, value] of Object.entries(number_charts)) {
+            value.chart.options.annotation.annotations[0].value = wave_dt_list[dt_pointer];
+            value.chart.update();
         }
         update_wave_data();
     };
 
-    function UpdateNumberList(id) {
+    function ToggleNumberChart(id) {
         if ( document.getElementById('cbx_chart_'+id).checked) {
             document.getElementById('div_chart_'+id).style.display="block";
             if (number_charts[id].data_load) {
@@ -167,6 +167,38 @@
         }
     }
 
+    function ToggleWaveChart(id) {
+        console.log(id);
+        if ( document.getElementById('cbx_chart_'+id).checked) {
+            document.getElementById('div_chart_'+id).style.display="block";
+            let value = wave_charts[id];
+            let xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState === 4 && this.status === 200) {
+                    let d = JSON.parse(xhttp.responseText);
+                    let init_dt = new Date(d.timestamp[0]);
+                    value.chart.data.labels = [];
+                    value.chart.data.datasets = [];
+                    let tmp_dataset = {label: value.channel, data: []};
+                    for (let j = 0; j < d['data'][0].length; j++) {
+                        let c_dt = new Date(init_dt);
+                        c_dt.setMilliseconds(init_dt.getMilliseconds() + j * 1000 / d['sampling_rate']);
+                        value.chart.data.labels.push(c_dt);
+                        tmp_dataset.data.push(d['data'][0][j]);
+                    }
+                    value.chart.data.datasets.push(tmp_dataset);
+                    value.chart.options.annotation = wave_annotation;
+                    value.chart.update();
+                }
+            };
+            xhttp.open("GET", "get_wavedata?file={{ vital_file }}&dt=" + wave_dt_list[dt_pointer].toISOString() +
+                "&device_code=" + value.device_code + "&channel=" + value.channel, true);
+            xhttp.send();
+        } else {
+            document.getElementById('div_chart_'+id).style.display="none";
+        }
+    }
+
     function update_wave_list() {
         for (let [key, value] of Object.entries(wave_charts)) {
             if ( document.getElementById('cbx_chart_'+key).checked ) {
@@ -186,6 +218,7 @@
             }
         }
         for (let [key, value] of Object.entries(wave_charts)) {
+            console.log(key);
             if ( document.getElementById('cbx_chart_'+key).checked ) {
                 let xhttp = new XMLHttpRequest();
                 xhttp.onreadystatechange = function () {
@@ -277,7 +310,7 @@
                 }
             });
             number_charts[value.id] = tmp_number_chart;
-            UpdateNumberList(value.id);
+            ToggleNumberChart(value.id);
         }
     }
 
