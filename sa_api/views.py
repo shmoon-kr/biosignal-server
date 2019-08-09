@@ -13,14 +13,12 @@ import pandas
 import bisect
 import dateutil
 import numpy as np
-import sa_api.VitalFileHandler as VFH
 from .forms import UploadFileForm, UploadReviewForm
 from pyfluent.client import FluentSender
 from ftplib import FTP
 from itertools import product
 from django.core.cache import cache
 from django.conf import settings
-from django.db import connection
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
@@ -233,6 +231,91 @@ def get_wavedata(request):
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 
+@csrf_exempt
+def get_numberdata(request):
+    device = get_object_or_404(Device, id=request.GET.get("device_id"))
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+    summary = get_object_or_404(SummaryFileRecorded, record=record)
+
+    r_dict = dict()
+    get_object_or_404(NumberInfoFile, record=record, device=device, db_load=True)
+    if summary.main_device.displayed_name in ('GE/Carescape', 'Philips/IntelliVue'):
+        col_list = list()
+        col_list.append(summary.hr_channel)
+        col_list.append('BT_PA' if summary.main_device.displayed_name == 'GE/Carescape' else 'TEMP')
+        col_list.append(summary.bp_channel + '_SBP' if summary.bp_channel is not None else None)
+        col_list.append(summary.bp_channel + '_DBP' if summary.bp_channel is not None else None)
+        col_list.append(summary.bp_channel + '_MBP' if summary.bp_channel is not None else None)
+        col_list.append('PLETH_SPO2' if summary.main_device.displayed_name == 'GE/Carescape' else 'PLETH_SAT_O2')
+        color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
+
+        if summary.main_device.displayed_name == 'GE/Carescape':
+            data = NumberGEC.objects.filter(record=record).order_by('dt')
+        elif summary.main_device.displayed_name == 'Philips/IntelliVue':
+            data = NumberPIV.objects.filter(record=record).order_by('dt')
+        else:
+            assert False
+    else:
+        assert False
+
+    if len(data):
+        r_dict['device_displayed_name'] = summary.main_device.displayed_name
+        r_dict['csv_download_params'] = 'file=%s&device=%s' % (summary.record.file_basename, summary.main_device.code)
+        r_dict['timestamp'] = list()
+        for col in col_list:
+            if col is not None:
+                r_dict[col] = list()
+        for row in data:
+            r_dict['timestamp'].append(str(row.dt.astimezone(tz)))
+            for col in col_list:
+                if col is not None:
+                    if col == 'HR':
+                        r_dict[col].append(row.HR)
+                    elif col == 'ABP_HR':
+                        r_dict[col].append(row.ABP_HR)
+                    elif col == 'PLETH_HR':
+                        r_dict[col].append(row.PLETH_HR)
+                    elif col == 'ABP_HR':
+                        r_dict[col].append(row.ABP_HR)
+                    elif col == 'ABP_SBP':
+                        r_dict[col].append(row.ABP_SBP)
+                    elif col == 'ABP_DBP':
+                        r_dict[col].append(row.ABP_DBP)
+                    elif col == 'ABP_MBP':
+                        r_dict[col].append(row.ABP_MBP)
+                    elif col == 'NIBP_SBP':
+                        r_dict[col].append(row.NIBP_SBP)
+                    elif col == 'NIBP_DBP':
+                        r_dict[col].append(row.NIBP_DBP)
+                    elif col == 'NIBP_MBP':
+                        r_dict[col].append(row.NIBP_MBP)
+                    elif col == 'PLETH_SPO2':
+                        r_dict[col].append(row.PLETH_SPO2)
+                    elif col == 'PLETH_SAT_O2':
+                        r_dict[col].append(row.PLETH_SAT_O2)
+                    elif col == 'BT_PA':
+                        r_dict[col].append(row.BT_PA)
+                    elif col == 'TEMP':
+                        r_dict[col].append(row.TEMP)
+                    else:
+                        assert False
+        dataset = list()
+        for i, col in enumerate(col_list):  # rgb(75, 192, 192)
+            if col is not None:
+                tmp_dataset = dict()
+                tmp_dataset["label"] = col
+                tmp_dataset["data"] = r_dict[col]
+                tmp_dataset["fill"] = False
+                tmp_dataset["pointRadius"] = 0
+                tmp_dataset["borderColor"] = color_preview[i]
+                tmp_dataset["lineTension"] = 0
+                dataset.append(tmp_dataset)
+        r_dict['dataset'] = dataset
+
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+                        status=200)
+
+
 def get_annotation_body(record):
     r = list()
     for item in Annotation.objects.filter(record=record, dt__range=(record.begin_date, record.end_date)).order_by('dt'):
@@ -240,7 +323,7 @@ def get_annotation_body(record):
         tmp_annotation['id'] = item.id
         tmp_annotation['dt'] = str(item.dt)
         tmp_annotation['method'] = item.method
-        tmp_annotation['desc'] = item.description
+        tmp_annotation['description'] = item.description
         r.append(tmp_annotation)
     return r
 
@@ -248,6 +331,18 @@ def get_annotation_body(record):
 @csrf_exempt
 def get_annotation(request):
     record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+    result = get_annotation_body(record)
+    return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+                        status=200)
+
+
+@csrf_exempt
+def delete_annotation(request):
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+    try:
+        Annotation.objects.get(id=request.GET.get("id")).delete()
+    except Annotation.DoesNotExist:
+        pass
     result = get_annotation_body(record)
     return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=200)
@@ -273,17 +368,13 @@ def add_annotation(request):
 
     Annotation.objects.create(dt=dt, bed=bed, method=method, description=desc, record=record)
 
-    r_dict = dict()
     if record is not None:
-        r_dict['annotations'] = get_annotation_body(record)
-        r_dict['message'] = 'Annotations were returned.'
+        r_dict = get_annotation_body(record)
     else:
-        r_dict['message'] = 'Annotations were not returned.'
+        r_dict = {'message': 'Annotations were not returned.'}
 
-    print(r_dict)
-    response_status = 200
     return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
-                        status=response_status)
+                        status=200)
 
 
 @csrf_exempt
@@ -347,106 +438,47 @@ def review(request):
 
     summary = get_object_or_404(SummaryFileRecorded, record__file_basename=file)
     record = summary.record
+    dt = datetime.datetime.strptime(request.GET.get("dt"), "%Y-%m-%dT%H:%M:%S.%f%z") if request.GET.get("dt") is not None else None
 
     bed = record.bed.name
     rosette = record.bed.room.name
     begin_date = record.begin_date.astimezone(tz)
     end_date = record.end_date.astimezone(tz)
 
-    col_list = list()
-    col_list.append(summary.hr_channel)
-    col_list.append('BT_PA' if summary.main_device.displayed_name == 'GE/Carescape' else 'TEMP')
-    col_list.append(summary.bp_channel + '_SBP' if summary.bp_channel is not None else None)
-    col_list.append(summary.bp_channel + '_DBP' if summary.bp_channel is not None else None)
-    col_list.append(summary.bp_channel + '_MBP' if summary.bp_channel is not None else None)
-    col_list.append('PLETH_SPO2' if summary.main_device.displayed_name == 'GE/Carescape' else 'PLETH_SAT_O2')
-
-    color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
-
-    number_data = list()
-
     if rosette is not None and bed is not None and begin_date is not None and end_date is not None:
         
-        if summary.main_device.displayed_name == 'GE/Carescape':
-            data = NumberGEC.objects.filter(record=record).order_by('dt')
-        elif summary.main_device.displayed_name == 'Philips/IntelliVue':
-            data = NumberPIV.objects.filter(record=record).order_by('dt')
-        else:
-            assert False
-            
-        if len(data):
-            number_data.append(dict())
-            number_data[-1]['device_displayed_name'] = summary.main_device.displayed_name
-            number_data[-1]['csv_download_params'] = 'file=%s&device=%s' % (summary.record.file_basename, summary.main_device.code)
-            number_data[-1]['timestamp'] = list()
-            for col in col_list:
-                if col is not None:
-                    number_data[-1][col] = list()
-            for row in data:
-                number_data[-1]['timestamp'].append(str(row.dt.astimezone(tz)))
-                for col in col_list:
-                    if col is not None:
-                        if col == 'HR':
-                            number_data[-1][col].append(float('nan') if row.HR is None else row.HR)
-                        elif col == 'ABP_HR':
-                            number_data[-1][col].append(float('nan') if row.ABP_HR is None else row.ABP_HR)
-                        elif col == 'PLETH_HR':
-                            number_data[-1][col].append(float('nan') if row.PLETH_HR is None else row.PLETH_HR)
-                        elif col == 'ABP_HR':
-                            number_data[-1][col].append(float('nan') if row.ABP_HR is None else row.ABP_HR)
-                        elif col == 'ABP_SBP':
-                            number_data[-1][col].append(float('nan') if row.ABP_SBP is None else row.ABP_SBP)
-                        elif col == 'ABP_DBP':
-                            number_data[-1][col].append(float('nan') if row.ABP_DBP is None else row.ABP_DBP)
-                        elif col == 'ABP_MBP':
-                            number_data[-1][col].append(float('nan') if row.ABP_MBP is None else row.ABP_MBP)
-                        elif col == 'NIBP_SBP':
-                            number_data[-1][col].append(float('nan') if row.NIBP_SBP is None else row.NIBP_SBP)
-                        elif col == 'NIBP_DBP':
-                            number_data[-1][col].append(float('nan') if row.NIBP_DBP is None else row.NIBP_DBP)
-                        elif col == 'NIBP_MBP':
-                            number_data[-1][col].append(float('nan') if row.NIBP_MBP is None else row.NIBP_MBP)
-                        elif col == 'PLETH_SPO2':
-                            number_data[-1][col].append(float('nan') if row.PLETH_SPO2 is None else row.PLETH_SPO2)
-                        elif col == 'PLETH_SAT_O2':
-                            number_data[-1][col].append(float('nan') if row.PLETH_SAT_O2 is None else row.PLETH_SAT_O2)
-                        elif col == 'BT_PA':
-                            number_data[-1][col].append(float('nan') if row.BT_PA is None else row.BT_PA)
-                        elif col == 'TEMP':
-                            number_data[-1][col].append(float('nan') if row.TEMP is None else row.TEMP)
-                        else:
-                            assert False
-            dataset = list()
-            for i, col in enumerate(col_list):  # rgb(75, 192, 192)
-                if col is not None:
-                    tmp_dataset = dict()
-                    tmp_dataset["label"] = col
-                    tmp_dataset["data"] = number_data[-1][col]
-                    tmp_dataset["fill"] = False
-                    tmp_dataset["pointRadius"] = 0
-                    tmp_dataset["borderColor"] = color_preview[i]
-                    tmp_dataset["lineTension"] = 0
-                    dataset.append(tmp_dataset)
-            number_data[-1]['dataset'] = dataset
-        
-        wave_metadata = list()
+        meta_data = dict()
         for wif in WaveInfoFile.objects.filter(record=record):
-            tmp_wif = dict()
-            tmp_wif['device'] = wif.device.displayed_name
-            tmp_wif['is_main'] = wif.device.is_main
-            tmp_wif['device_code'] = wif.device.code
-            tmp_wif['channel'] = wif.channel_name
-            tmp_wif['sampling_rate'] = wif.sampling_rate
-            tmp_wif['num_packets'] = wif.num_packets
-            tmp_wif['file_path'] = wif.file_path
-            wave_metadata.append(tmp_wif)
+            if wif.device.displayed_name not in meta_data.keys():
+                meta_data[wif.device.displayed_name] = dict()
+                meta_data[wif.device.displayed_name]['id'] = wif.device_id
+                meta_data[wif.device.displayed_name]['is_main'] = wif.device.is_main
+                meta_data[wif.device.displayed_name]['waves'] = list()
+                meta_data[wif.device.displayed_name]['number'] = False
+            tmp_wave = dict()
+            tmp_wave['id'] = wif.device_id
+            tmp_wave['is_main'] = wif.device.is_main
+            tmp_wave['device_code'] = wif.device.code
+            tmp_wave['channel'] = wif.channel_name
+            tmp_wave['sampling_rate'] = wif.sampling_rate
+            tmp_wave['num_packets'] = wif.num_packets
+            tmp_wave['file_path'] = wif.file_path
+            meta_data[wif.device.displayed_name]['waves'].append(tmp_wave)
+        for nif in NumberInfoFile.objects.filter(record=record):
+            if nif.device.displayed_name not in meta_data.keys():
+                meta_data[nif.device.displayed_name] = dict()
+                meta_data[nif.device.displayed_name]['is_main'] = nif.device.is_main
+                meta_data[nif.device.displayed_name]['id'] = nif.device_id
+                meta_data[nif.device.displayed_name]['waves'] = list()
+            meta_data[nif.device.displayed_name]['number'] = True
+            meta_data[nif.device.displayed_name]['csv_download_params'] =\
+                'file=%s&device=%s' % (summary.record.file_basename, summary.main_device.code)
 
         context = dict()
+        context['dt'] = str(dt)
         context['vital_file'] = file
-        context['num'] = number_data
-        context['num_json'] = json.dumps(number_data, indent=4)
-        context['wave'] = wave_metadata
-        context['wave_json'] = json.dumps(wave_metadata, indent=4)
+        context['meta_data'] = meta_data
+        context['meta_data_json'] = json.dumps(meta_data, indent=4)
         context['bed'] = bed
         context['date'] = begin_date.strftime('%Y-%m-%d')
         context['begin_date'] = str(begin_date)
@@ -647,14 +679,13 @@ def summary_rosette(request):
     records = FileRecorded.objects.filter(bed__room__name=rosette, begin_date__range=(dt_from, dt_to))
     for record in records:
         try:
-            summary = SummaryFileRecorded.objects.get(record=record)
+            SummaryFileRecorded.objects.get(record=record)
             tmp_data[rosette][record.begin_date.date()]['total_duration'] += record.end_date - record.begin_date
             tmp_data[record.bed.name][record.begin_date.date()]['total_duration'] += record.end_date - record.begin_date
             tmp_data[rosette][record.begin_date.date()]['num_effective_files'] += 1
             tmp_data[record.bed.name][record.begin_date.date()]['num_effective_files'] += 1
         except SummaryFileRecorded.DoesNotExist:
             pass
-        print(tmp_data[rosette].keys())
         tmp_data[rosette][record.begin_date.date()]['num_files'] += 1
         tmp_data[record.bed.name][record.begin_date.date()]['num_files'] += 1
 

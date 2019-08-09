@@ -1,9 +1,15 @@
+import pytz
 import datetime
+import urllib.parse
 from django.contrib.admin.widgets import AdminFileWidget
 from django.utils.translation import ugettext as _
 from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from django.contrib import admin
+from django.conf import settings
 from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord, DeviceConfigItem, DeviceConfigPreset, DeviceConfigPresetBed, Annotation
+
+tz = pytz.timezone(settings.TIME_ZONE)
 
 
 def parse_anesthesia_record(text):
@@ -135,7 +141,10 @@ class AnesthesiaRecordAdmin(admin.ModelAdmin):
 
 
 class AnnotationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'bed', 'record', 'dt', 'method', 'description')
+    list_display = ('id', 'bed', 'record', 'dt', 'method', 'description', 'action')
+
+    def action(self, obj):
+        return format_html("<a href='/review?file=%s&dt=%s'>Browse</a>" % (obj.record.file_basename, urllib.parse.quote(obj.dt.strftime('%Y-%m-%dT%H:%M:%S.%f%z'))))
 
 
 class DeviceAdmin(admin.ModelAdmin):

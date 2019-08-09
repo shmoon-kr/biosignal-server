@@ -9,6 +9,8 @@ urlpatterns = [
     path('upload_review', views.upload_review),
     path('review', views.review),
     path('get_wavedata', views.get_wavedata),
+    path('get_numberdata', views.get_numberdata),
+    path('delete_annotation', views.delete_annotation),
     path('add_annotation', views.add_annotation),
     path('get_annotation', views.get_annotation),
     path('download_vital_file', views.download_vital_file),
