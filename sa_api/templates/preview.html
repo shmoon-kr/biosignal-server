@@ -46,6 +46,10 @@
                 <div class="clear"></div>
             </th>
             <th scope="col"  class="column-bed_name">
+                <div class="text"><span>comment</span></div>
+                <div class="clear"></div>
+            </th>
+            <th scope="col"  class="column-bed_name">
                 <div class="text"><span>action</span></div>
                 <div class="clear"></div>
             </th>
@@ -93,6 +97,7 @@
 
 <script>
 
+    let user = {{ user_json | safe }};
     let meta_data = {{ meta_data_json | safe }};
     let begin_date = new Date('{{ begin_date }}');
     let end_date = new Date('{{ end_date }}');
@@ -358,7 +363,23 @@
                     row.insertCell(1).innerHTML = new Date(annotation_data[i].dt).toLocaleString();
                     row.insertCell(2).innerHTML = annotation_data[i].method;
                     row.insertCell(3).innerHTML = annotation_data[i].description;
-                    row.insertCell(4).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
+                    let tmp_str='';
+                    if (user.is_authenticated) {
+                        let url = 'like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[i].id;
+                        tmp_str = tmp_str.concat('<button type="button" onclick="UpdateAnnotationData(\''+url.concat('&like=1')+'\')">like:' + annotation_data[i].like.length + '</button>');
+                        tmp_str = tmp_str.concat('<button type="button" onclick="UpdateAnnotationData(\''+url.concat('&like=2')+'\')">dislike:' + annotation_data[i].dislike.length + '</button>');
+                        tmp_str = tmp_str.concat('comment:' + annotation_data[i].comment.length);
+                        if (annotation_data[i].user_like) {
+                            tmp_str = tmp_str.concat('<button type="button" onclick="UpdateAnnotationData(\''+url.concat('&like=0')+'\')"> Cancel </button>');
+                        }
+                    } else {
+                        tmp_str = tmp_str.concat('like:' + annotation_data[i].like.length);
+                        tmp_str = tmp_str.concat('  dislike:' + annotation_data[i].dislike.length);
+                        tmp_str = tmp_str.concat('  comment:' + annotation_data[i].comment.length);
+                        tmp_str = tmp_str.concat('<a href="accounts/login">login</a>');
+                    }
+                    row.insertCell(4).innerHTML = tmp_str;
+                    row.insertCell(5).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
                     let single_event = {
                         type: 'line',
                         mode: 'vertical',

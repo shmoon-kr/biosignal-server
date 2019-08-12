@@ -1687,3 +1687,26 @@ class Annotation(models.Model):
     )
     method = models.IntegerField(choices=ANNOTATION_METHOD_CHOICES, default=0)
     description = models.CharField(max_length=255, blank=True, null=True)
+
+
+class AnnotationComment(models.Model):
+    dt = models.DateTimeField(auto_now_add=True)
+    annotation = models.ForeignKey('Annotation', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    comment = models.CharField(max_length=255, blank=True, null=True)
+
+
+class AnnotationLike(models.Model):
+    annotation = models.ForeignKey('Annotation', on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    ANNOTATION_LIKE_CHOICES = (
+        (0, "offline"),
+        (1, "agree"),
+        (2, "disagree"),
+    )
+    like = models.IntegerField(choices=ANNOTATION_LIKE_CHOICES, default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['annotation', 'user'], name='unique_like'),
+        ]

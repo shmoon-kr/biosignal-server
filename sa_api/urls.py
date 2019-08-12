@@ -12,6 +12,7 @@ urlpatterns = [
     path('get_numberdata', views.get_numberdata),
     path('delete_annotation', views.delete_annotation),
     path('add_annotation', views.add_annotation),
+    path('like_annotation', views.like_annotation),
     path('get_annotation', views.get_annotation),
     path('download_vital_file', views.download_vital_file),
     path('download_csv_device', views.download_csv_device),

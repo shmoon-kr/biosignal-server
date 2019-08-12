@@ -19,11 +19,12 @@ from ftplib import FTP
 from itertools import product
 from django.core.cache import cache
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
 from django.template import loader
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, NumberInfoFile, WaveInfoFile, SummaryFileRecorded, NumberGEC, NumberPIV, Annotation
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, NumberInfoFile, WaveInfoFile, SummaryFileRecorded, NumberGEC, NumberPIV, Annotation, AnnotationComment, AnnotationLike
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
@@ -316,7 +317,7 @@ def get_numberdata(request):
                         status=200)
 
 
-def get_annotation_body(record):
+def get_annotation_body(request, record):
     r = list()
     for item in Annotation.objects.filter(record=record, dt__range=(record.begin_date, record.end_date)).order_by('dt'):
         tmp_annotation = dict()
@@ -324,14 +325,43 @@ def get_annotation_body(record):
         tmp_annotation['dt'] = str(item.dt)
         tmp_annotation['method'] = item.method
         tmp_annotation['description'] = item.description
+        tmp_annotation['like'] = list()
+        tmp_annotation['dislike'] = list()
+        tmp_annotation['comment'] = list()
+        for like in AnnotationLike.objects.filter(annotation=item, like__in=(1, 2)):
+            if like.like == 1:
+                tmp_annotation['like'].append({'user_id': like.user.id, 'user_name': like.user.username})
+            elif like.like == 2:
+                tmp_annotation['dislike'].append({'user_id': like.user.id, 'user_name': like.user.username})
+        for comment in AnnotationComment.objects.filter(annotation=item).order_by('dt'):
+            tmp_annotation['comment'].append({'dt': comment.dt, 'user_name': comment.user.name, 'user_id': comment.user_id, 'comment':comment.comment})
+        if request.user.id is not None:
+            try:
+                user_like = AnnotationLike.objects.get(annotation=item, user=request.user.id).like
+                tmp_annotation['user_like'] = user_like
+            except AnnotationLike.DoesNotExist:
+                tmp_annotation['user_like'] = None
+
         r.append(tmp_annotation)
     return r
 
 
 @csrf_exempt
+def like_annotation(request):
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+    annotation = get_object_or_404(Annotation, id=request.GET.get("annotation_id"))
+    like, _ = AnnotationLike.objects.get_or_create(annotation=annotation, user=User.objects.get(id=request.user.id))
+    like.like = request.GET.get("like")
+    like.save()
+    result = get_annotation_body(request, record)
+    return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+                        status=200)
+
+
+@csrf_exempt
 def get_annotation(request):
     record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
-    result = get_annotation_body(record)
+    result = get_annotation_body(request, record)
     return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=200)
 
@@ -343,7 +373,7 @@ def delete_annotation(request):
         Annotation.objects.get(id=request.GET.get("id")).delete()
     except Annotation.DoesNotExist:
         pass
-    result = get_annotation_body(record)
+    result = get_annotation_body(request, record)
     return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=200)
 
@@ -369,7 +399,7 @@ def add_annotation(request):
     Annotation.objects.create(dt=dt, bed=bed, method=method, description=desc, record=record)
 
     if record is not None:
-        r_dict = get_annotation_body(record)
+        r_dict = get_annotation_body(request, record)
     else:
         r_dict = {'message': 'Annotations were not returned.'}
 
@@ -481,6 +511,10 @@ def review(request):
         context['meta_data_json'] = json.dumps(meta_data, indent=4)
         context['bed'] = bed
         context['date'] = begin_date.strftime('%Y-%m-%d')
+        context['user_json'] = json.dumps(
+            {'name': request.user.username, 'id': request.user.id, 'is_authenticated': request.user.is_authenticated},
+            indent=4
+        )
         context['begin_date'] = str(begin_date)
         context['end_date'] = str(end_date)
         template = loader.get_template('preview.html')
