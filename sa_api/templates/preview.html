@@ -134,7 +134,7 @@
             value.chart.options.annotation.annotations[0].value = wave_dt_list[dt_pointer];
             value.chart.update();
         }
-        update_wave_data();
+        UpdateWaveData();
     };
 
     function ToggleNumberChart(id) {
@@ -168,7 +168,6 @@
     }
 
     function ToggleWaveChart(id) {
-        console.log(id);
         if ( document.getElementById('cbx_chart_'+id).checked) {
             document.getElementById('div_chart_'+id).style.display="block";
             let value = wave_charts[id];
@@ -186,6 +185,10 @@
                         value.chart.data.labels.push(c_dt);
                         tmp_dataset.data.push(d['data'][0][j]);
                     }
+                    tmp_dataset['fill'] = false;
+                    tmp_dataset['lineTension'] = 0;
+                    tmp_dataset['pointRadius'] = 0;
+                    tmp_dataset['borderColor'] = 'black';
                     value.chart.data.datasets.push(tmp_dataset);
                     value.chart.options.annotation = wave_annotation;
                     value.chart.update();
@@ -199,50 +202,11 @@
         }
     }
 
-    function update_wave_list() {
+    function UpdateWaveData() {
+        UpdateWaveAnnotationData();
+        UpdateWaveAnnotation();
         for (let [key, value] of Object.entries(wave_charts)) {
-            if ( document.getElementById('cbx_chart_'+key).checked ) {
-                document.getElementById('div_chart_'+key).style.display="block";
-                value.chart.update();
-            } else {
-                document.getElementById('div_chart_'+key).style.display="none";
-            }
-        }
-    }
-
-    function update_wave_data() {
-        wave_annotation.annotations = [];
-        for (let i=1; i<number_annotation.annotations.length; i++) {
-            if ( Math.abs(number_annotation.annotations[i].value - wave_dt_list[dt_pointer]) < 10000 ) {
-                wave_annotation.annotations.push(number_annotation.annotations[i]);
-            }
-        }
-        for (let [key, value] of Object.entries(wave_charts)) {
-            console.log(key);
-            if ( document.getElementById('cbx_chart_'+key).checked ) {
-                let xhttp = new XMLHttpRequest();
-                xhttp.onreadystatechange = function () {
-                    if (this.readyState === 4 && this.status === 200) {
-                        let d = JSON.parse(xhttp.responseText);
-                        let init_dt = new Date(d.timestamp[0]);
-                        value.chart.data.labels = [];
-                        value.chart.data.datasets = [];
-                        let tmp_dataset = {label: value.channel, data: []};
-                        for (let j = 0; j < d['data'][0].length; j++) {
-                            let c_dt = new Date(init_dt);
-                            c_dt.setMilliseconds(init_dt.getMilliseconds() + j * 1000 / d['sampling_rate']);
-                            value.chart.data.labels.push(c_dt);
-                            tmp_dataset.data.push(d['data'][0][j]);
-                        }
-                        value.chart.data.datasets.push(tmp_dataset);
-                        value.chart.options.annotation = wave_annotation;
-                        value.chart.update();
-                    }
-                };
-                xhttp.open("GET", "get_wavedata?file={{ vital_file }}&dt=" + wave_dt_list[dt_pointer].toISOString() +
-                    "&device_code=" + value.device_code + "&channel=" + value.channel, true);
-                xhttp.send();
-            }
+            ToggleWaveChart(key);
         }
     }
 
@@ -329,11 +293,7 @@
                 type: "line",
                 data: {
                     labels: [],
-                    datasets: [],
-                    fill: false,
-                    pointRadius: 0,
-                    borderColor: 'black',
-                    lineTension: 0
+                    datasets: []
                 },
                 options: {
                     scales: {
@@ -419,9 +379,7 @@
                     value.chart.update();
                 }
                 UpdateWaveAnnotationData();
-                for (let [key, value] of Object.entries(wave_charts)) {
-                    value.chart.options.annotation = wave_annotation;
-                }
+                UpdateWaveAnnotation();
             }
         };
         xhttp.open("GET", url, true);
@@ -437,7 +395,7 @@
         }
     }
 
-    function UpdateWaveAnnotation(key) {
+    function UpdateWaveAnnotation() {
         for (let [key, value] of Object.entries(wave_charts)) {
             if (document.getElementById('cbx_chart_'+key).checked) {
                 value.chart.options.annotation = wave_annotation;
@@ -459,9 +417,11 @@
         let canvas = e.target;
         let id = canvas.id.replace('cvs_chart_','');
         let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
-        dt_context_menu = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
-        $menu.css({left:e.pageX,top:e.pageY});
-        $menu.show();
+        if (chart.getElementAtEvent(e).length) {
+            dt_context_menu = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
+            $menu.css({left:e.pageX,top:e.pageY});
+            $menu.show();
+        }
         return false;
     }
 
@@ -475,8 +435,7 @@
     };
 
     UpdateAnnotationData("get_annotation?file={{ vital_file }}");
-    update_wave_list();
-    update_wave_data();
+    UpdateWaveData();
 
 </script>
 
