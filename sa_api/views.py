@@ -334,7 +334,7 @@ def get_annotation_body(request, record):
             elif like.like == 2:
                 tmp_annotation['dislike'].append({'user_id': like.user.id, 'user_name': like.user.username})
         for comment in AnnotationComment.objects.filter(annotation=item).order_by('dt'):
-            tmp_annotation['comment'].append({'dt': comment.dt, 'user_name': comment.user.name, 'user_id': comment.user_id, 'comment':comment.comment})
+            tmp_annotation['comment'].append({'dt': str(comment.dt), 'user_name': comment.user.username, 'user_id': comment.user.id, 'comment': comment.comment})
         if request.user.id is not None:
             try:
                 user_like = AnnotationLike.objects.get(annotation=item, user=request.user.id).like
@@ -350,7 +350,8 @@ def get_annotation_body(request, record):
 def like_annotation(request):
     record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
     annotation = get_object_or_404(Annotation, id=request.GET.get("annotation_id"))
-    like, _ = AnnotationLike.objects.get_or_create(annotation=annotation, user=User.objects.get(id=request.user.id))
+    user = User.objects.get(id=request.user.id)
+    like, _ = AnnotationLike.objects.get_or_create(annotation=annotation, user=user)
     like.like = request.GET.get("like")
     like.save()
     result = get_annotation_body(request, record)
@@ -373,6 +374,18 @@ def delete_annotation(request):
         Annotation.objects.get(id=request.GET.get("id")).delete()
     except Annotation.DoesNotExist:
         pass
+    result = get_annotation_body(request, record)
+    return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+                        status=200)
+
+
+@csrf_exempt
+def comment_annotation(request):
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+    annotation = get_object_or_404(Annotation, id=request.GET.get("annotation_id"))
+    user = User.objects.get(id=request.user.id)
+    comment = request.GET.get("comment")
+    AnnotationComment.objects.create(annotation=annotation, user=user, comment=comment)
     result = get_annotation_body(request, record)
     return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=200)
@@ -676,8 +689,7 @@ def summary_rosette(request):
     dt_to = request.GET.get('end_date')
 
     if dt_from is None:
-        dt_from = datetime.date.today() - datetime.timedelta(days=6)
-        dt_to = datetime.date.today() + datetime.timedelta(days=1)
+        dt_from = datetime.datetime.now().astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=6)
     if dt_to is None:
         dt_to = dt_from + datetime.timedelta(days=7)
 
@@ -714,14 +726,16 @@ def summary_rosette(request):
     for record in records:
         try:
             SummaryFileRecorded.objects.get(record=record)
-            tmp_data[rosette][record.begin_date.date()]['total_duration'] += record.end_date - record.begin_date
-            tmp_data[record.bed.name][record.begin_date.date()]['total_duration'] += record.end_date - record.begin_date
-            tmp_data[rosette][record.begin_date.date()]['num_effective_files'] += 1
-            tmp_data[record.bed.name][record.begin_date.date()]['num_effective_files'] += 1
+            tmp_rosette = tmp_data[rosette][record.begin_date.astimezone(tz).date()]
+            tmp_bed = tmp_data[record.bed.name][record.begin_date.astimezone(tz).date()]
+            tmp_rosette['total_duration'] += record.end_date - record.begin_date
+            tmp_bed['total_duration'] += record.end_date - record.begin_date
+            tmp_rosette['num_effective_files'] += 1
+            tmp_bed['num_effective_files'] += 1
         except SummaryFileRecorded.DoesNotExist:
             pass
-        tmp_data[rosette][record.begin_date.date()]['num_files'] += 1
-        tmp_data[record.bed.name][record.begin_date.date()]['num_files'] += 1
+        tmp_data[rosette][record.begin_date.astimezone(tz).date()]['num_files'] += 1
+        tmp_data[record.bed.name][record.begin_date.astimezone(tz).date()]['num_files'] += 1
 
     for key, val_bed in tmp_data.items():
         for dt, val in val_bed.items():

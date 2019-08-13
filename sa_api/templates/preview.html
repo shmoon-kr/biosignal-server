@@ -74,20 +74,20 @@
   <input type="range" min="0" max="100" value="50" class="slider" id="waveTimeSlider">
 </div>
 
-{% for device, info in meta_data.items %}
-    {% for waveinfo in info.waves %}
-        <div id="div_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}">
-            <canvas id="cvs_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="chartjs" width="400" height="50"></canvas>
-        </div>
-    {% endfor %}
-{% endfor %}
-
 {% for key, val in meta_data.items %}
     {% if val.number and val.is_main %}
     <div id="div_chart_{{ val.id }}">
         <canvas id="cvs_chart_{{ val.id }}" class="chartjs" width="400" height="150"></canvas>
     </div>
     {% endif %}
+{% endfor %}
+
+{% for device, info in meta_data.items %}
+    {% for waveinfo in info.waves %}
+        <div id="div_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}">
+            <canvas id="cvs_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="chartjs" width="400" height="50"></canvas>
+        </div>
+    {% endfor %}
 {% endfor %}
 
 <ul id="contextMenu" style="display:none;">
@@ -134,13 +134,17 @@
     slider.max = wave_dt_list.length;
     slider.value = dt_pointer;
     slider.oninput = function() {
-        dt_pointer = this.value;
+        OnTimePointerChange(this.value);
+    };
+
+    function OnTimePointerChange(new_dt_pointer) {
+        dt_pointer = new_dt_pointer;
         for (let [key, value] of Object.entries(number_charts)) {
             value.chart.options.annotation.annotations[0].value = wave_dt_list[dt_pointer];
             value.chart.update();
         }
         UpdateWaveData();
-    };
+    }
 
     function ToggleNumberChart(id) {
         if ( document.getElementById('cbx_chart_'+id).checked) {
@@ -338,6 +342,7 @@
     for (let [key, value] of Object.entries(number_charts)) {
         let canvas = document.getElementById('cvs_chart_'+key);
         canvas.addEventListener('contextmenu', handleContextMenu, false);
+        canvas.addEventListener('click', handleMouseClick, false);
         canvas.addEventListener('mousedown', handleMouseDown, false);
     }
     for (let [key, value] of Object.entries(wave_charts)) {
@@ -364,18 +369,33 @@
                     row.insertCell(2).innerHTML = annotation_data[i].method;
                     row.insertCell(3).innerHTML = annotation_data[i].description;
                     let tmp_str='';
+                    let likes = [], dislikes = [], comments = [];
+                    for (let j=0; j<annotation_data[i].like.length; j++) {
+                        likes.push(annotation_data[i].like[j].user_name);
+                    }
+                    for (let j=0; j<annotation_data[i].dislike.length; j++) {
+                        dislikes.push(annotation_data[i].dislike[j].user_name);
+                    }
+                    for (let j=0; j<annotation_data[i].comment.length; j++) {
+                        comments.push(annotation_data[i].comment[j].user_name + annotation_data[i].comment[j].dt + annotation_data[i].comment[j].comment);
+                    }
+                    tmp_str = tmp_str.concat('<div class="tooltip">like:'+likes.length);
+                    tmp_str = tmp_str.concat('<span class="tooltiptext">'+likes.join()+'</span></div>');
+                    tmp_str = tmp_str.concat('<div class="tooltip">dislike:'+dislikes.length);
+                    tmp_str = tmp_str.concat('<span class="tooltiptext">'+dislikes.join()+'</span></div>');
+                    tmp_str = tmp_str.concat('<div class="tooltip">comment:'+comments.length);
+                    tmp_str = tmp_str.concat('<span class="tooltiptext">'+comments.join('<br>')+'</span></div>');
                     if (user.is_authenticated) {
                         let url = 'like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[i].id;
-                        tmp_str = tmp_str.concat('<button type="button" onclick="UpdateAnnotationData(\''+url.concat('&like=1')+'\')">like:' + annotation_data[i].like.length + '</button>');
-                        tmp_str = tmp_str.concat('<button type="button" onclick="UpdateAnnotationData(\''+url.concat('&like=2')+'\')">dislike:' + annotation_data[i].dislike.length + '</button>');
-                        tmp_str = tmp_str.concat('comment:' + annotation_data[i].comment.length);
                         if (annotation_data[i].user_like) {
                             tmp_str = tmp_str.concat('<button type="button" onclick="UpdateAnnotationData(\''+url.concat('&like=0')+'\')"> Cancel </button>');
+                        } else {
+                            tmp_str = tmp_str.concat('<button type="button" onclick="UpdateAnnotationData(\''+url.concat('&like=1')+'\')">Like</button>');
+                            tmp_str = tmp_str.concat('<button type="button" onclick="UpdateAnnotationData(\''+url.concat('&like=2')+'\')">Dislike</button>');
                         }
+                        tmp_str = tmp_str.concat('<input type="text" id="txt_comment_'+annotation_data[i].id+'">');
+                        tmp_str = tmp_str.concat('<button type="button" onclick="AddComment('+annotation_data[i].id+')">Add Comment</button>');
                     } else {
-                        tmp_str = tmp_str.concat('like:' + annotation_data[i].like.length);
-                        tmp_str = tmp_str.concat('  dislike:' + annotation_data[i].dislike.length);
-                        tmp_str = tmp_str.concat('  comment:' + annotation_data[i].comment.length);
                         tmp_str = tmp_str.concat('<a href="accounts/login">login</a>');
                     }
                     row.insertCell(4).innerHTML = tmp_str;
@@ -432,6 +452,14 @@
         UpdateAnnotationData("delete_annotation?file={{ vital_file }}&id=" + i);
     }
 
+    function AddComment(annotation_id) {
+        let textbox = document.getElementById('txt_comment_'+annotation_id);
+        let uri = 'comment_annotation?file={{ vital_file }}&annotation_id=' + annotation_id + '&comment=' + textbox.value;
+        console.log(uri);
+        textbox.value = '';
+        UpdateAnnotationData(uri);
+    }
+
     function handleContextMenu(e){
         e.preventDefault();
         e.stopPropagation();
@@ -450,6 +478,19 @@
         $menu.hide();
     }
 
+    function handleMouseClick(e){
+        e.preventDefault();
+        e.stopPropagation();
+        let canvas = e.target;
+        let id = canvas.id.replace('cvs_chart_','');
+        let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
+        if (chart.getElementAtEvent(e).length) {
+            let dt_new = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
+            OnTimePointerChange(binary_search(wave_dt_list, dt_new, 0, wave_dt_list.length));
+        }
+        return false;
+    }
+
     menu = function(n){
         AddAnnotation(dt_context_menu, 'Test');
         $menu.hide();
@@ -457,6 +498,19 @@
 
     UpdateAnnotationData("get_annotation?file={{ vital_file }}");
     UpdateWaveData();
+
+    function handleKeyBoard(e){
+        if (e.code==='Period') {
+            if (dt_pointer < wave_dt_list.length-1) {
+                OnTimePointerChange(dt_pointer+1);
+            }
+        } else if (e.code==='Comma') {
+            if (dt_pointer > 0) {
+                OnTimePointerChange(dt_pointer-1);
+            }
+        }
+    }
+    document.addEventListener("keypress", handleKeyBoard);
 
 </script>
 

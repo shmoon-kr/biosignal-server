@@ -10,6 +10,7 @@ urlpatterns = [
     path('review', views.review),
     path('get_wavedata', views.get_wavedata),
     path('get_numberdata', views.get_numberdata),
+    path('comment_annotation', views.comment_annotation),
     path('delete_annotation', views.delete_annotation),
     path('add_annotation', views.add_annotation),
     path('like_annotation', views.like_annotation),
