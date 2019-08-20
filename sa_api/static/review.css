@@ -28,14 +28,6 @@
   cursor: pointer;
 }
 
-#contextMenu{
-  position:absolute;
-  border:1px solid green;
-  background:white;
-  list-style:none;
-  padding:3px;
-}
-
 .tooltip {
   position: relative;
   display: inline-block;

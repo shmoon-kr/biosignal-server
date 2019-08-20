@@ -13,7 +13,7 @@
     <script type="text/javascript" src="/static/jquery-ui-1.12.1/jquery-ui.js"></script>
     <script type="text/javascript" src="/static/contextmenu/jquery.contextMenu.js"></script>
     <script type="text/javascript" src="/static/contextmenu/jquery.ui.position.min.js"></script>
-    <script type="text/javascript" src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
     <script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
     <script type="text/javascript" src="/static/admin/js/core.js"></script>
@@ -95,7 +95,7 @@
 {% for key, val in meta_data.items %}
     {% if val.number and val.is_main %}
     <div id="div_chart_{{ val.id }}">
-        <canvas id="cvs_chart_{{ val.id }}" class="chartjs" width="400" height="150"></canvas>
+        <canvas id="cvs_chart_{{ val.id }}" class="cvs-chart number" width="400" height="150"></canvas>
     </div>
     {% endif %}
 {% endfor %}
@@ -103,7 +103,7 @@
 {% for device, info in meta_data.items %}
     {% for waveinfo in info.waves %}
         <div id="div_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}">
-            <canvas id="cvs_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="chartjs cvs.chart.wave" width="400" height="50"></canvas>
+            <canvas id="cvs_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="cvs-chart wave" width="400" height="50"></canvas>
         </div>
     {% endfor %}
 {% endfor %}
@@ -138,7 +138,7 @@
     let meta_data = {{ meta_data_json | safe }};
     let begin_date = new Date('{{ begin_date }}');
     let end_date = new Date('{{ end_date }}');
-    let dt = new Date('{{ dt }}'), dt_pointer;
+    let dt = new Date('{{ dt }}'), dt_pointer, dt_context_menu;
     let event_category = {
         '환자확인 후 모니터링 및 마취 시작': {},
         '기관삽관': {},
@@ -156,8 +156,8 @@
         }
     };
 
-    $( "button" ).button();
-    $( "button" ).click(function() {
+    $("button").button();
+    $("button").click(function() {
         if (this.id==="btn-cancel-annotation") {
             $( "#dialog" ).dialog( "close" );
         } else if (this.id==="btn-add-annotation") {
@@ -452,6 +452,7 @@
         }
     }
 
+
     function AttachContextMenu(selector){
         $(function() {
             $.contextMenu({
@@ -488,14 +489,7 @@
         });
     }
 
-    let dt_context_menu;
-    for (let key of Object.keys(number_charts)) {
-        document.getElementById('cvs_chart_'+key).addEventListener('click', handleMouseClick, false);
-        AttachContextMenu('#cvs_chart_' + key);
-    }
-    for (let key of Object.keys(wave_charts)) {
-        AttachContextMenu('#cvs_chart_' + key);
-    }
+    AttachContextMenu('.cvs-chart');
 
     function UpdateAnnotationData(url){
         let xhttp = new XMLHttpRequest();
