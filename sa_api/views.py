@@ -325,6 +325,7 @@ def get_annotation_body(request, record):
         tmp_annotation['dt'] = str(item.dt)
         tmp_annotation['method'] = item.method
         tmp_annotation['description'] = item.description
+        tmp_annotation['category'] = ['None' if item.category_1 is None else item.category_1, 'None' if item.category_2 is None else item.category_2, 'None' if item.category_3 is None else item.category_3]
         tmp_annotation['like'] = list()
         tmp_annotation['dislike'] = list()
         tmp_annotation['comment'] = list()
@@ -403,13 +404,16 @@ def add_annotation(request):
     dt = request.GET.get("dt")
     desc = request.GET.get("desc")
     method = request.GET.get("method")
+    category_1 = 'None' if request.GET.get("category_1") is None else request.GET.get("category_1")
+    category_2 = 'None' if request.GET.get("category_2") is None else request.GET.get("category_2")
+    category_3 = 'None' if request.GET.get("category_3") is None else request.GET.get("category_3")
     if dt is None or method is None:
         return HttpResponseBadRequest()
     dt = datetime.datetime.strptime(dt.replace('Z', '+0000'), "%Y-%m-%dT%H:%M:%S.%f%z")
     if desc is None:
         desc = ''
 
-    Annotation.objects.create(dt=dt, bed=bed, method=method, description=desc, record=record)
+    Annotation.objects.create(dt=dt, bed=bed, method=method, description=desc, record=record, category_1=category_1, category_2=category_2, category_3=category_3)
 
     if record is not None:
         r_dict = get_annotation_body(request, record)

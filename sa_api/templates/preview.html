@@ -5,9 +5,15 @@
     <link rel="stylesheet" type="text/css" href="/static/Chart.js-2.8.0/dist/Chart.css">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/base.css">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/changelists.css">
+    <link rel="stylesheet" type="text/css" href="/static/jquery-ui-themes-1.12.1/themes/smoothness/jquery-ui.css">
+    <link rel="stylesheet" type="text/css" href="/static/contextmenu/jquery.contextMenu.min.css">
     <link rel="stylesheet" type="text/css" href="/static/review.css">
     <script type="text/javascript" src="/admin/jsi18n/"></script>
     <script type="text/javascript" src="/static/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript" src="/static/jquery-ui-1.12.1/jquery-ui.js"></script>
+    <script type="text/javascript" src="/static/contextmenu/jquery.contextMenu.js"></script>
+    <script type="text/javascript" src="/static/contextmenu/jquery.ui.position.min.js"></script>
+    <script type="text/javascript" src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
     <script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
     <script type="text/javascript" src="/static/admin/js/core.js"></script>
@@ -39,6 +45,18 @@
             </th>
             <th scope="col"  class="column-bed_name">
                 <div class="text"><span>method</span></div>
+                <div class="clear"></div>
+            </th>
+            <th scope="col"  class="column-bed_name">
+                <div class="text"><span>cat_1</span></div>
+                <div class="clear"></div>
+            </th>
+            <th scope="col"  class="column-bed_name">
+                <div class="text"><span>cat_2</span></div>
+                <div class="clear"></div>
+            </th>
+            <th scope="col"  class="column-bed_name">
+                <div class="text"><span>cat_3</span></div>
                 <div class="clear"></div>
             </th>
             <th scope="col"  class="column-bed_name">
@@ -85,15 +103,34 @@
 {% for device, info in meta_data.items %}
     {% for waveinfo in info.waves %}
         <div id="div_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}">
-            <canvas id="cvs_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="chartjs" width="400" height="50"></canvas>
+            <canvas id="cvs_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="chartjs cvs.chart.wave" width="400" height="50"></canvas>
         </div>
     {% endfor %}
 {% endfor %}
 
-<ul id="contextMenu" style="display:none;">
-    <li class="menu-item" onclick="menu(1)">Add Event</li>
-    <li class="menu-item" onclick="menu(2)">Menu 2</li>
-</ul>
+<div id="dialog" title="Add Annotation">
+    <text id="dia_dt"></text>
+    <label for="cat1">Category 1</label>
+    <select class="cat" name="cat1" id="cat1">
+        <option selected>None</option>
+    </select>
+    <br>
+    <label for="cat2">Category 2</label>
+    <select class="cat" name="cat2" id="cat2" disabled="true">
+        <option selected>None</option>
+    </select>
+    <br>
+    <label for="cat3">Category 3</label>
+    <select class="cat" name="cat3" id="cat3" disabled="true">
+        <option selected>None</option>
+    </select>
+    <br>
+    <label for="desc">Description: </label>
+    <input id="desc">
+    <br>
+    <button id="btn-add-annotation">Add</button>
+    <button id="btn-cancel-annotation">Cancel</button>
+</div>
 
 <script>
 
@@ -102,6 +139,83 @@
     let begin_date = new Date('{{ begin_date }}');
     let end_date = new Date('{{ end_date }}');
     let dt = new Date('{{ dt }}'), dt_pointer;
+    let event_category = {
+        '환자확인 후 모니터링 및 마취 시작': {},
+        '기관삽관': {},
+        '마취유도완료': {},
+        '수술시작': {},
+        '집도의 입실': {},
+        '집도의 퇴실': {},
+        '수술종료': {},
+        '기관발관': {},
+        '마취종료': {},
+        '기타': {
+            'GS': ['pringle maneuver 시작', 'pringle maneuver 종료', 'reperfusion', 'liver out', 'pump on', 'pump off', 'IVC total clamping', 'IVC partial clamping', 'IVC unclamping'],
+            'CS': ['SVC cannualtion', 'IVC decannulation' ,'Aorta cannulation', 'Aorta clamp', 'pump on', 'Aorta decannulation', 'SVC decannulation', 'IVC decannulation', 'pump off', 'Aorta declamp', 'One lung ventilation', 'Two lung ventilation'],
+            'OS': ['Torniquet On', 'Torniquet Off']
+        }
+    };
+
+    $( "button" ).button();
+    $( "button" ).click(function() {
+        if (this.id==="btn-cancel-annotation") {
+            $( "#dialog" ).dialog( "close" );
+        } else if (this.id==="btn-add-annotation") {
+            let cat1 = $("#cat1").val(), cat2 = $("#cat2").val(), cat3 = $("#cat3").val(), desc = $("#desc").val();
+            UpdateAnnotationData("add_annotation?file={{ vital_file }}&dt=" + dt_context_menu.toISOString() + "&method=0&desc=" + desc + "&category_1=" + cat1 + "&category_2=" + cat2 + "&category_3=" + cat3 );
+            $( "#dialog" ).dialog( "close" );
+        }
+    });
+    $( "#dialog" ).dialog({ autoOpen: false });
+    $( ".cat" ).selectmenu({
+        change: function( event, ui ) {
+            // event.target
+            UpdateSelectMenu(event.target, ui.item.value);
+        }
+    });
+
+    function UpdateSelectMenu(target, value) {
+        if (target===document.getElementById('cat1')) {
+            let tmp_cat1 = [], tmp_cat2 = [];
+            $( "#cat3" )[0].innerHTML = '<option selected>None</option>';
+            $( "#cat3" ).selectmenu( "option", "disabled", true );
+            $( "#cat3" ).selectmenu( "refresh" );
+            if (value==='None') {
+                tmp_cat1.push('<option selected>None</option>');
+                tmp_cat2.push('<option selected>None</option>');
+            }
+            else {
+                tmp_cat1.push('<option>None</option>');
+                tmp_cat2.push('<option selected>None</option>');
+                for (let key of Object.keys(event_category[value]))
+                    tmp_cat2.push('<option>' + key + '</option>');
+            }
+            $( "#cat2" )[0].innerHTML = tmp_cat2.join('\n');
+            $( "#cat2" ).selectmenu( "option", "disabled", tmp_cat2.length <= 1 );
+            $( "#cat2" ).selectmenu( "refresh" );
+
+            for (let key of Object.keys(event_category)) {
+                if (value===key)
+                    tmp_cat1.push('<option selected>' + key + '</option>');
+                else
+                    tmp_cat1.push('<option>' + key + '</option>');
+            }
+            $( "#cat1" )[0].innerHTML = tmp_cat1.join('\n');
+            $( "#cat1" ).selectmenu( "refresh" );
+        } else if (target.name==='cat2') {
+            let tmp_opt = [];
+            if (value==='None') {
+                tmp_opt.push('<option selected>None</option>');
+            } else {
+                tmp_opt.push('<option>None</option>');
+                for (let i=0; i<event_category[$( "#cat1" )[0].value][value].length ; i++)
+                    tmp_opt.push('<option>' + event_category[$( "#cat1" )[0].value][value][i] + '</option>');
+            }
+            $( "#cat3" )[0].innerHTML = tmp_opt.join('\n');
+            $( "#cat3" ).selectmenu( "option", "disabled", tmp_opt.length <= 1 );
+            $( "#cat3" ).selectmenu( "refresh" );
+        }
+    }
 
     let wave_begin_date = new Date(begin_date);
     wave_begin_date.setSeconds(Math.ceil(wave_begin_date.getSeconds()/10)*10);
@@ -338,17 +452,49 @@
         }
     }
 
-    let $menu = $('#contextMenu'), dt_context_menu;
-    for (let [key, value] of Object.entries(number_charts)) {
-        let canvas = document.getElementById('cvs_chart_'+key);
-        canvas.addEventListener('contextmenu', handleContextMenu, false);
-        canvas.addEventListener('click', handleMouseClick, false);
-        canvas.addEventListener('mousedown', handleMouseDown, false);
+    function AttachContextMenu(selector){
+        $(function() {
+            $.contextMenu({
+                selector: selector,
+                build: function ($trigger, e) {
+                    // this callback is executed every time the menu is to be shown
+                    // its results are destroyed every time the menu is hidden
+                    // e is the original contextmenu event, containing e.pageX and e.pageY (amongst other data)
+                    let id = e.currentTarget.id.replace('cvs_chart_','');
+                    let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
+                    if (chart.getElementAtEvent(e)[0]) {
+                        dt_context_menu = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
+                        return {
+                            callback: function (key, options, e) {
+                                document.getElementById('dia_dt').innerHTML = 'at ' + dt_context_menu.toString();
+                                $("#dialog").dialog("open");
+                            },
+                            items: {
+                                "add": {name: "Add", icon: "add"},
+                                "edit": {name: "Edit", icon: "edit", disabled: true},
+                                "delete": {name: "Delete", icon: "delete", disabled: true},
+                                "sep1": "---------",
+                                "quit": {
+                                    name: "Quit", icon: function () {
+                                        return 'context-menu-icon context-menu-icon-quit';
+                                    }
+                                }
+                            }
+                        };
+                    } else
+                        return false;
+                }
+            });
+        });
     }
-    for (let [key, value] of Object.entries(wave_charts)) {
-        let canvas = document.getElementById('cvs_chart_'+key);
-        canvas.addEventListener('contextmenu', handleContextMenu, false);
-        canvas.addEventListener('mousedown', handleMouseDown, false);
+
+    let dt_context_menu;
+    for (let key of Object.keys(number_charts)) {
+        document.getElementById('cvs_chart_'+key).addEventListener('click', handleMouseClick, false);
+        AttachContextMenu('#cvs_chart_' + key);
+    }
+    for (let key of Object.keys(wave_charts)) {
+        AttachContextMenu('#cvs_chart_' + key);
     }
 
     function UpdateAnnotationData(url){
@@ -367,7 +513,10 @@
                     row.insertCell(0).innerHTML = i+1;
                     row.insertCell(1).innerHTML = new Date(annotation_data[i].dt).toLocaleString();
                     row.insertCell(2).innerHTML = annotation_data[i].method;
-                    row.insertCell(3).innerHTML = annotation_data[i].description;
+                    row.insertCell(3).innerHTML = annotation_data[i].category[0];
+                    row.insertCell(4).innerHTML = annotation_data[i].category[1];
+                    row.insertCell(5).innerHTML = annotation_data[i].category[2];
+                    row.insertCell(6).innerHTML = annotation_data[i].description;
                     let tmp_str='';
                     let likes = [], dislikes = [], comments = [];
                     for (let j=0; j<annotation_data[i].like.length; j++) {
@@ -396,10 +545,10 @@
                         tmp_str = tmp_str.concat('<input type="text" id="txt_comment_'+annotation_data[i].id+'">');
                         tmp_str = tmp_str.concat('<button type="button" onclick="AddComment('+annotation_data[i].id+')">Add Comment</button>');
                     } else {
-                        tmp_str = tmp_str.concat('<a href="accounts/login">login</a>');
+                        tmp_str = tmp_str.concat('<a href="accounts/login?next=' + window.location.pathname + window.location.search + window.location.hash + '">login</a>');
                     }
-                    row.insertCell(4).innerHTML = tmp_str;
-                    row.insertCell(5).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
+                    row.insertCell(7).innerHTML = tmp_str;
+                    row.insertCell(8).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
                     let single_event = {
                         type: 'line',
                         mode: 'vertical',
@@ -460,24 +609,6 @@
         UpdateAnnotationData(uri);
     }
 
-    function handleContextMenu(e){
-        e.preventDefault();
-        e.stopPropagation();
-        let canvas = e.target;
-        let id = canvas.id.replace('cvs_chart_','');
-        let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
-        if (chart.getElementAtEvent(e).length) {
-            dt_context_menu = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
-            $menu.css({left:e.pageX,top:e.pageY});
-            $menu.show();
-        }
-        return false;
-    }
-
-    function handleMouseDown(e){
-        $menu.hide();
-    }
-
     function handleMouseClick(e){
         e.preventDefault();
         e.stopPropagation();
@@ -491,11 +622,7 @@
         return false;
     }
 
-    menu = function(n){
-        AddAnnotation(dt_context_menu, 'Test');
-        $menu.hide();
-    };
-
+    UpdateSelectMenu(document.getElementById('cat1'), 'None');
     UpdateAnnotationData("get_annotation?file={{ vital_file }}");
     UpdateWaveData();
 

@@ -36,12 +36,6 @@
   padding:3px;
 }
 
-.menu-item:hover {
-  background: #dddddd;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 .tooltip {
   position: relative;
   display: inline-block;
