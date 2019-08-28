@@ -63,6 +63,7 @@ def get_sidebar_menu(selected=None):
     r['신관']['submenu'] = list()
     r['신관']['submenu'].append([selected == 'J', 'J Rosette', '/summary_rosette?rosette=J'])
     r['신관']['submenu'].append([selected == 'K', 'K Rosette', '/summary_rosette?rosette=K'])
+    r['신관']['submenu'].append([selected == 'OB', 'Delivery Floor', '/summary_rosette?rosette=OB'])
     r['신관']['submenu'].append([selected == 'NREC', 'Recovery', '/summary_rosette?rosette=NREC'])
 
     loc = list()
@@ -426,17 +427,14 @@ def add_annotation(request):
 
 @csrf_exempt
 def download_vital_file(request):
-    bed = request.GET.get("bed")
-    begin_date = request.GET.get("begin_date")
+    filename = request.GET.get("file")
 
-    if bed is not None and begin_date is not None:
+    if filename is not None:
         if settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME'] == 'AMC_Anesthesiology':
-            begin_date = datetime.datetime.strptime(begin_date, '%Y-%m-%d %H:%M:%S')
-            file_path = os.path.join('/mnt/Data/CloudStation', bed, begin_date.strftime('%y%m%d'))
-            file_name = os.path.join('%s_%s.vital' % (bed, begin_date.strftime('%y%m%d_%H%M%S')))
-            if os.path.isfile(os.path.join(file_path, file_name)):
-                response = HttpResponse(open(os.path.join(file_path, file_name), 'rb'), content_type='application/x-vitalrecorder+gzip')
-                response['Content-Disposition'] = 'attachment; filename="%s"' % file_name
+            record = get_object_or_404(FileRecorded, file_basename=filename)
+            if os.path.isfile(record.file_path):
+                response = HttpResponse(open(record.file_path, 'rb'), content_type='application/x-vitalrecorder+gzip')
+                response['Content-Disposition'] = 'attachment; filename="%s"' % record.file_basename
                 return response
             else:
                 return HttpResponseNotFound('File Not Found.')

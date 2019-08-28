@@ -29,7 +29,7 @@
 </head>
 <body>
 
-<h1 align="center"> {{ bed }}, {{ date }} </h1>
+<h1 align="center"> {{ bed }}, {{ date }} <a href="/download_vital_file?file={{ vital_file }}"> Download vital file</a></h1>
 
 <div class="results">
     <table id="annotation_list">
@@ -95,7 +95,7 @@
 {% for key, val in meta_data.items %}
     {% if val.number and val.is_main %}
     <div id="div_chart_{{ val.id }}">
-        <canvas id="cvs_chart_{{ val.id }}" class="cvs-chart number" width="400" height="150"></canvas>
+        <canvas id="cvs_chart_{{ val.id }}" class="cvs-chart cvs-chart-number" width="400" height="150"></canvas>
     </div>
     {% endif %}
 {% endfor %}
@@ -103,7 +103,7 @@
 {% for device, info in meta_data.items %}
     {% for waveinfo in info.waves %}
         <div id="div_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}">
-            <canvas id="cvs_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="cvs-chart wave" width="400" height="50"></canvas>
+            <canvas id="cvs_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="cvs-chart cvs-chart-wave" width="400" height="50"></canvas>
         </div>
     {% endfor %}
 {% endfor %}
@@ -149,12 +149,81 @@
         '수술종료': {},
         '기관발관': {},
         '마취종료': {},
-        '기타': {
-            'GS': ['pringle maneuver 시작', 'pringle maneuver 종료', 'reperfusion', 'liver out', 'pump on', 'pump off', 'IVC total clamping', 'IVC partial clamping', 'IVC unclamping'],
-            'CS': ['SVC cannualtion', 'IVC decannulation' ,'Aorta cannulation', 'Aorta clamp', 'pump on', 'Aorta decannulation', 'SVC decannulation', 'IVC decannulation', 'pump off', 'Aorta declamp', 'One lung ventilation', 'Two lung ventilation'],
-            'OS': ['Torniquet On', 'Torniquet Off']
-        }
+        'pringle maneuver 시작': {},
+        'pringle maneuver 종료': {},
+        'reperfusion': {},
+        'liver out': {},
+        'Biopump on': {},
+        'Biopump off': {},
+        'IVC total clamping': {},
+        'IVC partial clamping': {},
+        'IVC unclamping': {},
+        'SVC cannualtion': {},
+        'IVC decannulation': {},
+        'Aorta cannulation': {},
+        'Aorta clamp': {},
+        'CPB on': {},
+        'Aorta decannulation': {},
+        'SVC decannulation': {},
+        'IVC decannulation': {},
+        'CPB off': {},
+        'Aorta declamp': {},
+        'One lung ventilation': {},
+        'Two lung ventilation': {},
+        'Torniquet On': {},
+        'Torniquet Off': {},
+        'Adverse Event': {
+            'Massive bleeding': {},
+            'Cardiac arrest': {},
+            'Respiratory arrest': {}
+        },
+        'New-onset Arrythmia': {
+            'PVC': {},
+            'Afib': {},
+            'Aflutter': {},
+            'PSVT': {},
+            'VF': {},
+            'VT': {},
+            'AV block': {},
+            'Junctional Rhythm': {},
+            'Unknwon': {}
+        },
+        'Defibrillation': {},
+        'Cardioversion': {},
+        'Bolus Drug Administration': {
+            'ephedrine': {},
+            'phenylephrine': {},
+            'epinephrine': {},
+            'norepinephrine': {},
+            'vasopressin': {},
+            'atropine': {},
+            'nicardipine': {},
+            'esmolol': {}
+        },
+        'Continuous Drug Infusion': {
+            'ephedrine': {},
+            'phenylephrine': {},
+            'epinephrine': {},
+            'norepinephrine': {},
+            'vasopressin': {},
+            'atropine': {},
+            'nicardipine': {},
+            'esmolol': {}
+        },
+        'Fluid loading': {}
     };
+
+    let category_submenu = {};
+
+    for (let [k1, v1] of Object.entries(event_category)) {
+        category_submenu['add|'+k1] = {name: k1};
+        if (!jQuery.isEmptyObject(v1)) {
+            category_submenu['add|'+k1].items = {};
+            for (let [k2, v2] of Object.entries(v1)) {
+                category_submenu['add|'+k1].items['add|'+k1+'|'+k2] = {name: k2}
+            }
+        }
+    }
 
     $("button").button();
     $("button").click(function() {
@@ -172,6 +241,18 @@
             // event.target
             UpdateSelectMenu(event.target, ui.item.value);
         }
+    });
+    $( ".cvs-chart-number" ).click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        let canvas = e.target;
+        let id = canvas.id.replace('cvs_chart_','');
+        let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
+        if (chart.getElementAtEvent(e).length) {
+            let dt_new = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
+            OnTimePointerChange(binary_search(wave_dt_list, dt_new, 0, wave_dt_list.length));
+        }
+        return false;
     });
 
     function UpdateSelectMenu(target, value) {
@@ -452,7 +533,6 @@
         }
     }
 
-
     function AttachContextMenu(selector){
         $(function() {
             $.contextMenu({
@@ -467,11 +547,21 @@
                         dt_context_menu = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
                         return {
                             callback: function (key, options, e) {
-                                document.getElementById('dia_dt').innerHTML = 'at ' + dt_context_menu.toString();
-                                $("#dialog").dialog("open");
+                                let selected_menu = key.split('|');
+                                if (selected_menu[0]==='add') {
+                                    document.getElementById('dia_dt').innerHTML = 'at ' + dt_context_menu.toString();
+                                    if (selected_menu.length > 1) {
+                                        UpdateSelectMenu(document.getElementById('cat1'), selected_menu[1]);
+                                    }
+                                    if (selected_menu.length > 2) {
+                                        UpdateSelectMenu(document.getElementById('cat2'), selected_menu[2]);
+                                    }
+                                    $("#dialog").dialog("open");
+                                }
                             },
                             items: {
-                                "add": {name: "Add", icon: "add"},
+                                //"add": {name: "Add", icon: "add"},
+                                "add": {name: "Add", icon: "add", items: category_submenu},
                                 "edit": {name: "Edit", icon: "edit", disabled: true},
                                 "delete": {name: "Delete", icon: "delete", disabled: true},
                                 "sep1": "---------",
@@ -601,19 +691,6 @@
         console.log(uri);
         textbox.value = '';
         UpdateAnnotationData(uri);
-    }
-
-    function handleMouseClick(e){
-        e.preventDefault();
-        e.stopPropagation();
-        let canvas = e.target;
-        let id = canvas.id.replace('cvs_chart_','');
-        let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
-        if (chart.getElementAtEvent(e).length) {
-            let dt_new = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
-            OnTimePointerChange(binary_search(wave_dt_list, dt_new, 0, wave_dt_list.length));
-        }
-        return false;
     }
 
     UpdateSelectMenu(document.getElementById('cat1'), 'None');
