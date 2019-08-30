@@ -56,10 +56,6 @@
                 <div class="clear"></div>
             </th>
             <th scope="col"  class="column-bed_name">
-                <div class="text"><span>cat_3</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
                 <div class="text"><span>description</span></div>
                 <div class="clear"></div>
             </th>
@@ -110,6 +106,7 @@
 
 <div id="dialog" title="Add Annotation">
     <text id="dia_dt"></text>
+    <br>
     <label for="cat1">Category 1</label>
     <select class="cat" name="cat1" id="cat1">
         <option selected>None</option>
@@ -117,11 +114,6 @@
     <br>
     <label for="cat2">Category 2</label>
     <select class="cat" name="cat2" id="cat2" disabled="true">
-        <option selected>None</option>
-    </select>
-    <br>
-    <label for="cat3">Category 3</label>
-    <select class="cat" name="cat3" id="cat3" disabled="true">
         <option selected>None</option>
     </select>
     <br>
@@ -149,29 +141,31 @@
         '수술종료': {},
         '기관발관': {},
         '마취종료': {},
-        'pringle maneuver 시작': {},
-        'pringle maneuver 종료': {},
-        'reperfusion': {},
-        'liver out': {},
-        'Biopump on': {},
-        'Biopump off': {},
-        'IVC total clamping': {},
-        'IVC partial clamping': {},
-        'IVC unclamping': {},
-        'SVC cannualtion': {},
-        'IVC decannulation': {},
-        'Aorta cannulation': {},
-        'Aorta clamp': {},
-        'CPB on': {},
-        'Aorta decannulation': {},
-        'SVC decannulation': {},
-        'IVC decannulation': {},
-        'CPB off': {},
-        'Aorta declamp': {},
-        'One lung ventilation': {},
-        'Two lung ventilation': {},
-        'Torniquet On': {},
-        'Torniquet Off': {},
+        'Surgical Procedures': {
+            'pringle maneuver 시작': {},
+            'pringle maneuver 종료': {},
+            'reperfusion': {},
+            'liver out': {},
+            'Biopump on': {},
+            'Biopump off': {},
+            'IVC total clamping': {},
+            'IVC partial clamping': {},
+            'IVC unclamping': {},
+            'SVC cannualtion': {},
+            'IVC decannulation': {},
+            'Aorta cannulation': {},
+            'Aorta clamp': {},
+            'CPB on': {},
+            'Aorta decannulation': {},
+            'SVC decannulation': {},
+            'IVC decannulation': {},
+            'CPB off': {},
+            'Aorta declamp': {},
+            'One lung ventilation': {},
+            'Two lung ventilation': {},
+            'Torniquet On': {},
+            'Torniquet Off': {}
+        },
         'Adverse Event': {
             'Massive bleeding': {},
             'Cardiac arrest': {},
@@ -258,9 +252,6 @@
     function UpdateSelectMenu(target, value) {
         if (target===document.getElementById('cat1')) {
             let tmp_cat1 = [], tmp_cat2 = [];
-            $( "#cat3" )[0].innerHTML = '<option selected>None</option>';
-            $( "#cat3" ).selectmenu( "option", "disabled", true );
-            $( "#cat3" ).selectmenu( "refresh" );
             if (value==='None') {
                 tmp_cat1.push('<option selected>None</option>');
                 tmp_cat2.push('<option selected>None</option>');
@@ -283,18 +274,13 @@
             }
             $( "#cat1" )[0].innerHTML = tmp_cat1.join('\n');
             $( "#cat1" ).selectmenu( "refresh" );
-        } else if (target.name==='cat2') {
-            let tmp_opt = [];
-            if (value==='None') {
-                tmp_opt.push('<option selected>None</option>');
-            } else {
-                tmp_opt.push('<option>None</option>');
-                for (let i=0; i<event_category[$( "#cat1" )[0].value][value].length ; i++)
-                    tmp_opt.push('<option>' + event_category[$( "#cat1" )[0].value][value][i] + '</option>');
+        } else if (target===document.getElementById('cat2')) {
+            for ( let i=0 ; i <document.getElementById('cat2').length ; i++ ) {
+                if (document.getElementById('cat2')[i].value===value) {
+                    document.getElementById('cat2').selectedIndex = i
+                }
             }
-            $( "#cat3" )[0].innerHTML = tmp_opt.join('\n');
-            $( "#cat3" ).selectmenu( "option", "disabled", tmp_opt.length <= 1 );
-            $( "#cat3" ).selectmenu( "refresh" );
+            $( "#cat2" ).selectmenu( "refresh" );
         }
     }
 
@@ -416,6 +402,7 @@
 
     let number_annotation = {
         drawTime: 'afterDatasetsDraw',
+        events: ['mouseover', 'mouseout'],
         annotations: [{
             type: 'line',
             mode: 'vertical',
@@ -599,8 +586,7 @@
                     row.insertCell(2).innerHTML = annotation_data[i].method;
                     row.insertCell(3).innerHTML = annotation_data[i].category[0];
                     row.insertCell(4).innerHTML = annotation_data[i].category[1];
-                    row.insertCell(5).innerHTML = annotation_data[i].category[2];
-                    row.insertCell(6).innerHTML = annotation_data[i].description;
+                    row.insertCell(5).innerHTML = annotation_data[i].description;
                     let tmp_str='';
                     let likes = [], dislikes = [], comments = [];
                     for (let j=0; j<annotation_data[i].like.length; j++) {
@@ -631,8 +617,8 @@
                     } else {
                         tmp_str = tmp_str.concat('<a href="accounts/login?next=' + window.location.pathname + window.location.search + window.location.hash + '">login</a>');
                     }
-                    row.insertCell(7).innerHTML = tmp_str;
-                    row.insertCell(8).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
+                    row.insertCell(6).innerHTML = tmp_str;
+                    row.insertCell(7).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
                     let single_event = {
                         type: 'line',
                         mode: 'vertical',
@@ -644,6 +630,20 @@
                             enabled: true,
                             position: "top",
                             content: i+1
+                        },
+                        onMouseover: function(e) {
+                            //e.preventDefault();
+                            e.stopPropagation();
+                            this.options.borderColor = 'lime';
+                            this.chartInstance.chart.update();
+                            console.log(this, e)
+                        },
+                        onMouseout: function(e) {
+                            //e.preventDefault();
+                            e.stopPropagation();
+                            this.options.borderColor = 'green';
+                            this.chartInstance.chart.update();
+                            console.log(this, e)
                         }
                     };
                     number_annotation.annotations.push(single_event);

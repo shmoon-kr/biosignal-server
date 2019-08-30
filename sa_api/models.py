@@ -1688,7 +1688,6 @@ class Annotation(models.Model):
     method = models.IntegerField(choices=ANNOTATION_METHOD_CHOICES, default=0)
     category_1 = models.CharField(max_length=255, null=True)
     category_2 = models.CharField(max_length=255, null=True)
-    category_3 = models.CharField(max_length=255, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
 
 
