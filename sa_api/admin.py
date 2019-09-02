@@ -144,7 +144,10 @@ class AnnotationAdmin(admin.ModelAdmin):
     list_display = ('id', 'bed', 'record', 'dt', 'method', 'description', 'action')
 
     def action(self, obj):
-        return format_html("<a href='/review?file=%s&dt=%s'>Browse</a>" % (obj.record.file_basename, urllib.parse.quote(obj.dt.strftime('%Y-%m-%dT%H:%M:%S.%f%z'))))
+        if obj.record is not None:
+            return format_html("<a href='/review?file=%s&dt=%s'>Browse</a>" % (obj.record.file_basename, urllib.parse.quote(obj.dt.strftime('%Y-%m-%dT%H:%M:%S.%f%z'))))
+        else:
+            return 'None'
 
 
 class DeviceAdmin(admin.ModelAdmin):

@@ -412,6 +412,10 @@ def add_annotation(request):
     dt = datetime.datetime.strptime(dt.replace('Z', '+0000'), "%Y-%m-%dT%H:%M:%S.%f%z")
     if desc is None:
         desc = ''
+    if record is None:
+        records = FileRecorded.objects.filter(bed=bed, begin_date__lte=dt, end_date__gte=dt).order_by('-begin_date')
+        if len(records):
+            record = records[0]
 
     Annotation.objects.create(dt=dt, bed=bed, method=method, description=desc, record=record, category_1=category_1, category_2=category_2)
 
