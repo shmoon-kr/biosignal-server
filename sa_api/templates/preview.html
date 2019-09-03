@@ -22,8 +22,9 @@
     <script type="text/javascript" src="/static/admin/js/urlify.js"></script>
     <script type="text/javascript" src="/static/admin/js/prepopulate.js"></script>
     <script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.js"></script>
-    <script type="text/javascript" src="/static/Chart.js-2.8.0/dist/Chart.bundle.js"></script>
-    <script type="text/javascript" src="/static/Chart.js-2.8.0/dist/chartjs-plugin-annotation.js"></script>
+    <script type="text/javascript" src="/static/Chart.js-2.6.0/dist/Chart.bundle.js"></script>
+<!--    <script type="text/javascript" src="/static/Chart.js-2.8.0/dist/Chart.bundle.js"></script>-->
+    <script type="text/javascript" src="/static/chartjs-plugin-annotation/chartjs-plugin-annotation.min.js"></script>
 
     <title>Review, {{ bed }}, {{ date }}</title>
 </head>
@@ -131,6 +132,7 @@
     let begin_date = new Date('{{ begin_date }}');
     let end_date = new Date('{{ end_date }}');
     let dt = new Date('{{ dt }}'), dt_pointer, dt_context_menu;
+    let annotation_data = [];
     let event_category = {
         '환자확인 후 모니터링 및 마취 시작': {},
         '기관삽관': {},
@@ -208,6 +210,7 @@
     };
 
     let category_submenu = {};
+    let selected_annotations = new Set();
 
     for (let [k1, v1] of Object.entries(event_category)) {
         category_submenu['add|'+k1] = {name: k1};
@@ -420,6 +423,7 @@
 
     let wave_annotation = {
         drawTime: 'afterDatasetsDraw',
+        events: ['mouseover', 'mouseout'],
         annotations: []
     };
 
@@ -530,8 +534,50 @@
                     // e is the original contextmenu event, containing e.pageX and e.pageY (amongst other data)
                     let id = e.currentTarget.id.replace('cvs_chart_','');
                     let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
-                    if (chart.getElementAtEvent(e)[0]) {
+                    let items = {
+                        "add": {name: "Add", icon: "add", disabled: !chart.getElementAtEvent(e).length, items: category_submenu},
+                        "edit": {name: "Edit", icon: "edit", disabled: !selected_annotations.size, items: {}},
+                        "delete": {name: "Delete", icon: "delete", disabled: !selected_annotations.size, items: {}},
+                        "sep1": "---------"
+                    };
+                    if (chart.getElementAtEvent(e).length) {
                         dt_context_menu = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
+                    }
+                    if (selected_annotations.size) {
+                        for (let val of selected_annotations.values()) {
+                            items["edit"]["items"]['edit|'+val] = {name: val+1};
+                            items["delete"]["items"]['delete|'+val] = {name: val+1};
+                        }
+                    }
+                    if (selected_annotations.size) {
+                        for (let val of selected_annotations.values()) {
+                            let like = '';
+                            for (let i=0; i<annotation_data[val].like.length; i++) {
+                                if (annotation_data[val].like[i].user_name === user.name) {
+                                    like = 'Like'
+                                }
+                            }
+                            for (let i=0; i<annotation_data[val].dislike.length; i++) {
+                                if (annotation_data[val].dislike[i].user_name === user.name) {
+                                    like = 'Dislike'
+                                }
+                            }
+                            items[val.toString()] = {
+                                name: val+1, disabled: false, items: {}
+                            };
+                            items[val.toString()]["items"]['like|'+val] = {name: 'Like', disabled: like==='Like'};
+                            items[val.toString()]["items"]['dislike|'+val] = {name: 'Dislike', disabled: like==='Dislike'};
+                            items[val.toString()]["items"]['cancel|'+val] = {name: 'Cancel', disabled: like===''};
+                        }
+                    }
+
+                    items["sep2"] = "---------";
+                    items["quit"] = {
+                        name: "Quit", icon: function () {
+                            return 'context-menu-icon context-menu-icon-quit';
+                        }
+                    };
+                    if (chart.getElementAtEvent(e).length || selected_annotations.size) {
                         return {
                             callback: function (key, options, e) {
                                 let selected_menu = key.split('|');
@@ -544,20 +590,15 @@
                                         UpdateSelectMenu(document.getElementById('cat2'), selected_menu[2]);
                                     }
                                     $("#dialog").dialog("open");
+                                } else if (selected_menu[0]==='like') {
+                                    UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=1');
+                                } else if (selected_menu[0]==='dislike') {
+                                    UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=2');
+                                } else if (selected_menu[0]==='cancel') {
+                                    UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=0');
                                 }
                             },
-                            items: {
-                                //"add": {name: "Add", icon: "add"},
-                                "add": {name: "Add", icon: "add", items: category_submenu},
-                                "edit": {name: "Edit", icon: "edit", disabled: true},
-                                "delete": {name: "Delete", icon: "delete", disabled: true},
-                                "sep1": "---------",
-                                "quit": {
-                                    name: "Quit", icon: function () {
-                                        return 'context-menu-icon context-menu-icon-quit';
-                                    }
-                                }
-                            }
+                            items: items
                         };
                     } else
                         return false;
@@ -572,7 +613,7 @@
         let xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function () {
             if (this.readyState === 4 && this.status === 200) {
-                let annotation_data = JSON.parse(xhttp.responseText);
+                annotation_data = JSON.parse(xhttp.responseText);
                 number_annotation.annotations.length = 1;
                 let annotation_table = document.getElementById('annotation_list');
                 let row_count = annotation_table.rows.length;
@@ -580,9 +621,10 @@
                     annotation_table.deleteRow(row_count);
                 }
                 for (let i=0; i<annotation_data.length; i++) {
+                    annotation_data[i].dt = new Date(annotation_data[i].dt);
                     let row = annotation_table.insertRow(i+1);
                     row.insertCell(0).innerHTML = i+1;
-                    row.insertCell(1).innerHTML = new Date(annotation_data[i].dt).toLocaleString();
+                    row.insertCell(1).innerHTML = annotation_data[i].dt.toLocaleString();
                     row.insertCell(2).innerHTML = annotation_data[i].method;
                     row.insertCell(3).innerHTML = annotation_data[i].category[0];
                     row.insertCell(4).innerHTML = annotation_data[i].category[1];
@@ -619,34 +661,36 @@
                     }
                     row.insertCell(6).innerHTML = tmp_str;
                     row.insertCell(7).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
-                    let single_event = {
-                        type: 'line',
-                        mode: 'vertical',
-                        scaleID: 'x-axis-0',
-                        value: new Date(annotation_data[i].dt),
-                        borderColor: 'green',
-                        borderWidth: 1,
-                        label: {
-                            enabled: true,
-                            position: "top",
-                            content: i+1
-                        },
-                        onMouseover: function(e) {
-                            //e.preventDefault();
-                            e.stopPropagation();
-                            this.options.borderColor = 'lime';
-                            this.chartInstance.chart.update();
-                            console.log(this, e)
-                        },
-                        onMouseout: function(e) {
-                            //e.preventDefault();
-                            e.stopPropagation();
-                            this.options.borderColor = 'green';
-                            this.chartInstance.chart.update();
-                            console.log(this, e)
-                        }
-                    };
-                    number_annotation.annotations.push(single_event);
+                    if ( annotation_data[i].method !== 2 ) {
+                        let single_event = {
+                            type: 'line',
+                            mode: 'vertical',
+                            scaleID: 'x-axis-0',
+                            value: new Date(annotation_data[i].dt),
+                            borderColor: 'green',
+                            borderWidth: 1,
+                            label: {
+                                enabled: true,
+                                position: "top",
+                                content: i+1
+                            },
+                            onMouseover: function(e) {
+                                //e.preventDefault();
+                                e.stopPropagation();
+                                this.options.borderColor = 'lime';
+                                this.chartInstance.chart.update();
+                                console.log(this, e)
+                            },
+                            onMouseout: function(e) {
+                                //e.preventDefault();
+                                e.stopPropagation();
+                                this.options.borderColor = 'green';
+                                this.chartInstance.chart.update();
+                                console.log(this, e)
+                            }
+                        };
+                        number_annotation.annotations.push(single_event);
+                    }
                 }
                 for (let [key, value] of Object.entries(number_charts)) {
                     value.chart.options.annotation = number_annotation;
@@ -662,9 +706,40 @@
 
     function UpdateWaveAnnotationData() {
         wave_annotation.annotations = [];
-        for (let i = 1; i < number_annotation.annotations.length; i++) {
-            if (Math.abs(number_annotation.annotations[i].value - wave_dt_list[dt_pointer]) < 10000) {
-                wave_annotation.annotations.push(number_annotation.annotations[i]);
+        for (let i = 0; i < annotation_data.length; i++) {
+            if (Math.abs(annotation_data[i].dt - wave_dt_list[dt_pointer]) < 10000) {
+                let single_event = {
+                    type: 'line',
+                    mode: 'vertical',
+                    scaleID: 'x-axis-0',
+                    value: new Date(annotation_data[i].dt),
+                    borderColor: 'green',
+                    borderWidth: 1,
+                    label: {
+                        enabled: true,
+                        position: "top",
+                        content: i+1
+                    },
+                    onMouseover: function(e) {
+                        let element = this;
+                        selected_annotations.add(i);
+                        element.options.borderWidth = 4;
+                        element.options.label.enabled = true;
+                        element.options.label.content = annotation_data[i].category[0] + '|' + annotation_data[i].category[1] + '|' + annotation_data[i].description;
+                        element.chartInstance.update();
+                        element.chartInstance.chart.canvas.style.cursor = 'pointer';
+                    },
+                    onMouseout: function(e) {
+                        let element = this;
+                        selected_annotations.delete(i);
+                        element.options.borderWidth = 1;
+                        element.options.label.enabled = true;
+                        element.options.label.content = i+1;
+                        element.chartInstance.update();
+                        element.chartInstance.chart.canvas.style.cursor = 'initial';
+                    }
+                };
+                wave_annotation.annotations.push(single_event);
             }
         }
     }
