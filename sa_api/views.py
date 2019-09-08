@@ -1,30 +1,34 @@
-import re
-import csv
-import json
-import pytz
-import os.path
-import datetime
-import requests
-import MySQLdb
-import tempfile
-import random
-import shutil
-import pandas
 import bisect
-import dateutil
-import numpy as np
-from .forms import UploadFileForm, UploadReviewForm
-from pyfluent.client import FluentSender
+import csv
+import datetime
+import json
+import os.path
+import random
+import re
+import shutil
+import tempfile
 from ftplib import FTP
 from itertools import product
-from django.core.cache import cache
+
+import MySQLdb
+import dateutil
+import numpy as np
+import pandas
+import pytz
+import requests
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
+from django.shortcuts import get_object_or_404
 from django.template import loader
-from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
-from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, DeviceConfigPresetBed, DeviceConfigItem, AnesthesiaRecordEvent, NumberInfoFile, WaveInfoFile, SummaryFileRecorded, NumberGEC, NumberPIV, Annotation, AnnotationComment, AnnotationLike
+from pyfluent.client import FluentSender
+
+from sa_api.models import Device, Client, Bed, Channel, Room, FileRecorded, ClientBusSlot, Review, \
+    DeviceConfigPresetBed, DeviceConfigItem, NumberInfoFile, WaveInfoFile, SummaryFileRecorded, NumberGEC, NumberPIV, \
+    Annotation, AnnotationComment, AnnotationLike
+from .forms import UploadFileForm, UploadReviewForm
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
@@ -206,9 +210,8 @@ def get_wavedata(request):
     record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
     device_code = request.GET.get("device_code")
     channel = request.GET.get("channel")
-    dt = dateutil.parser.parse(request.GET.get("dt"))
+    dt = dateutil.parser.parse(request.GET.get("dt")) if request.GET.get("dt") is not None else None
 
-    r_dict = dict()
     response_status = 200
     if device_code is not None and channel is not None:
         wif = get_object_or_404(WaveInfoFile, record=record, device__code=device_code, channel_name=channel)
@@ -217,20 +220,39 @@ def get_wavedata(request):
             npz = np.load(wif.file_path)
             npz = {'timestamp': npz['timestamp'], 'packet_pointer': npz['packet_pointer'], 'val': npz['val']}
             cache.set(wif.file_path, npz)
-        r_dict['sampling_rate'] = wif.sampling_rate
-        r_dict['timestamp'] = list()
-        r_dict['data'] = list()
-        st = bisect.bisect(npz['timestamp'], dt.timestamp() - 10)
-        ed = bisect.bisect(npz['timestamp'], dt.timestamp() + 10)
-    
-        r_dict['timestamp'].append(str(datetime.datetime.fromtimestamp(npz['timestamp'][st])))
-        r_dict['data'].append(list())
-        for v in npz['val'][npz['packet_pointer'][st]:npz['packet_pointer'][ed]]:
-            r_dict['data'][-1].append(round(float(v), 4))
+        if dt is not None:
+            r_dict = dict()
+            r_dict['sampling_rate'] = wif.sampling_rate
+            r_dict['timestamp'] = list()
+            r_dict['data'] = list()
+            st = bisect.bisect(npz['timestamp'], dt.timestamp() - 5)
+            ed = bisect.bisect(npz['timestamp'], dt.timestamp() + 5) - 1
+
+            r_dict['timestamp'].append(npz['timestamp'][st])
+            r_dict['data'].append(list())
+            for v in npz['val'][npz['packet_pointer'][st]:npz['packet_pointer'][ed]]:
+                r_dict['data'][-1].append(round(float(v), 4))
+            return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4),
+                                content_type="application/json; charset=utf-8", status=response_status)
+        else:
+            csvfile = tempfile.TemporaryFile(mode='w+')
+            csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            title = ['dt', channel]
+            csvwriter.writerow(title)
+            for i, pp in enumerate(npz['packet_pointer']):
+                for p in range(pp, npz['packet_pointer'][i+1] if i+1 < len(npz['packet_pointer']) else len(npz['val'])):
+                    csvwriter.writerow([npz['timestamp'][i]+(p-pp)/wif.sampling_rate, npz['val'][p]])
+
+            csvfile.seek(0)
+            filename = '%s_%s_%s_%s.csv' % (record.bed.name, record.begin_date.astimezone(tz).strftime('%y%m%d_%H%M%S'),
+                                            device_code, channel)
+            response = HttpResponse(csvfile, content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename=%s' % filename
+            return response
+
     else:
         return HttpResponseBadRequest()
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=response_status)
 
 
 @csrf_exempt
@@ -238,84 +260,153 @@ def get_numberdata(request):
     device = get_object_or_404(Device, id=request.GET.get("device_id"))
     record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
     summary = get_object_or_404(SummaryFileRecorded, record=record)
+    result_format = request.GET.get("format")
 
-    r_dict = dict()
-    get_object_or_404(NumberInfoFile, record=record, device=device, db_load=True)
-    if summary.main_device.displayed_name in ('GE/Carescape', 'Philips/IntelliVue'):
-        col_list = list()
-        col_list.append(summary.hr_channel)
-        col_list.append('BT_PA' if summary.main_device.displayed_name == 'GE/Carescape' else 'TEMP')
-        col_list.append(summary.bp_channel + '_SBP' if summary.bp_channel is not None else None)
-        col_list.append(summary.bp_channel + '_DBP' if summary.bp_channel is not None else None)
-        col_list.append(summary.bp_channel + '_MBP' if summary.bp_channel is not None else None)
-        col_list.append('PLETH_SPO2' if summary.main_device.displayed_name == 'GE/Carescape' else 'PLETH_SAT_O2')
-        color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
+    if result_format is None:
+        r_dict = dict()
+        get_object_or_404(NumberInfoFile, record=record, device=device, db_load=True)
+        if summary.main_device.displayed_name in ('GE/Carescape', 'Philips/IntelliVue'):
+            col_list = list()
+            col_list.append(summary.hr_channel)
+            col_list.append('BT_PA' if summary.main_device.displayed_name == 'GE/Carescape' else 'TEMP')
+            col_list.append(summary.bp_channel + '_SBP' if summary.bp_channel is not None else None)
+            col_list.append(summary.bp_channel + '_DBP' if summary.bp_channel is not None else None)
+            col_list.append(summary.bp_channel + '_MBP' if summary.bp_channel is not None else None)
+            col_list.append('PLETH_SPO2' if summary.main_device.displayed_name == 'GE/Carescape' else 'PLETH_SAT_O2')
+            color_preview = ['green', 'blue', 'red', 'orange', 'gold', 'aqua']
 
-        if summary.main_device.displayed_name == 'GE/Carescape':
-            data = NumberGEC.objects.filter(record=record).order_by('dt')
-        elif summary.main_device.displayed_name == 'Philips/IntelliVue':
-            data = NumberPIV.objects.filter(record=record).order_by('dt')
+            if summary.main_device.displayed_name == 'GE/Carescape':
+                data = NumberGEC.objects.filter(record=record).order_by('dt')
+            elif summary.main_device.displayed_name == 'Philips/IntelliVue':
+                data = NumberPIV.objects.filter(record=record).order_by('dt')
+            else:
+                assert False
         else:
             assert False
-    else:
-        assert False
 
-    if len(data):
-        r_dict['device_displayed_name'] = summary.main_device.displayed_name
-        r_dict['csv_download_params'] = 'file=%s&device=%s' % (summary.record.file_basename, summary.main_device.code)
-        r_dict['timestamp'] = list()
-        for col in col_list:
-            if col is not None:
-                r_dict[col] = list()
-        for row in data:
-            r_dict['timestamp'].append(str(row.dt.astimezone(tz)))
+        if len(data):
+            r_dict['device_displayed_name'] = summary.main_device.displayed_name
+            r_dict['csv_download_params'] = 'file=%s&device=%s' % (summary.record.file_basename, summary.main_device.code)
+            r_dict['timestamp'] = list()
             for col in col_list:
                 if col is not None:
-                    if col == 'HR':
-                        r_dict[col].append(row.HR)
-                    elif col == 'ABP_HR':
-                        r_dict[col].append(row.ABP_HR)
-                    elif col == 'PLETH_HR':
-                        r_dict[col].append(row.PLETH_HR)
-                    elif col == 'ABP_HR':
-                        r_dict[col].append(row.ABP_HR)
-                    elif col == 'ABP_SBP':
-                        r_dict[col].append(row.ABP_SBP)
-                    elif col == 'ABP_DBP':
-                        r_dict[col].append(row.ABP_DBP)
-                    elif col == 'ABP_MBP':
-                        r_dict[col].append(row.ABP_MBP)
-                    elif col == 'NIBP_SBP':
-                        r_dict[col].append(row.NIBP_SBP)
-                    elif col == 'NIBP_DBP':
-                        r_dict[col].append(row.NIBP_DBP)
-                    elif col == 'NIBP_MBP':
-                        r_dict[col].append(row.NIBP_MBP)
-                    elif col == 'PLETH_SPO2':
-                        r_dict[col].append(row.PLETH_SPO2)
-                    elif col == 'PLETH_SAT_O2':
-                        r_dict[col].append(row.PLETH_SAT_O2)
-                    elif col == 'BT_PA':
-                        r_dict[col].append(row.BT_PA)
-                    elif col == 'TEMP':
-                        r_dict[col].append(row.TEMP)
-                    else:
-                        assert False
-        dataset = list()
-        for i, col in enumerate(col_list):  # rgb(75, 192, 192)
-            if col is not None:
-                tmp_dataset = dict()
-                tmp_dataset["label"] = col
-                tmp_dataset["data"] = r_dict[col]
-                tmp_dataset["fill"] = False
-                tmp_dataset["pointRadius"] = 0
-                tmp_dataset["borderColor"] = color_preview[i]
-                tmp_dataset["lineTension"] = 0
-                dataset.append(tmp_dataset)
-        r_dict['dataset'] = dataset
+                    r_dict[col] = list()
+            for row in data:
+                r_dict['timestamp'].append(str(row.dt.astimezone(tz)))
+                for col in col_list:
+                    if col is not None:
+                        if col == 'HR':
+                            r_dict[col].append(row.HR)
+                        elif col == 'ABP_HR':
+                            r_dict[col].append(row.ABP_HR)
+                        elif col == 'PLETH_HR':
+                            r_dict[col].append(row.PLETH_HR)
+                        elif col == 'ABP_HR':
+                            r_dict[col].append(row.ABP_HR)
+                        elif col == 'ABP_SBP':
+                            r_dict[col].append(row.ABP_SBP)
+                        elif col == 'ABP_DBP':
+                            r_dict[col].append(row.ABP_DBP)
+                        elif col == 'ABP_MBP':
+                            r_dict[col].append(row.ABP_MBP)
+                        elif col == 'NIBP_SBP':
+                            r_dict[col].append(row.NIBP_SBP)
+                        elif col == 'NIBP_DBP':
+                            r_dict[col].append(row.NIBP_DBP)
+                        elif col == 'NIBP_MBP':
+                            r_dict[col].append(row.NIBP_MBP)
+                        elif col == 'PLETH_SPO2':
+                            r_dict[col].append(row.PLETH_SPO2)
+                        elif col == 'PLETH_SAT_O2':
+                            r_dict[col].append(row.PLETH_SAT_O2)
+                        elif col == 'BT_PA':
+                            r_dict[col].append(row.BT_PA)
+                        elif col == 'TEMP':
+                            r_dict[col].append(row.TEMP)
+                        else:
+                            assert False
+            dataset = list()
+            for i, col in enumerate(col_list):  # rgb(75, 192, 192)
+                if col is not None:
+                    tmp_dataset = dict()
+                    tmp_dataset["label"] = col
+                    tmp_dataset["data"] = r_dict[col]
+                    tmp_dataset["fill"] = False
+                    tmp_dataset["pointRadius"] = 0
+                    tmp_dataset["borderColor"] = color_preview[i]
+                    tmp_dataset["lineTension"] = 0
+                    dataset.append(tmp_dataset)
+            r_dict['dataset'] = dataset
 
-    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
-                        status=200)
+        return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4),
+                            content_type="application/json; charset=utf-8", status=200)
+    elif result_format == 'csv':
+        try:
+            csvfile = tempfile.TemporaryFile(mode='w+')
+            cyclewriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            title = list()
+            title.append('dt')
+            if summary.main_device.displayed_name in ('GE/Carescape', 'Philips/IntelliVue'):
+                title.append(summary.hr_channel)
+                title.append('BT_PA' if summary.main_device.displayed_name == 'GE/Carescape' else 'TEMP')
+                if summary.bp_channel is not None:
+                    title.append(summary.bp_channel + '_SBP')
+                    title.append(summary.bp_channel + '_DBP')
+                    title.append(summary.bp_channel + '_MBP')
+                title.append('PLETH_SPO2' if summary.main_device.displayed_name == 'GE/Carescape' else 'PLETH_SAT_O2')
+                if summary.main_device.displayed_name == 'GE/Carescape':
+                    data = NumberGEC.objects.filter(record=record).order_by('dt')
+                elif summary.main_device.displayed_name == 'Philips/IntelliVue':
+                    data = NumberPIV.objects.filter(record=record).order_by('dt')
+                else:
+                    assert False
+            else:
+                assert False
+            cyclewriter.writerow(title)
+            if len(data):
+                for row in data:
+                    tmp_row = list()
+                    tmp_row.append(row.dt.timestamp()*1000)
+                    for i in range(1, len(title)):
+                        if title[i] == 'HR':
+                            tmp_row.append(row.HR)
+                        elif title[i] == 'ABP_HR':
+                            tmp_row.append(row.ABP_HR)
+                        elif title[i] == 'PLETH_HR':
+                            tmp_row.append(row.PLETH_HR)
+                        elif title[i] == 'ABP_HR':
+                            tmp_row.append(row.ABP_HR)
+                        elif title[i] == 'ABP_SBP':
+                            tmp_row.append(row.ABP_SBP)
+                        elif title[i] == 'ABP_DBP':
+                            tmp_row.append(row.ABP_DBP)
+                        elif title[i] == 'ABP_MBP':
+                            tmp_row.append(row.ABP_MBP)
+                        elif title[i] == 'NIBP_SBP':
+                            tmp_row.append(row.NIBP_SBP)
+                        elif title[i] == 'NIBP_DBP':
+                            tmp_row.append(row.NIBP_DBP)
+                        elif title[i] == 'NIBP_MBP':
+                            tmp_row.append(row.NIBP_MBP)
+                        elif title[i] == 'PLETH_SPO2':
+                            tmp_row.append(row.PLETH_SPO2)
+                        elif title[i] == 'PLETH_SAT_O2':
+                            tmp_row.append(row.PLETH_SAT_O2)
+                        elif title[i] == 'BT_PA':
+                            tmp_row.append(row.BT_PA)
+                        elif title[i] == 'TEMP':
+                            tmp_row.append(row.TEMP)
+                        else:
+                            assert False
+                    cyclewriter.writerow(tmp_row)
+            csvfile.seek(0)
+            filename = '%s_%s_%s.csv' % (record.bed.name, record.begin_date.astimezone(tz).strftime('%y%m%d_%H%M%S'),
+                                         device.code)
+            response = HttpResponse(csvfile, content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename=%s' % filename
+            return response
+        except Exception as e:
+            return HttpResponseBadRequest
 
 
 def get_annotation_body(request, record):
@@ -535,7 +626,7 @@ def review(request):
         )
         context['begin_date'] = str(begin_date)
         context['end_date'] = str(end_date)
-        template = loader.get_template('preview.html')
+        template = loader.get_template('review.html')
         return HttpResponse(template.render(context, request))
     else:
         r_dict = dict()
