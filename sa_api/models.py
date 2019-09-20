@@ -1677,6 +1677,7 @@ class AnesthesiaRecord(models.Model):
 
 class Annotation(models.Model):
     dt = models.DateTimeField(default=timezone.now)
+    dt_end = models.DateTimeField(null=True)
     record = models.ForeignKey('FileRecorded', on_delete=models.SET_NULL, null=True)
     bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, null=True)
     ANNOTATION_METHOD_CHOICES = (

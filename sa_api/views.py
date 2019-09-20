@@ -254,7 +254,6 @@ def get_wavedata(request):
         return HttpResponseBadRequest()
 
 
-
 @csrf_exempt
 def get_numberdata(request):
     device = get_object_or_404(Device, id=request.GET.get("device_id"))
@@ -415,6 +414,7 @@ def get_annotation_body(request, record):
         tmp_annotation = dict()
         tmp_annotation['id'] = item.id
         tmp_annotation['dt'] = str(item.dt)
+        tmp_annotation['dt_end'] = str(item.dt_end) if item.dt_end is not None else None
         tmp_annotation['method'] = item.method
         tmp_annotation['description'] = item.description
         tmp_annotation['category'] = ['None' if item.category_1 is None else item.category_1, 'None' if item.category_2 is None else item.category_2]
@@ -494,6 +494,7 @@ def add_annotation(request):
         bed = record.bed
 
     dt = request.GET.get("dt")
+    dt_end = request.GET.get("dt_end")
     desc = request.GET.get("desc")
     method = request.GET.get("method")
     category_1 = 'None' if request.GET.get("category_1") is None else request.GET.get("category_1")
@@ -508,7 +509,8 @@ def add_annotation(request):
         if len(records):
             record = records[0]
 
-    Annotation.objects.create(dt=dt, bed=bed, method=method, description=desc, record=record, category_1=category_1, category_2=category_2)
+    Annotation.objects.create(dt=dt, dt_end=dt_end, bed=bed, method=method, description=desc, record=record,
+                              category_1=category_1, category_2=category_2)
 
     if record is not None:
         r_dict = get_annotation_body(request, record)

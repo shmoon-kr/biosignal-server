@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" type="text/css" href="/static/Chart.js-2.8.0/dist/Chart.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/base.css">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/changelists.css">
     <link rel="stylesheet" type="text/css" href="/static/jquery-ui-themes-1.12.1/themes/smoothness/jquery-ui.css">
@@ -13,7 +13,6 @@
     <script type="text/javascript" src="/static/jquery-ui-1.12.1/jquery-ui.js"></script>
     <script type="text/javascript" src="/static/contextmenu/jquery.contextMenu.js"></script>
     <script type="text/javascript" src="/static/contextmenu/jquery.ui.position.min.js"></script>
-    <script type="text/javascript" src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
     <script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
     <script type="text/javascript" src="/static/admin/js/core.js"></script>
@@ -23,13 +22,13 @@
     <script type="text/javascript" src="/static/admin/js/prepopulate.js"></script>
     <script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.js"></script>
     <script type="text/javascript" src="/static/Highcharts/highcharts.js"></script>
+    <script type="text/javascript" src="/static/Highcharts/customEvents.js"></script>
     <script src="https://code.highcharts.com/modules/data.js"></script>
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/annotations.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.13/moment-timezone-with-data-2012-2022.min.js"></script>
-    <script type="text/javascript" src="/static/Chart.js-2.6.0/dist/Chart.bundle.js"></script>
-<!--    <script type="text/javascript" src="/static/Chart.js-2.8.0/dist/Chart.bundle.js"></script>-->
-    <script type="text/javascript" src="/static/chartjs-plugin-annotation/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
 
     <title>Review, {{ bed }}, {{ date }}</title>
 </head>
@@ -47,6 +46,10 @@
             </th>
             <th scope="col"  class="column-bed_name">
                 <div class="text"><span>dt</span></div>
+                <div class="clear"></div>
+            </th>
+            <th scope="col"  class="column-bed_name">
+                <div class="text"><span>dt_end</span></div>
                 <div class="clear"></div>
             </th>
             <th scope="col"  class="column-bed_name">
@@ -96,17 +99,17 @@
 
 {% for key, val in meta_data.items %}
     {% if val.number and val.is_main %}
-    <div id="div_chart_{{ val.id }}"></div>
+        <div id="div_chart_{{ val.id }}" class="div-chart div-chart-number" title="test"></div>
     {% endif %}
 {% endfor %}
 
 {% for device, info in meta_data.items %}
     {% for waveinfo in info.waves %}
-        <div id="div_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}"></div>
+        <div id="div_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="div-chart div-chart-wave"></div>
     {% endfor %}
 {% endfor %}
 
-<div id="dialog" title="Add Annotation">
+<div id="annotation_dialog" title="Add Annotation">
     <text id="dia_dt"></text>
     <br>
     <label for="cat1">Category 1</label>
@@ -134,7 +137,7 @@
     let end_date = new Date('{{ end_date }}');
     let dt = new Date('{{ dt }}'), dt_pointer, dt_context_menu;
     let interval_marker = null;
-    let annotation_data = [];
+    let annotation_data = null, annotation_options = null;
     let event_category = {
         '환자확인 후 모니터링 및 마취 시작': {},
         '기관삽관': {},
@@ -215,13 +218,13 @@
     let selected_annotations = new Set();
 
     for (let [k1, v1] of Object.entries(event_category)) {
-        category_submenu['add|'+k1] = {name: k1};
+        category_submenu['add_event|'+k1] = {name: k1};
         category_submenu_interval['add_interval|'+k1] = {name: k1};
         if (!jQuery.isEmptyObject(v1)) {
-            category_submenu['add|'+k1].items = {};
+            category_submenu['add_event|'+k1].items = {};
             category_submenu_interval['add_interval|'+k1].items = {};
             for (let [k2, v2] of Object.entries(v1)) {
-                category_submenu['add|'+k1].items['add|'+k1+'|'+k2] = {name: k2}
+                category_submenu['add_event|'+k1].items['add_event|'+k1+'|'+k2] = {name: k2}
                 category_submenu_interval['add_interval|'+k1].items['add_interval|'+k1+'|'+k2] = {name: k2}
             }
         }
@@ -230,31 +233,34 @@
     $("button").button();
     $("button").click(function() {
         if (this.id==="btn-cancel-annotation") {
-            $( "#dialog" ).dialog( "close" );
+            $( "#annotation_dialog" ).dialog( "close" );
         } else if (this.id==="btn-add-annotation") {
-            let cat1 = $("#cat1").val(), cat2 = $("#cat2").val(), cat3 = $("#cat3").val(), desc = $("#desc").val();
-            UpdateAnnotationData("add_annotation?file={{ vital_file }}&dt=" + dt_context_menu.toISOString() + "&method=0&desc=" + desc + "&category_1=" + cat1 + "&category_2=" + cat2 + "&category_3=" + cat3 );
-            $( "#dialog" ).dialog( "close" );
+            let dialog_title = $("#annotation_dialog").dialog("option", "title");
+            if (dialog_title==='Add Event') {
+                let cat1 = $("#cat1").val(), cat2 = $("#cat2").val(), desc = $("#desc").val();
+                console.log(new Date(dt_context_menu).toISOString());
+                UpdateAnnotationData("add_annotation?file={{ vital_file }}&dt=" + new Date(dt_context_menu).toISOString() + "&method=0&desc=" + desc + "&category_1=" + cat1 + "&category_2=" + cat2 );
+                $( "#annotation_dialog" ).dialog( "close" );
+            } else if (dialog_title==='Add Interval') {
+                let cat1 = $("#cat1").val(), cat2 = $("#cat2").val(), desc = $("#desc").val();
+                let xmin = dt_context_menu>interval_marker?interval_marker:dt_context_menu;
+                let xmax = dt_context_menu>interval_marker?dt_context_menu:interval_marker;
+                UpdateAnnotationData("add_annotation?file={{ vital_file }}&dt=" + new Date(xmin).toISOString() + "&dt_end=" + new Date(xmax).toISOString() + "&method=0&desc=" + desc + "&category_1=" + cat1 + "&category_2=" + cat2 );
+                $( "#annotation_dialog" ).dialog( "close" );
+            }
         }
     });
-    $( "#dialog" ).dialog({ autoOpen: false });
+    $( "#annotation_dialog" ).dialog({ autoOpen: false });
     $( ".cat" ).selectmenu({
         change: function( event, ui ) {
             // event.target
             UpdateSelectMenu(event.target, ui.item.value);
         }
     });
-    $( ".cvs-chart-number" ).click(function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        let canvas = e.target;
-        let id = canvas.id.replace('cvs_chart_','');
-        let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
-        if (chart.getElementAtEvent(e).length) {
-            let dt_new = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
-            OnTimePointerChange(binary_search(wave_dt_list, dt_new, 0, wave_dt_list.length));
-        }
-        return false;
+    $( ".div-chart" ).tooltip({
+        track: true,
+        disabled: true,
+        position: { my: "right-3 bottom-3" }
     });
 
     function UpdateSelectMenu(target, value) {
@@ -292,13 +298,9 @@
         }
     }
 
-    let wave_begin_date = new Date(begin_date);
-    wave_begin_date.setSeconds(Math.ceil(wave_begin_date.getSeconds()/10)*10);
-
     let wave_dt_list = [];
-    // loop for every day
-    for (let dt = wave_begin_date; dt <= end_date; dt.setSeconds(dt.getSeconds()+10)) {
-        wave_dt_list.push(new Date(dt));
+    for (let dt = Math.ceil(begin_date.getTime()/10000)*10000; dt <= end_date.getTime(); dt += 10000) {
+        wave_dt_list.push(dt);
     }
 
     function binary_search(t_list, val, st, ed) {
@@ -328,11 +330,23 @@
 
     function OnTimePointerChange(new_dt_pointer) {
         dt_pointer = new_dt_pointer;
-        for (let [key, value] of Object.entries(number_charts)) {
-            //value.chart.options.annotation.annotations[0].value = wave_dt_list[dt_pointer];
-            //value.chart.update();
-        }
         UpdateWaveData();
+        let tmp_line = {
+            id: 'C',
+            color: 'red',
+            width: 1,
+            value: wave_dt_list[dt_pointer],
+        };
+        for (let v of Object.values(number_charts)) {
+            v.chart.xAxis[0].removePlotLine('C');
+            v.chart.xAxis[0].addPlotLine(tmp_line);
+        }
+        for (let v of Object.values(wave_charts)) {
+            if ("chart" in v) {
+                v.chart.xAxis[0].removePlotLine('C');
+                v.chart.xAxis[0].addPlotLine(tmp_line);
+            }
+        }
     }
 
     function ToggleNumberChart(id) {
@@ -357,8 +371,10 @@
                     },
                     colors: ['#008000', '#0000FF', '#FF0000', '#FFA500', '#FFD700', '#00FFFF'],
                     tooltip: {
-                        shared: true
-                    }
+                        shared: true,
+                        split: true,
+                        crosshairs: false
+                    },
                 });
             }
             document.getElementById('div_chart_'+id).style.display="block";
@@ -391,8 +407,13 @@
                         },
                         plotOptions: {
                             series: {
-                                lineWidth: 1
-                            }
+                                lineWidth: 1,
+                                states: {
+                                    hover: {
+                                        enabled: false
+                                    }
+                                }
+                            },
                         },
                         series: new_series,
                         time: {
@@ -400,7 +421,8 @@
                         },
                         colors: ['#000000'],
                         tooltip: {
-                            shared: true
+                            shared: false,
+                            crosshairs: true
                         },
                         legend: {
                             enabled: false
@@ -408,13 +430,15 @@
                     };
                     if (!('chart' in wave_charts[id])) {
                         wave_charts[id].chart = Highcharts.chart('div_chart_'+id, options);
+                        if (annotation_data)
+                            wave_charts[id].chart.update(annotation_options);
                     } else {
                         wave_charts[id].chart.series[0].setData(new_series[0].data)
                     }
                 }
             };
             document.getElementById('div_chart_'+id).style.display="block";
-            xhttp.open("GET", "get_wavedata?file={{ vital_file }}&dt=" + wave_dt_list[dt_pointer].toISOString() +
+            xhttp.open("GET", "get_wavedata?file={{ vital_file }}&dt=" + new Date(wave_dt_list[dt_pointer]).toISOString() +
                 "&device_code=" + value.device_code + "&channel=" + value.channel, true);
             xhttp.send();
         } else {
@@ -423,39 +447,12 @@
     }
 
     function UpdateWaveData() {
-        //UpdateWaveAnnotationData();
-        //UpdateWaveAnnotation();
         for (let [key, value] of Object.entries(wave_charts)) {
             ToggleWaveChart(key);
         }
     }
 
-    let number_annotation = {
-        drawTime: 'afterDatasetsDraw',
-        events: ['mouseover', 'mouseout'],
-        annotations: [{
-            type: 'line',
-            mode: 'vertical',
-            scaleID: 'x-axis-0',
-            value: wave_dt_list[dt_pointer],
-            borderColor: 'red',
-            borderWidth: 1,
-            label: {
-                enabled: true,
-                position: "top",
-                content: false
-            }
-        }]
-    };
-
-    let wave_annotation = {
-        drawTime: 'afterDatasetsDraw',
-        events: ['mouseover', 'mouseout'],
-        annotations: []
-    };
-
     let number_charts = {};
-
     for (let [key, value] of Object.entries(meta_data)) {
         if (value.number && value.is_main) {
             number_charts[value.id] = {
@@ -490,18 +487,16 @@
                     // this callback is executed every time the menu is to be shown
                     // its results are destroyed every time the menu is hidden
                     // e is the original contextmenu event, containing e.pageX and e.pageY (amongst other data)
-                    let id = e.currentTarget.id.replace('cvs_chart_','');
+                    let id = e.currentTarget.id.replace('div_chart_','');
                     let chart = id.includes('_')?wave_charts[id].chart:number_charts[id].chart;
+                    dt_context_menu = chart.hoverPoint.x;
                     let items = {
-                        "add_event": {name: "Add Event", icon: "add", disabled: !chart.getElementAtEvent(e).length, items: category_submenu},
+                        "add_event": {name: "Add Event", icon: "add", disabled: false, items: category_submenu},
                         "add_interval": {name: "Add Interval", icon: "add", disabled: interval_marker===null, items: category_submenu_interval},
                         "edit": {name: "Edit", icon: "edit", disabled: !selected_annotations.size, items: {}},
                         "delete": {name: "Delete", icon: "delete", disabled: !selected_annotations.size, items: {}},
                         "sep1": "---------"
                     };
-                    if (chart.getElementAtEvent(e).length) {
-                        dt_context_menu = new Date(chart.data.labels[chart.getElementAtEvent(e)[0]._index]);
-                    }
                     if (selected_annotations.size) {
                         for (let val of selected_annotations.values()) {
                             items["edit"]["items"]['edit|'+val] = {name: val+1};
@@ -536,102 +531,72 @@
                             return 'context-menu-icon context-menu-icon-quit';
                         }
                     };
-                    if (chart.getElementAtEvent(e).length || selected_annotations.size) {
-                        return {
-                            callback: function (key, options, e) {
-                                let selected_menu = key.split('|');
-                                console.log(selected_menu);
-                                if (selected_menu[0]==='add_event') {
-                                    document.getElementById('dia_dt').innerHTML = 'at ' + dt_context_menu.toString();
-                                    if (selected_menu.length > 1) {
-                                        UpdateSelectMenu(document.getElementById('cat1'), selected_menu[1]);
-                                    }
-                                    if (selected_menu.length > 2) {
-                                        UpdateSelectMenu(document.getElementById('cat2'), selected_menu[2]);
-                                    }
-                                    $("#dialog").dialog("open");
-                                } else if (selected_menu[0]==='add_interval') {
-                                    console.log('add interval');
-                                    let xmin = dt_context_menu>interval_marker?interval_marker:dt_context_menu;
-                                    let xmax = dt_context_menu>interval_marker?dt_context_menu:interval_marker;
-                                    let box = {
-                                        type: 'box',
-                                        // optional drawTime to control layering, overrides global drawTime setting
-                                        drawTime: 'beforeDatasetsDraw',
-                                        // optional annotation ID (must be unique)
-                                        id: 'a-box-1',
-                                        // ID of the X scale to bind onto
-                                        xScaleID: 'x-axis-0',
-                                        // ID of the Y scale to bind onto
-                                        yScaleID: 'y-axis-0',
-                                        // Left edge of the box. in units along the x axis
-                                        xMin: xmin,
-                                        // Right edge of the box
-                                        xMax: xmax,
-                                        // Top edge of the box in units along the y axis
-                                        //yMax: 20,
-                                        // Bottom edge of the box
-                                        //yMin:  15,
-                                        // Stroke color
-                                        borderColor: 'red',
-                                        // Stroke width
-                                        borderWidth: 2,
-                                        // Fill color
-                                        backgroundColor: 'green',
-                                    };
-                                    number_annotation.annotations.pop();
-                                    number_annotation.annotations.push(box);
-                                    for (let [key, value] of Object.entries(number_charts)) {
-                                        value.chart.options.annotation = number_annotation;
-                                        value.chart.update();
-                                    }
-                                } else if (selected_menu[0]==='like') {
-                                    UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=1');
-                                } else if (selected_menu[0]==='dislike') {
-                                    UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=2');
-                                } else if (selected_menu[0]==='cancel') {
-                                    UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=0');
-                                } else if (selected_menu[0]==='set_marker') {
-                                    SetIntervalMarker();
+                    return {
+                        callback: function (key, options, e) {
+                            let selected_menu = key.split('|');
+                            if (selected_menu[0]==='add_event') {
+                                $("#annotation_dialog").dialog({title: 'Add Event'});
+                                document.getElementById('dia_dt').innerHTML = 'at ' + new Date(dt_context_menu).toString();
+                                if (selected_menu.length > 1) {
+                                    UpdateSelectMenu(document.getElementById('cat1'), selected_menu[1]);
                                 }
-                            },
-                            items: items
-                        };
-                    } else
-                        return false;
+                                if (selected_menu.length > 2) {
+                                    UpdateSelectMenu(document.getElementById('cat2'), selected_menu[2]);
+                                }
+                                $("#annotation_dialog").dialog("open");
+                            } else if (selected_menu[0]==='add_interval') {
+                                $("#annotation_dialog").dialog({title: 'Add Interval'});
+                                let xmin = dt_context_menu>interval_marker?interval_marker:dt_context_menu;
+                                let xmax = dt_context_menu>interval_marker?dt_context_menu:interval_marker;
+                                document.getElementById('dia_dt').innerHTML = 'From ' + new Date(xmin).toString() +
+                                    '<br>To ' + new Date(xmax).toString();
+                                if (selected_menu.length > 1) {
+                                    UpdateSelectMenu(document.getElementById('cat1'), selected_menu[1]);
+                                }
+                                if (selected_menu.length > 2) {
+                                    UpdateSelectMenu(document.getElementById('cat2'), selected_menu[2]);
+                                }
+                                $("#annotation_dialog").dialog("open");
+                            } else if (selected_menu[0]==='like') {
+                                UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=1');
+                            } else if (selected_menu[0]==='dislike') {
+                                UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=2');
+                            } else if (selected_menu[0]==='cancel') {
+                                UpdateAnnotationData('like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[selected_menu[1]].id+'&like=0');
+                            } else if (selected_menu[0]==='set_marker') {
+                                interval_marker = dt_context_menu;
+                                SetIntervalMarker();
+                            }
+                        },
+                        items: items
+                    };
                 }
             });
         });
     }
 
-    AttachContextMenu('.cvs-chart');
+    AttachContextMenu('.div-chart');
 
     function SetIntervalMarker() {
-        if (interval_marker === null) {
-            let single_event = {
-                type: 'line',
-                mode: 'vertical',
-                scaleID: 'x-axis-0',
-                value: dt_context_menu,
-                borderColor: 'orange',
-                borderWidth: 1,
-                label: {
-                    enabled: true,
-                    position: "top",
-                    content: 'M'
-                }
-            };
-            number_annotation.annotations.push(single_event);
-        } else {
-            number_annotation.annotations[-1].value = dt_context_menu
+        let tmp_line = {
+            id: 'M',
+            color: 'orange',
+            width: 1,
+            value: interval_marker,
+            label: {
+                text: 'M'
+            }
+        };
+        for (let v of Object.values(number_charts)) {
+            v.chart.xAxis[0].removePlotLine('M');
+            v.chart.xAxis[0].addPlotLine(tmp_line);
         }
-        interval_marker = dt_context_menu;
-        for (let [key, value] of Object.entries(number_charts)) {
-            value.chart.options.annotation = number_annotation;
-            value.chart.update();
+        for (let v of Object.values(wave_charts)) {
+            if ("chart" in v) {
+                v.chart.xAxis[0].removePlotLine('M');
+                v.chart.xAxis[0].addPlotLine(tmp_line);
+            }
         }
-        UpdateWaveAnnotationData();
-        UpdateWaveAnnotation();
     }
 
     function UpdateAnnotationData(url){
@@ -639,7 +604,6 @@
         xhttp.onreadystatechange = function () {
             if (this.readyState === 4 && this.status === 200) {
                 annotation_data = JSON.parse(xhttp.responseText);
-                number_annotation.annotations.length = 1;
                 let annotation_table = document.getElementById('annotation_list');
                 let row_count = annotation_table.rows.length;
                 while (--row_count) {
@@ -647,13 +611,15 @@
                 }
                 for (let i=0; i<annotation_data.length; i++) {
                     annotation_data[i].dt = new Date(annotation_data[i].dt);
+                    annotation_data[i].dt_end = annotation_data[i].dt_end?new Date(annotation_data[i].dt_end):null;
                     let row = annotation_table.insertRow(i+1);
                     row.insertCell(0).innerHTML = i+1;
                     row.insertCell(1).innerHTML = annotation_data[i].dt.toLocaleString();
-                    row.insertCell(2).innerHTML = annotation_data[i].method;
-                    row.insertCell(3).innerHTML = annotation_data[i].category[0];
-                    row.insertCell(4).innerHTML = annotation_data[i].category[1];
-                    row.insertCell(5).innerHTML = annotation_data[i].description;
+                    row.insertCell(2).innerHTML = annotation_data[i].dt_end?annotation_data[i].dt_end.toLocaleString():'N/A';
+                    row.insertCell(3).innerHTML = annotation_data[i].method;
+                    row.insertCell(4).innerHTML = annotation_data[i].category[0];
+                    row.insertCell(5).innerHTML = annotation_data[i].category[1];
+                    row.insertCell(6).innerHTML = annotation_data[i].description;
                     let tmp_str='';
                     let likes = [], dislikes = [], comments = [];
                     for (let j=0; j<annotation_data[i].like.length; j++) {
@@ -684,43 +650,66 @@
                     } else {
                         tmp_str = tmp_str.concat('<a href="accounts/login?next=' + window.location.pathname + window.location.search + window.location.hash + '">login</a>');
                     }
-                    row.insertCell(6).innerHTML = tmp_str;
-                    row.insertCell(7).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
-                    if ( annotation_data[i].method !== 2 ) {
-                        let single_event = {
-                            type: 'line',
-                            mode: 'vertical',
-                            scaleID: 'x-axis-0',
-                            value: new Date(annotation_data[i].dt),
-                            borderColor: 'green',
-                            borderWidth: 1,
+                    row.insertCell(7).innerHTML = tmp_str;
+                    row.insertCell(8).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
+                }
+                annotation_options = { xAxis: { plotBands: [], plotLines: [] } };
+                let tmp_line = {
+                    id: 'C',
+                    color: 'red',
+                    width: 1,
+                    value: wave_dt_list[dt_pointer],
+                };
+                annotation_options.xAxis.plotLines.push( tmp_line );
+                for (let i=0; i<annotation_data.length; i++) {
+                    if (annotation_data[i].dt_end===null) {
+                        let tmp_line = {
+                            color: 'green',
+                            width: 1,
+                            value: annotation_data[i].dt.getTime(),
+                            events: {
+                                mouseover: function (e) {
+                                    let div = this.axis.chart.renderTo;
+                                    $(div).tooltip("option", "content", annotation_data[i].category.join('/'));
+                                    $(div).tooltip("enable");
+                                },
+                                mouseout: function (e) {
+                                    let div = this.axis.chart.renderTo;
+                                    $(div).tooltip("option", "content", "");
+                                    $(div).tooltip("disable");
+                                }
+                            },
                             label: {
-                                enabled: true,
-                                position: "top",
-                                content: i+1
+                                text: i+1
                             },
-                            onMouseover: function(e) {
-                                //e.preventDefault();
-                                e.stopPropagation();
-                                this.options.borderColor = 'lime';
-                                this.chartInstance.chart.update();
+                        };
+                        annotation_options.xAxis.plotLines.push( tmp_line );
+                    } else {
+                        let tmp_band = {
+                            id: i+1,
+                            from: annotation_data[i].dt,
+                            to: annotation_data[i].dt_end,
+                            events: {
+                                mouseover: function (e) {
+                                    let div = this.axis.chart.renderTo;
+                                    $( div ).tooltip("option", "content", annotation_data[i].category.join('/'));
+                                    $( div ).tooltip( "enable" );
+                                },
+                                mouseout: function (e) {
+                                    let div = this.axis.chart.renderTo;
+                                    $( div ).tooltip("option", "content", "");
+                                    $( div ).tooltip( "disable" );
+                                }
                             },
-                            onMouseout: function(e) {
-                                //e.preventDefault();
-                                e.stopPropagation();
-                                this.options.borderColor = 'green';
-                                this.chartInstance.chart.update();
+                            color: 'rgba(255,191,0,0.1)',
+                            label: {
+                                text: i+1
                             }
                         };
-                        number_annotation.annotations.push(single_event);
+                        annotation_options.xAxis.plotBands.push( tmp_band );
                     }
                 }
-                /*
-                for (let [key, value] of Object.entries(number_charts)) {
-                    value.chart.options.annotation = number_annotation;
-                    value.chart.update();
-                }*/
-                UpdateWaveAnnotationData();
+                UpdateNumberAnnotation();
                 UpdateWaveAnnotation();
             }
         };
@@ -728,67 +717,16 @@
         xhttp.send();
     }
 
-    function UpdateWaveAnnotationData() {
-        wave_annotation.annotations = [];
-        for (let i = 0; i < annotation_data.length; i++) {
-            if (Math.abs(annotation_data[i].dt - wave_dt_list[dt_pointer]) < 10000) {
-                let single_event = {
-                    type: 'line',
-                    mode: 'vertical',
-                    scaleID: 'x-axis-0',
-                    value: new Date(annotation_data[i].dt),
-                    borderColor: 'green',
-                    borderWidth: 1,
-                    label: {
-                        enabled: true,
-                        position: "top",
-                        content: i+1
-                    },
-                    onMouseover: function(e) {
-                        let element = this;
-                        selected_annotations.add(i);
-                        element.options.borderWidth = 4;
-                        element.options.label.enabled = true;
-                        element.options.label.content = annotation_data[i].category[0] + '|' + annotation_data[i].category[1] + '|' + annotation_data[i].description;
-                        element.chartInstance.update();
-                        element.chartInstance.chart.canvas.style.cursor = 'pointer';
-                    },
-                    onMouseout: function(e) {
-                        let element = this;
-                        selected_annotations.delete(i);
-                        element.options.borderWidth = 1;
-                        element.options.label.enabled = true;
-                        element.options.label.content = i+1;
-                        element.chartInstance.update();
-                        element.chartInstance.chart.canvas.style.cursor = 'initial';
-                    }
-                };
-                wave_annotation.annotations.push(single_event);
-            }
-        }
-        if (interval_marker!==null?Math.abs(interval_marker-wave_dt_list[dt_pointer])<10000:false) {
-            let single_event = {
-                type: 'line',
-                mode: 'vertical',
-                scaleID: 'x-axis-0',
-                value: interval_marker,
-                borderColor: 'orange',
-                borderWidth: 1,
-                label: {
-                    enabled: true,
-                    position: "top",
-                    content: 'M'
-                }
-            };
-            wave_annotation.annotations.push(single_event);
+    function UpdateNumberAnnotation() {
+        for (let v of Object.values(number_charts)) {
+            v.chart.update(annotation_options);
         }
     }
 
     function UpdateWaveAnnotation() {
-        for (let [key, value] of Object.entries(wave_charts)) {
-            if (document.getElementById('cbx_chart_'+key).checked) {
-                //value.chart.options.annotation = wave_annotation;
-                //value.chart.update();
+        for (let v of Object.values(wave_charts)) {
+            if ("chart" in v) {
+                v.chart.update(annotation_options);
             }
         }
     }
@@ -811,7 +749,6 @@
 
     UpdateSelectMenu(document.getElementById('cat1'), 'None');
     UpdateAnnotationData("get_annotation?file={{ vital_file }}");
-    //UpdateWaveData();
 
     function handleKeyBoard(e){
         if (e.code==='Period') {
@@ -824,7 +761,15 @@
             }
         }
     }
+
     document.addEventListener("keypress", handleKeyBoard);
+
+    $(document).ready(function(){
+        $(".div-chart-number").click(function(e){
+            let new_dt = number_charts[e.currentTarget.id.replace('div_chart_','')].chart.hoverPoint.x;
+            OnTimePointerChange(binary_search(wave_dt_list, new_dt, 0, wave_dt_list.length));
+        });
+    });
 
 </script>
 
