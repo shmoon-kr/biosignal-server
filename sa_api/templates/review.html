@@ -125,9 +125,7 @@
     </div>
 </fieldset>
 
-<div class="slidecontainer">
-  <input type="range" min="0" max="100" value="50" class="slider" id="waveTimeSlider">
-</div>
+<div id="slider_new"></div>
 
 {% for key, val in meta_data.items %}
     {% if val.number and val.is_main %}
@@ -306,15 +304,14 @@
             // event.target
             //UpdateSelectMenu(event.target, ui.item.value);
             $( ".div-chart-wave" ).attr('style', 'height: '+$( "#browser-wave-height" ).val());
-            console.log($( ".div-chart-wave" )[0], $( ".div-chart-wave" )[1]);
-            for (let v of Object.values(wave_charts)) {
+            for (let [k, v] of Object.entries(wave_charts)) {
                 if ("chart" in v) {
-                    //console.log(v);
                     //v.chart.containerHeight = v.chart.options.chart.height || window.window.HighchartsAdapter.adapterRun(v.chart.renderTo, 'height');
                     //v.chart.containerWidth = v.chart.options.chart.width || window.window.HighchartsAdapter.adapterRun(v.chart.renderTo, 'width');
                     v.chart.setSize(v.chart.options.chart.width, v.chart.options.chart.height, false);
                     v.chart.hasUserSize = null;
                 }
+                ToggleWaveChart(k);
             }
         }
     });
@@ -344,7 +341,6 @@
             document.body.removeChild(link);
         }
     });
-
 
     function UpdateSelectMenu(target, value) {
         if (target===document.getElementById('cat1')) {
@@ -404,12 +400,13 @@
         dt_pointer = binary_search(wave_dt_list, dt, 0, wave_dt_list.length);
     }
 
-    let slider = document.getElementById("waveTimeSlider");
-    slider.max = wave_dt_list.length;
-    slider.value = dt_pointer;
-    slider.oninput = function() {
-        OnTimePointerChange(this.value);
-    };
+    $( "#slider_new" ).slider({
+        max: wave_dt_list.length,
+        value: dt_pointer,
+        change: function( event, ui ) {
+            OnTimePointerChange(ui.value);
+        }
+    });
 
     function OnTimePointerChange(new_dt_pointer) {
         dt_pointer = new_dt_pointer;
@@ -850,7 +847,9 @@
     $(document).ready(function(){
         $(".div-chart-number").click(function(e){
             let new_dt = number_charts[e.currentTarget.id.replace('div_chart_','')].chart.hoverPoint.x;
-            OnTimePointerChange(binary_search(wave_dt_list, new_dt, 0, wave_dt_list.length));
+            let new_dt_pointer = binary_search(wave_dt_list, new_dt, 0, wave_dt_list.length);
+            $( "#slider_new" ).slider("value", new_dt_pointer);
+            OnTimePointerChange(new_dt_pointer);
         });
     });
 
