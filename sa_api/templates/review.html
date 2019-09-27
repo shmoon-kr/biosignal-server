@@ -711,12 +711,9 @@
                     for (let j=0; j<annotation_data[i].comment.length; j++) {
                         comments.push(annotation_data[i].comment[j].user_name + annotation_data[i].comment[j].dt + annotation_data[i].comment[j].comment);
                     }
-                    tmp_str = tmp_str.concat('<div class="tooltip">like:'+likes.length);
-                    tmp_str = tmp_str.concat('<span class="tooltiptext">'+likes.join()+'</span></div>');
-                    tmp_str = tmp_str.concat('<div class="tooltip">dislike:'+dislikes.length);
-                    tmp_str = tmp_str.concat('<span class="tooltiptext">'+dislikes.join()+'</span></div>');
-                    tmp_str = tmp_str.concat('<div class="tooltip">comment:'+comments.length);
-                    tmp_str = tmp_str.concat('<span class="tooltiptext">'+comments.join('<br>')+'</span></div>');
+                    tmp_str = tmp_str.concat('<div class="annotation-tooltip" title="'+likes.join()+'">like:'+likes.length+'</div>');
+                    tmp_str = tmp_str.concat('<div class="annotation-tooltip" title="'+dislikes.join()+'">dislike:'+dislikes.length+'</div>');
+                    tmp_str = tmp_str.concat('<div class="annotation-tooltip" title="'+comments.join()+'">comment:'+comments.length+'</div>');
                     if (user.is_authenticated) {
                         let url = 'like_annotation?file={{ vital_file }}&annotation_id='+annotation_data[i].id;
                         if (annotation_data[i].user_like) {
@@ -732,6 +729,7 @@
                     }
                     row.insertCell(7).innerHTML = tmp_str;
                     row.insertCell(8).innerHTML = '<button type="button" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
+                    $( ".annotation-tooltip" ).tooltip({});
                 }
                 annotation_options = { xAxis: { plotBands: [], plotLines: [] } };
                 let tmp_line = {
@@ -846,10 +844,13 @@
 
     $(document).ready(function(){
         $(".div-chart-number").click(function(e){
-            let new_dt = number_charts[e.currentTarget.id.replace('div_chart_','')].chart.hoverPoint.x;
-            let new_dt_pointer = binary_search(wave_dt_list, new_dt, 0, wave_dt_list.length);
-            $( "#slider_new" ).slider("value", new_dt_pointer);
-            OnTimePointerChange(new_dt_pointer);
+            let target_chart = number_charts[e.currentTarget.id.replace('div_chart_','')].chart;
+            if (target_chart.hoverPoint) {
+                let new_dt = target_chart.hoverPoint.x;
+                let new_dt_pointer = binary_search(wave_dt_list, new_dt, 0, wave_dt_list.length);
+                $( "#slider_new" ).slider("value", new_dt_pointer);
+                OnTimePointerChange(new_dt_pointer);
+            }
         });
     });
 
