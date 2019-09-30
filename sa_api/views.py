@@ -1461,6 +1461,7 @@ def client_info_body(request):
             r_dict['client_name'] = target_client.name
             r_dict['bed_name'] = target_client.bed.name
             r_dict['bed_id'] = target_client.bed_id
+            r_dict['bed_type'] = Bed.BED_TYPE_CHOICES[target_client.bed.bed_type][1]
             r_dict['room_name'] = target_client.bed.room.name
             r_dict['room_id'] = target_client.bed.room_id
             r_dict['success'] = True
