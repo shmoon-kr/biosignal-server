@@ -10,7 +10,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 
 tz = pytz.timezone(settings.TIME_ZONE)
 beds_migration = (
-    'B-01', 'B-02', 'B-03', 'B-04', 'C-01', 'C-02', 'C-03', 'C-04', 'C-06',
+    'B-01', 'B-02', 'B-03', 'B-04', 'C-01', 'C-02', 'C-03', 'C-04', 'C-05', 'C-06',
     'D-01', 'D-02', 'D-03', 'D-04', 'D-05', 'D-06', 'Y-01', 'OB-01',
     'E-03', 'E-04', 'E-05', 'E-06', 'E-07', 'E-08', 'E-10',
     'F-01', 'F-02', 'F-03', 'F-05', 'F-06', 'F-07', 'F-08', 'F-09', 'F-10',
