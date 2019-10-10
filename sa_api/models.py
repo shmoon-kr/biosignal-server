@@ -876,7 +876,7 @@ class NumberInfoFile(models.Model):
                     duplicated_columns.append(col)
         return unknown_columns, duplicated_columns
 
-    def load_number(self, reload=True):
+    def load_number(self, reload=True, batch_size=1000):
 
         connection.connect()
 
@@ -961,9 +961,13 @@ class NumberInfoFile(models.Model):
 
             query = "INSERT IGNORE INTO %s (%s) VALUES " % (self.device.db_table_name, ', '.join(column_info_db))
 
+            current_row_count = 0
+
             for i in range(len(timestamp)):
-                if i:
+                if current_row_count:
                     query += ','
+                else:
+                    query = "INSERT IGNORE INTO %s (%s) VALUES " % (self.device.db_table_name, ', '.join(column_info_db))
                 query += "('%s'" % str(datetime.datetime.utcfromtimestamp(timestamp[i]))
                 for col in column_info_db:
                     if col != 'dt':
@@ -976,6 +980,39 @@ class NumberInfoFile(models.Model):
                         else:
                             query += ', %f' % number[i, col_dict[col]]
                 query += ")"
+                current_row_count += 1
+                if current_row_count == batch_size or i == len(timestamp)-1:
+                    current_row_count = 0
+                    try:
+                        cursor.execute('SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0')
+                        cursor.execute('SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0')
+                        cursor.execute("SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO'")
+                        cursor.execute('SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0')
+                        cursor.execute('LOCK TABLES `%s` WRITE' % self.device.db_table_name)
+                        cursor.execute(query)
+                        connection.commit()
+                        cursor.execute('UNLOCK TABLES')
+                        cursor.execute('SET SQL_MODE=@OLD_SQL_MODE')
+                        cursor.execute('SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS')
+                        cursor.execute('SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS')
+                        cursor.execute('SET SQL_NOTES=@OLD_SQL_NOTES')
+                    except utils.OperationalError as e:
+                        log_dict = dict()
+                        log_dict['ACTION'] = 'LOAD_NUMBER'
+                        log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                        log_dict['EXCEPTION'] = str(e)
+                        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+                        return False
+                    except MySQLdb.Error as e:
+                        log_dict = dict()
+                        log_dict['ACTION'] = 'LOAD_NUMBER'
+                        log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
+                        log_dict['EXCEPTION'] = str(e)
+                        fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                              settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                        fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
             log_dict = dict()
             log_dict['SERVER_NAME'] = 'global' \
@@ -988,51 +1025,11 @@ class NumberInfoFile(models.Model):
             log_dict['NEW_CHANNEL'] = unknown_columns
             log_dict['DUPLICATED_CHANNEL'] = duplicated_columns
             log_dict['NUM_RECORDS_QUERY'] = len(npz['timestamp'])
-            insert_start = datetime.datetime.now()
-
-            try:
-                cursor.execute('SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0')
-                cursor.execute('SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0')
-                cursor.execute("SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO'")
-                cursor.execute('SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0')
-                cursor.execute('LOCK TABLES `%s` WRITE' % self.device.db_table_name)
-                cursor.execute(query)
-                connection.commit()
-                cursor.execute('UNLOCK TABLES')
-                cursor.execute('SET SQL_MODE=@OLD_SQL_MODE')
-                cursor.execute('SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS')
-                cursor.execute('SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS')
-                cursor.execute('SET SQL_NOTES=@OLD_SQL_NOTES')
-                self.db_load = True
-                self.save()
-                db_upload_execution_time = datetime.datetime.now() - insert_start
-
-                log_dict['NUM_RECORDS_AFFECTED'] = cursor.rowcount
-                log_dict['DB_EXECUTION_TIME'] = str(db_upload_execution_time)
-
-                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-
-            except utils.OperationalError as e:
-                log_dict = dict()
-                log_dict['ACTION'] = 'LOAD_NUMBER'
-                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
-                log_dict['EXCEPTION'] = str(e)
-                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-                return False
-
-            except MySQLdb.Error as e:
-                log_dict['ACTION'] = 'LOAD_NUMBER'
-                log_dict['MESSAGE'] = 'An exception was raised during mysql query execution.'
-                log_dict['EXCEPTION'] = str(e)
-                fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
-                                      settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
-                fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
-
-            del query, npz, timestamp, number, col_list
+            self.db_load = True
+            self.save()
+            fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                  settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+            fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
 
         return True
 
@@ -1689,6 +1686,12 @@ class Annotation(models.Model):
     method = models.IntegerField(choices=ANNOTATION_METHOD_CHOICES, default=0)
     category_1 = models.CharField(max_length=255, null=True)
     category_2 = models.CharField(max_length=255, null=True)
+    description = models.CharField(max_length=255, blank=True, null=True)
+
+
+class OnLineAnnotation(models.Model):
+    dt = models.DateTimeField(default=timezone.now)
+    bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, null=True)
     description = models.CharField(max_length=255, blank=True, null=True)
 
 

@@ -7,7 +7,7 @@ from django.utils.safestring import mark_safe
 from django.utils.html import format_html
 from django.contrib import admin
 from django.conf import settings
-from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord, DeviceConfigItem, DeviceConfigPreset, DeviceConfigPresetBed, Annotation
+from sa_api.models import Room, Bed, Client, FileRecorded, Channel, Device, ClientBusSlot, Review, AnesthesiaRecordEvent, AnesthesiaRecord, DeviceConfigItem, DeviceConfigPreset, DeviceConfigPresetBed, Annotation, OnLineAnnotation
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
@@ -192,13 +192,17 @@ class ClientAdmin(admin.ModelAdmin):
 class DeviceConfigPresetBedInline(admin.TabularInline):
     model = DeviceConfigPresetBed
     extra = 0
-    #readonly_fields = ('client', 'bus', 'name', 'active', 'device')
+
+
+class AnnotationBedInline(admin.TabularInline):
+    model = OnLineAnnotation
+    extra = 0
 
 
 class BedAdmin(admin.ModelAdmin):
     list_display = ('id', 'room', 'name', 'bed_type')
 
-    inlines = [DeviceConfigPresetBedInline]
+    inlines = [AnnotationBedInline, DeviceConfigPresetBedInline]
 
     def bed_type(self, obj):
         bed_type_name = obj.BED_TYPE_CHOICES[obj.bed_type]

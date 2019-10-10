@@ -7,7 +7,6 @@ from sa_api.models import FileRecorded
 from sa_api.views import search_vital_files
 from pathos.multiprocessing import ProcessingPool as Pool
 
-
 tz = pytz.timezone(settings.TIME_ZONE)
 beds_migration = (
     'B-01', 'B-02', 'B-03', 'B-04', 'C-01', 'C-02', 'C-03', 'C-04', 'C-05', 'C-06',

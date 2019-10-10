@@ -32,6 +32,11 @@
     <!-- DataTables -->
     <link rel="stylesheet" href="static/bower_components/datatables.net-bs/css/dataTables.bootstrap.min.css">
 
+    <script src="static/bower_components/jquery/dist/jquery.min.js"></script>
+    <!-- jQuery UI 1.11.4 -->
+    <script src="static/bower_components/jquery-ui/jquery-ui.min.js"></script>
+    <!-- Resolve conflict in jQuery UI tooltip with Bootstrap tooltip -->
+
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -42,13 +47,17 @@
     <!-- Google Font -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
     <style>
+        label {
+            display: inline-block;
+            width: 5em;
+        }
+
         .container {
             /* remember to set a width */
             margin-right: auto;
             margin-left: auto;
             margin-top:7%;
             margin-bottom:auto;
-
         }
 
         section div svg text:hover.west{
@@ -622,7 +631,7 @@
                         <rect x="241.897" y="95.943" fill="#9FA0A0" width="120.028" height="124.36"/>
                         <rect id="J-06R" x="100.841" y="95.943" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
                         <rect id="J-05R" x="60.716" y="95.943" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
-                        <rect id="J-04R" x="20.59" y="95.943" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"/>
+                        <rect id="J-04R" title="Test" x="20.59" y="95.943" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"/>
                         <rect id="J-03R" x="20.59" y="157.715" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"/>
                         <rect id="J-02R" x="60.716" y="178.108" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"/>
                         <rect id="J-01R" x="100.841" y="178.108" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"/>
@@ -775,16 +784,9 @@
         reserved.
     </footer>
 
-
-    <script src="static/bower_components/jquery/dist/jquery.min.js"></script>
-    <!-- jQuery UI 1.11.4 -->
-    <script src="static/bower_components/jquery-ui/jquery-ui.min.js"></script>
-    <!-- Resolve conflict in jQuery UI tooltip with Bootstrap tooltip -->
-    <script>
-        $.widget.bridge('uibutton', $.ui.button);
-
-    </script>
     <script type="text/javascript">
+
+        $.widget.bridge('uibutton', $.ui.button);
 
         let color_info = [
             ['#BB1839', '#FFFFFF'],
@@ -813,6 +815,28 @@
                 document.getElementById(beds[i][j]+'T').setAttribute('fill',color_info[i][1]);
             }
         }
+
+        console.log($( "#J-04R" ));
+        //$( "#J-04R" ).tooltip();
+        $( "#J-04R" ).tooltip({
+            items: ":not([disabled])",
+            content: function() {
+                var title = $( this ).find( "title" ),
+                    content;
+                if ( title.length ) {
+                    title.attr( "data-rect", $( this ).attr( "id" ) )
+                        .appendTo( "body" );
+                } else {
+                    title = $( "[data-rect='" +
+                        $( this ).attr( "id" ) + "']" );
+                }
+                return title.html();
+            },
+            track: true,
+            position: {
+                my: "left top+20 center",
+                at: "right center" }
+        });
 
     </script>
 
