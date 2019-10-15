@@ -215,11 +215,11 @@ def get_wavedata(request):
     response_status = 200
     if device_code is not None and channel is not None:
         wif = get_object_or_404(WaveInfoFile, record=record, device__code=device_code, channel_name=channel)
-        npz = cache.get(wif.file_path)
+        npz = cache.get(wif.file.name)
         if npz is None:
-            npz = np.load(wif.file_path)
+            npz = np.load(os.path.join(settings.MEDIA_ROOT, wif.file.name))
             npz = {'timestamp': npz['timestamp'], 'packet_pointer': npz['packet_pointer'], 'val': npz['val']}
-            cache.set(wif.file_path, npz)
+            cache.set(wif.file.name, npz)
         if dt is not None:
             r_dict = dict()
             r_dict['sampling_rate'] = wif.sampling_rate
@@ -549,7 +549,7 @@ def download_csv_device(request):
     nif = get_object_or_404(NumberInfoFile, record__file_basename=file, device__code=device)
 
     try:
-        npz = np.load(nif.file_path)
+        npz = np.load(os.path.join(settings.MEDIA_ROOT, nif.file.name))
         csvfile = tempfile.TemporaryFile(mode='w+')
         cyclewriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         title = list()
@@ -603,7 +603,7 @@ def review(request):
             tmp_wave['channel'] = wif.channel_name
             tmp_wave['sampling_rate'] = wif.sampling_rate
             tmp_wave['num_packets'] = wif.num_packets
-            tmp_wave['file_path'] = wif.file_path
+            tmp_wave['file_path'] = wif.file.name
             meta_data[wif.device.displayed_name]['waves'].append(tmp_wave)
         for nif in NumberInfoFile.objects.filter(record=record):
             if nif.device.displayed_name not in meta_data.keys():

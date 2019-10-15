@@ -3,6 +3,7 @@ from django.db.models import Avg, Max, Min, Count
 from django.utils import timezone
 from django.utils.html import format_html
 from django.conf import settings
+from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from pyfluent.client import FluentSender
 from scipy import stats
@@ -18,11 +19,6 @@ import sa_api.VitalFileHandler as VFH
 # Create your models here.
 
 tz = pytz.timezone(settings.TIME_ZONE)
-
-
-class FloatFieldSingle(models.Field):
-    def db_type(self, connection):
-        return 'float'
 
 
 class SingleFloatField(models.Field):
@@ -622,7 +618,7 @@ class FileRecorded(models.Model):
         connection.connect()
         filename_split = self.file_basename.split('_')
         decompose_path = os.path.join('decompose', filename_split[0], filename_split[1])
-        os.makedirs(decompose_path, mode=0o775, exist_ok=True)
+        os.makedirs(os.path.join(settings.MEDIA_ROOT, decompose_path), mode=0o775, exist_ok=True)
 
         timestamp_interval = 0.5
 
@@ -695,14 +691,14 @@ class FileRecorded(models.Model):
 
         numberinfofiles = NumberInfoFile.objects.filter(record=self)
         for numberinfofile in numberinfofiles:
-            if os.path.exists(numberinfofile.file_path):
-                os.remove(numberinfofile.file_path)
+            if os.path.exists(os.path.join(settings.MEDIA_ROOT, numberinfofile.file.name)):
+                os.remove(os.path.join(settings.MEDIA_ROOT, numberinfofile.file.name))
         numberinfofiles.delete()
 
         waveinfofiles = WaveInfoFile.objects.filter(record=self)
         for waveinfofile in waveinfofiles:
-            if os.path.exists(waveinfofile.file_path):
-                os.remove(waveinfofile.file_path)
+            if os.path.exists(os.path.join(settings.MEDIA_ROOT, waveinfofile.file.name)):
+                os.remove(os.path.join(settings.MEDIA_ROOT, waveinfofile.file.name))
         waveinfofiles.delete()
 
         unknown_device = set()
@@ -727,19 +723,29 @@ class FileRecorded(models.Model):
                                       settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
                 fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
             else:
-                if not os.path.exists(decompose_path):
-                    os.makedirs(decompose_path)
+                if not os.path.exists(os.path.join(settings.MEDIA_ROOT, decompose_path)):
+                    os.makedirs(os.path.join(settings.MEDIA_ROOT, decompose_path))
                 file_path = os.path.join(decompose_path,
                                          os.path.splitext(self.file_basename)[0] + '_%s.npz' % device.code)
+                file_path_media = os.path.join(settings.MEDIA_ROOT, file_path)
                 end_dt.append(max(timestamp_number[found_device]))
-                np.savez_compressed(file_path, col_list=np.array([*cols], dtype=dt_str),
+                np.savez_compressed(file_path_media, col_list=np.array([*cols], dtype=dt_str),
                                     timestamp=np.array(timestamp_number[found_device], dtype=np.float64),
                                     number=np.array(val_number[found_device], dtype=np.float32))
-
-                NumberInfoFile.objects.create(record=self, device=device, file_path=file_path)
-
-        if len(end_dt) and self.end_date is None:
-            self.end_date = datetime.datetime.fromtimestamp(max(end_dt)).astimezone(tz) + datetime.timedelta(minutes=5)
+                nif, created = NumberInfoFile.objects.get_or_create(record=self, device=device, defaults={
+                    'file': file_path
+                })
+                if not created:
+                    log_dict = dict()
+                    log_dict['ACTION'] = 'DECOMPOSE'
+                    log_dict['EVENT'] = 'DUPLICATED_DEVICE'
+                    log_dict['FILE_BASENAME'] = self.file_basename
+                    log_dict['MESSAGE'] = 'Duplicated device %s was found.' % device
+                    fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
+                                          settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
+                    fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
+        if len(end_dt):
+            self.end_date = datetime.datetime.fromtimestamp(max(end_dt)).astimezone(tz)
             self.save()
 
         for track_info in handle.get_track_info():
@@ -751,13 +757,13 @@ class FileRecorded(models.Model):
                 if device is not None:
                     file_path = os.path.join(decompose_path, os.path.splitext(self.file_basename)[0] + '_%s_%s.npz' % (
                         device.code, track_info[1]))
-                    if not os.path.exists(decompose_path):
-                        os.makedirs(decompose_path)
+                    file_path_media = os.path.join(settings.MEDIA_ROOT, file_path)
+                    if not os.path.exists(os.path.join(settings.MEDIA_ROOT, decompose_path)):
+                        os.makedirs(os.path.join(settings.MEDIA_ROOT, decompose_path))
                     dt, packet_pointer, val = handle.export_wave(track_info[0], track_info[1])
-                    np.savez_compressed(file_path, timestamp=dt, packet_pointer=packet_pointer, val=val)
-
-                    WaveInfoFile.objects.create(record=self, device=device, channel_name=track_info[1],
-                                                file_path=file_path, num_packets=len(dt), sampling_rate=track_info[3])
+                    np.savez_compressed(file_path_media, timestamp=dt, packet_pointer=packet_pointer, val=val)
+                    WaveInfoFile.objects.create(record=self, device=device, channel_name=track_info[1], file=file_path,
+                                                num_packets=len(dt), sampling_rate=track_info[3])
 
         return
 
@@ -768,7 +774,7 @@ class FileRecorded(models.Model):
         self.load_summary()
 
     def __str__(self):
-        return self.file_path
+        return self.file.name
 
 
 class SummaryFileRecorded(models.Model):
@@ -808,7 +814,7 @@ class NumberInfoFile(models.Model):
     record = models.ForeignKey('FileRecorded', null=True, on_delete=models.CASCADE)
     device = models.ForeignKey('Device', null=True, on_delete=models.CASCADE)
     db_load = models.BooleanField(null=False, default=False)
-    file_path = models.CharField(max_length=256, blank=True)
+    file = models.FileField(null=True)
 
     @staticmethod
     def smoothing_number(before_smoothing, timestamp, propotiontocut=0.05, windowsize=30, side=2, type='unixtime'):
@@ -883,17 +889,17 @@ class NumberInfoFile(models.Model):
         if self.device.db_table_name is None:
             log_dict = dict()
             log_dict['ACTION'] = 'LOAD_NUMBER'
-            log_dict['FILE_PATH'] = self.file_path
+            log_dict['FILE'] = self.file.name
             log_dict['MESSAGE'] = 'DB table for device %s does not exists.' % self.device.displayed_name
             fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
                                   settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
             fluent.send(log_dict, 'sa.' + settings.SERVICE_CONFIGURATIONS['SERVER_TYPE'])
             return False
 
-        if not os.path.exists(self.file_path):
+        if not os.path.exists(os.path.join(settings.MEDIA_ROOT, self.file.name)):
             log_dict = dict()
             log_dict['ACTION'] = 'LOAD_NUMBER'
-            log_dict['FILE_PATH'] = self.file_path
+            log_dict['FILE_PATH'] = self.file.name
             log_dict['MESSAGE'] = 'A decomposed number file does not exists.'
             fluent = FluentSender(settings.SERVICE_CONFIGURATIONS['LOG_SERVER_HOSTNAME'],
                                   settings.SERVICE_CONFIGURATIONS['LOG_SERVER_PORT'], 'sa')
@@ -931,7 +937,7 @@ class NumberInfoFile(models.Model):
                 if column[0] != 'id':
                     column_info_db.append(column[0])
 
-            npz = np.load(self.file_path)
+            npz = np.load(os.path.join(settings.MEDIA_ROOT, self.file.name))
             timestamp = np.array(npz['timestamp'])
             number = np.array(npz['number'])
             col_list = np.array(npz['col_list'])
@@ -1020,7 +1026,7 @@ class NumberInfoFile(models.Model):
                 else settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_NAME']
             log_dict['ACTION'] = 'LOAD_NUMBER'
             log_dict['TARGET_FILE_VITAL'] = self.record.file_basename
-            log_dict['TARGET_FILE_DECOMPOSED'] = self.file_path
+            log_dict['TARGET_FILE_DECOMPOSED'] = self.file.name
             log_dict['TARGET_DEVICE'] = self.device.displayed_name
             log_dict['NEW_CHANNEL'] = unknown_columns
             log_dict['DUPLICATED_CHANNEL'] = duplicated_columns
@@ -1044,7 +1050,7 @@ class WaveInfoFile(models.Model):
     record = models.ForeignKey('FileRecorded', null=True, on_delete=models.CASCADE)
     device = models.ForeignKey('Device', null=True, on_delete=models.CASCADE)
     channel_name = models.CharField(max_length=64)
-    file_path = models.CharField(max_length=256, blank=True)
+    file = models.FileField(null=True)
     sampling_rate = models.FloatField(null=True)
     num_packets = models.IntegerField(null=True)
 
