@@ -408,9 +408,16 @@ def get_numberdata(request):
             return HttpResponseBadRequest
 
 
-def get_annotation_body(request, record):
+def get_annotation_body(request, record=None, bed=None):
     r = list()
-    for item in Annotation.objects.filter(record=record, dt__range=(record.begin_date, record.end_date)).order_by('dt'):
+    if record is not None:
+        items = Annotation.objects.filter(record=record, dt__range=(record.begin_date, record.end_date)).order_by('dt')
+    elif bed is not None:
+        items = Annotation.objects.filter(bed=bed).order_by('dt')
+    else:
+        return None
+
+    for item in items:
         tmp_annotation = dict()
         tmp_annotation['id'] = item.id
         tmp_annotation['dt'] = str(item.dt)
@@ -447,28 +454,55 @@ def like_annotation(request):
     like, _ = AnnotationLike.objects.get_or_create(annotation=annotation, user=user)
     like.like = request.GET.get("like")
     like.save()
-    result = get_annotation_body(request, record)
+    result = get_annotation_body(request, record=record)
     return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=200)
 
 
 @csrf_exempt
 def get_annotation(request):
-    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
-    result = get_annotation_body(request, record)
-    return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file")) if request.GET.get("file") is not None else None
+    bed = get_object_or_404(Bed, name=request.GET.get("bed")) if request.GET.get("bed") is not None else None
+    if record is None and bed is None:
+        return HttpResponseNotFound()
+    if bed is None:
+        bed = record.bed
+
+    if record is not None:
+        r_dict = get_annotation_body(request, record=record)
+    elif bed is not None:
+        r_dict = get_annotation_body(request, bed=bed)
+    else:
+        r_dict = {'message': 'Annotations were not returned.'}
+
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=200)
 
 
 @csrf_exempt
 def delete_annotation(request):
-    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file"))
+
+    record = get_object_or_404(FileRecorded, file_basename=request.GET.get("file")) if request.GET.get("file") is not None else None
+    bed = get_object_or_404(Bed, name=request.GET.get("bed")) if request.GET.get("bed") is not None else None
+    if record is None and bed is None:
+        return HttpResponseNotFound()
+    if bed is None:
+        bed = record.bed
+
     try:
         Annotation.objects.get(id=request.GET.get("id")).delete()
     except Annotation.DoesNotExist:
         pass
-    result = get_annotation_body(request, record)
-    return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
+
+    if record is not None:
+        r_dict = get_annotation_body(request, record=record)
+    elif bed is not None:
+        r_dict = get_annotation_body(request, bed=bed)
+    else:
+        r_dict = {'message': 'Annotations were not returned.'}
+
+    return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=200)
 
 
@@ -479,7 +513,7 @@ def comment_annotation(request):
     user = User.objects.get(id=request.user.id)
     comment = request.GET.get("comment")
     AnnotationComment.objects.create(annotation=annotation, user=user, comment=comment)
-    result = get_annotation_body(request, record)
+    result = get_annotation_body(request, record=record)
     return HttpResponse(json.dumps(result, sort_keys=True, indent=4), content_type="application/json; charset=utf-8",
                         status=200)
 
@@ -513,7 +547,9 @@ def add_annotation(request):
                               category_1=category_1, category_2=category_2)
 
     if record is not None:
-        r_dict = get_annotation_body(request, record)
+        r_dict = get_annotation_body(request, record=record)
+    elif bed is not None:
+        r_dict = get_annotation_body(request, bed=bed)
     else:
         r_dict = {'message': 'Annotations were not returned.'}
 
@@ -1564,25 +1600,27 @@ def recording_info_body(request):
                         time_str = begin.strftime("%H%M%S")
                         pathname = os.path.join(settings.SERVICE_CONFIGURATIONS['LOCAL_SERVER_DATAPATH'], target_client.bed.name, date_str)
                         filename = '%s_%s_%s.vital' % (target_client.bed.name, date_str, time_str)
-                        recorded, created = FileRecorded.objects.get_or_create(file_basename=filename, defaults={
+                        record, created = FileRecorded.objects.get_or_create(file_basename=filename, defaults={
                             'client': target_client, 'bed': target_client.bed, 'begin_date': begin,
                             'end_date': end, 'file_path': os.path.join(pathname, filename)
                         })
                         if not created:
-                            recorded.client = target_client
-                            recorded.bed = target_client.bed
-                            recorded.begin_date = begin
-                            recorded.end_date = end
-                            recorded.file_path = os.path.join(pathname, filename)
-                            recorded.save()
+                            record.client = target_client
+                            record.bed = target_client.bed
+                            record.begin_date = begin
+                            record.end_date = end
+                            record.file_path = os.path.join(pathname, filename)
+                            record.save()
                         if not os.path.exists(pathname):
                             os.makedirs(pathname)
                         with open(os.path.join(pathname, filename), 'wb+') as destination:
                             for chunk in request.FILES['attachment'].chunks():
                                 destination.write(chunk)
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
-                            file_upload_storage(date_str, recorded.client.bed.name, os.path.join(pathname, filename))
-                        recorded.migrate_vital()
+                            file_upload_storage(date_str, record.client.bed.name, os.path.join(pathname, filename))
+                        record.migrate_vital()
+                        Annotation.objects.filter(method=1, bed=record.bed, record=None, dt_range=(record.begin_date, record.end_date)).update(record=record)
+                        Annotation.objects.filter(method=1, bed=record.bed, record=None).delete()
                     except Exception as e:
                         r_dict['success'] = False
                         r_dict['exception'] = str(e)

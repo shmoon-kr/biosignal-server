@@ -1695,12 +1695,6 @@ class Annotation(models.Model):
     description = models.CharField(max_length=255, blank=True, null=True)
 
 
-class OnLineAnnotation(models.Model):
-    dt = models.DateTimeField(default=timezone.now)
-    bed = models.ForeignKey('Bed', on_delete=models.SET_NULL, null=True)
-    description = models.CharField(max_length=255, blank=True, null=True)
-
-
 class AnnotationComment(models.Model):
     dt = models.DateTimeField(auto_now_add=True)
     annotation = models.ForeignKey('Annotation', on_delete=models.CASCADE)
