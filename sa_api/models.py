@@ -774,7 +774,7 @@ class FileRecorded(models.Model):
         self.load_summary()
 
     def __str__(self):
-        return self.file.name
+        return self.file_path
 
 
 class SummaryFileRecorded(models.Model):

@@ -1619,7 +1619,7 @@ def recording_info_body(request):
                         if settings.SERVICE_CONFIGURATIONS['STORAGE_SERVER']:
                             file_upload_storage(date_str, record.client.bed.name, os.path.join(pathname, filename))
                         record.migrate_vital()
-                        Annotation.objects.filter(method=1, bed=record.bed, record=None, dt_range=(record.begin_date, record.end_date)).update(record=record)
+                        Annotation.objects.filter(method=1, bed=record.bed, record=None, dt__range=(record.begin_date, record.end_date)).update(record=record)
                         Annotation.objects.filter(method=1, bed=record.bed, record=None).delete()
                     except Exception as e:
                         r_dict['success'] = False
