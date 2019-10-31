@@ -63,12 +63,13 @@ def get_sidebar_menu(selected=None):
     r['동관']['submenu'].append([selected == 'EREC', 'Recovery', '/summary_rosette?rosette=EREC'])
 
     r['신관'] = dict()
-    r['신관']['active'] = True if selected in ('J', 'K', 'NREC') else False
+    r['신관']['active'] = True if selected in ('J', 'K', 'OB', 'PICU1', 'NREC') else False
     r['신관']['submenu'] = list()
     r['신관']['submenu'].append([selected == 'J', 'J Rosette', '/summary_rosette?rosette=J'])
     r['신관']['submenu'].append([selected == 'K', 'K Rosette', '/summary_rosette?rosette=K'])
     r['신관']['submenu'].append([selected == 'OB', 'Delivery Floor', '/summary_rosette?rosette=OB'])
     r['신관']['submenu'].append([selected == 'NREC', 'Recovery', '/summary_rosette?rosette=NREC'])
+    r['신관']['submenu'].append([selected == 'PICU1', 'PICU1', '/summary_rosette?rosette=PICU1'])
 
     loc = list()
     for key, val in r.items():
@@ -413,7 +414,7 @@ def get_annotation_body(request, record=None, bed=None):
     if record is not None:
         items = Annotation.objects.filter(record=record, dt__range=(record.begin_date, record.end_date)).order_by('dt')
     elif bed is not None:
-        items = Annotation.objects.filter(bed=bed).order_by('dt')
+        items = Annotation.objects.filter(bed=bed, record=None).order_by('dt')
     else:
         return None
 
@@ -1132,9 +1133,11 @@ def device_info_body(request, api_type):
                 r_dict['displayed_name'] = target_device.displayed_name = server_result['displayed_name']
                 r_dict['is_main'] = target_device.is_main = server_result['is_main']
                 target_device.save()
+                r_dict['id'] = target_device.id
                 r_dict['success'] = True
                 r_dict['message'] = 'Device information was acquired from a global server.'
         else:
+            r_dict['id'] = target_device.id
             r_dict['dt_update'] = target_device.dt_update.astimezone(tz).isoformat()
             r_dict['device_type'] = target_device.device_type
             r_dict['displayed_name'] = target_device.displayed_name
@@ -1275,7 +1278,9 @@ def channel_info_body(request, api_type):
 
     device_type = request.GET.get("device_type")
     channel_name = request.GET.get("channel_name")
+    id = request.GET.get("id")
 
+    target_channel = None
     if device_type is not None and channel_name is not None:
         target_device, _ = Device.objects.get_or_create(device_type=device_type, defaults={'displayed_name': device_type})
         try:
@@ -1321,6 +1326,17 @@ def channel_info_body(request, api_type):
                     r_dict['message'] = 'Channel information was acquired from a global server.'
             target_channel.save()
             r_dict['dt_update'] = target_channel.dt_update.astimezone(tz).isoformat()
+    elif id is not None:
+        target_channel = get_object_or_404(Channel, id=id)
+        r_dict['success'] = True
+        r_dict['message'] = 'Channel information was returned correctly.'
+    else:
+        r_dict['success'] = False
+        r_dict['message'] = 'Requested device type or channel name is none.'
+        response_status = 400
+
+    if r_dict['success']:
+        r_dict['id'] = target_channel.id
         r_dict['dt_update'] = target_channel.dt_update.astimezone(tz).isoformat()
         r_dict['is_unknown'] = target_channel.is_unknown
         r_dict['use_custom_setting'] = target_channel.use_custom_setting
@@ -1340,10 +1356,6 @@ def channel_info_body(request, api_type):
         r_dict['adc_gain'] = target_channel.adc_gain
         r_dict['adc_offset'] = target_channel.adc_offset
         r_dict['mon_type'] = target_channel.mon_type
-    else:
-        r_dict['success'] = False
-        r_dict['message'] = 'Requested device type or channel name is none.'
-        response_status = 400
 
     log_dict['RESPONSE_STATUS'] = response_status
     log_dict['RESULT'] = r_dict
@@ -1482,9 +1494,13 @@ def client_info_body(request):
     response_status = 200
 
     mac = request.GET.get('mac')
-    if mac is not None:
+    id = request.GET.get('id')
+    if mac is not None or id is not None:
         try:
-            target_client = Client.objects.get(mac=mac)
+            if id is not None:
+                target_client = get_object_or_404(Client, id=id)
+            else:
+                target_client = Client.objects.get(mac=mac)
             target_client.save()
             device_config = dict()
             presets = DeviceConfigPresetBed.objects.filter(bed=target_client.bed)
@@ -1493,6 +1509,7 @@ def client_info_body(request):
                 configitems = DeviceConfigItem.objects.filter(preset=preset.preset)
                 for configitem in configitems:
                     device_config[preset.preset.device.device_type][configitem.variable] = configitem.value
+            r_dict['id'] = target_client.id
             r_dict['device_config_info'] = device_config
             r_dict['client_name'] = target_client.name
             r_dict['bed_name'] = target_client.bed.name

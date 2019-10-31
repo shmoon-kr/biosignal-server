@@ -81,6 +81,16 @@ class Device(models.Model):
                 val[:, col_dict['ABP_SBP']] = NumberInfoFile.smoothing_number(val[:, col_dict['ABP_SBP']], timestamp)
                 val[:, col_dict['ABP_DBP']] = NumberInfoFile.smoothing_number(val[:, col_dict['ABP_DBP']], timestamp)
                 val[:, col_dict['ABP_MBP']] = NumberInfoFile.smoothing_number(val[:, col_dict['ABP_MBP']], timestamp)
+            if 'RAP' in col_dict.keys():
+                for i in range(len(val)):
+                    if not 60 > val[i, col_dict['RAP']] > -5:
+                        val[i, col_dict['RAP']] = np.nan
+                val[:, col_dict['RAP']] = NumberInfoFile.smoothing_number(val[:, col_dict['RAP']], timestamp)
+            if 'CVP' in col_dict.keys():
+                for i in range(len(val)):
+                    if not 60 > val[i, col_dict['CVP']] > -5:
+                        val[i, col_dict['CVP']] = np.nan
+                val[:, col_dict['CVP']] = NumberInfoFile.smoothing_number(val[:, col_dict['CVP']], timestamp)
             if 'ABP_HR' in col_dict.keys():
                 val[:, col_dict['ABP_HR']] = NumberInfoFile.smoothing_number(val[:, col_dict['ABP_HR']], timestamp)
             if 'PLETH_HR' in col_dict.keys():
