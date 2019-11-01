@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'sa_api',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -70,6 +71,20 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'sa_server.wsgi.application'
+ASGI_APPLICATION = "sa_server.routing.application"
+
+
+# Channel layers
+
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 
 # Database

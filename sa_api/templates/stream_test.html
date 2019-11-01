@@ -1,0 +1,93 @@
+<!-- templates/stream_test.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Streaming Test</title>
+</head>
+<body>
+    <textarea id="chat-log" cols="100" rows="20"></textarea><br/>
+    <input id="chat-message-input" type="text" size="100"/><br/>
+    <input id="chat-message-submit" type="button" value="Send Test Message"/><br/>
+
+    <hr>
+
+    <label for="select_client">Select Client:</label>
+    <select class="form-control" id="select-client">
+        <option>1</option>
+        <option>2</option>
+        <option>3</option>
+        <option>4</option>
+    </select>
+    <input id="send-rec-packet" type="button" value="Send Test Rec Packet"/>
+    <input id="start-listen" type="button" value="Start Listening"/>
+    <input id="stop-listen" type="button" value="Stop Listening"/><br/>
+
+</body>
+<script>
+    let roomName = "test_stream";
+    //let chatSocket = new WebSocket( 'ws://' + window.location.host + '/ws/chat/' + roomName + '/');
+    let chatSocket = new WebSocket( 'ws://' + window.location.host + '/ws/stream/');
+
+    chatSocket.onmessage = function(e) {
+        let data = JSON.parse(e.data);
+        let message = data['message'];
+        console.log(data);
+        document.querySelector('#chat-log').value += (message + '\n');
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+    };
+
+    document.querySelector('#chat-message-input').focus();
+    document.querySelector('#chat-message-input').onkeyup = function(e) {
+        if (e.keyCode === 13) {  // enter, return
+            document.querySelector('#chat-message-submit').click();
+        }
+    };
+
+    document.querySelector('#chat-message-submit').onclick = function(e) {
+        let messageInputDom = document.querySelector('#chat-message-input');
+        let message = messageInputDom.value;
+        chatSocket.send(JSON.stringify({
+            'message': message
+        }));
+
+        messageInputDom.value = '';
+    };
+
+    document.querySelector('#send-rec-packet').onclick = function(e) {
+        let packet = {
+            'client_id': document.querySelector('#select-client').value,
+            'channel_id': 23,
+            'packet': 'some binary string.',
+            'message': 'a rec data packet.'
+        };
+        console.log('send rec packet.', packet);
+        chatSocket.send(JSON.stringify(packet));
+    };
+
+    document.querySelector('#start-listen').onclick = function(e) {
+        let command = {
+            'command': 'start_listen',
+            'client_id': document.querySelector('#select-client').value,
+            'message': 'start listen command.'
+        };
+        console.log(JSON.stringify(command));
+        chatSocket.send(JSON.stringify(command));
+    };
+
+    document.querySelector('#stop-listen').onclick = function(e) {
+        let command = {
+            'command': 'stop_listen',
+            'client_id': document.querySelector('#select-client').value,
+            'message': 'stop listen command.'
+        };
+        console.log(JSON.stringify(command));
+        chatSocket.send(JSON.stringify(command));
+    };
+
+
+</script>
+</html>

@@ -20,7 +20,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, Http404
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.template import loader
 from django.views.decorators.csrf import csrf_exempt
 from pyfluent.client import FluentSender
@@ -204,6 +204,11 @@ def file_upload_storage(date_string, bed_name, filepath):
     ftp.storbinary('STOR '+os.path.basename(filepath), file)
     ftp.quit()
     return True
+
+
+@csrf_exempt
+def stream_test(request):
+    return render(request, 'stream_test.html', {})
 
 
 @csrf_exempt

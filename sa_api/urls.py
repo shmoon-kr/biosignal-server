@@ -31,4 +31,5 @@ urlpatterns = [
     path('client/device_list', views.device_list_client),
     path('client/channel_list', views.channel_list_client),
     path('migration/register_vital_file', views.register_vital_file),
+    path('stream_test', views.stream_test),
 ]

@@ -1,0 +1,20 @@
+[Unit]
+Description=daphne daemon
+After=network.target
+
+
+[Service]
+PIDFile=/run/daphne/pid
+User=www-data
+Group=www-data
+WorkingDirectory=/home/shmoon/PycharmProjects/sa_server
+Environment="DJANGO_SETTINGS_MODULE=sa_server.settings"
+ExecStart=/home/shmoon/venv_sig/bin/daphne --bind 0.0.0.0 --port 9000 --verbosity 0 sa_server.asgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+Restart=on-abort
+PrivateTmp=true
+
+
+[Install]
+WantedBy=multi-user.target
