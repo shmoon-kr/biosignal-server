@@ -32,6 +32,13 @@ from .forms import UploadFileForm, UploadReviewForm
 
 tz = pytz.timezone(settings.TIME_ZONE)
 
+def hello(request):
+    template = loader.get_template('master.html')
+    context = {
+        'data': "hello"
+    }
+
+    return HttpResponse(template.render(context, request))
 
 def get_sidebar_menu(selected=None):
 
