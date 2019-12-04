@@ -711,20 +711,20 @@ def dashboard(request):
                 else:
                     beds_green.append(client.bed.name)
 
-        db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                             user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                             password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                             db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-        cursor = db.cursor()
-        cursor.execute('SELECT bed, status FROM legacy_bed_status')
-        rows = cursor.fetchall()
-
-        for row in rows:
-            if row[0] not in beds_client:
-                if row[1] == 'Green':
-                    beds_green.append(row[0])
-                elif row[1] == 'Red':
-                    beds_red.append(row[0])
+        if settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'] is not None:
+            db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                                 user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                                 password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                                 db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+            cursor = db.cursor()
+            cursor.execute('SELECT bed, status FROM legacy_bed_status')
+            rows = cursor.fetchall()
+            for row in rows:
+                if row[0] not in beds_client:
+                    if row[1] == 'Green':
+                        beds_green.append(row[0])
+                    elif row[1] == 'Red':
+                        beds_red.append(row[0])
 
         template = loader.get_template('dashboard_rosette.html')
         sidebar_menu, loc = get_sidebar_menu('dashboard_rosette')
