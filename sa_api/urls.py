@@ -3,7 +3,7 @@ from django.urls import path
 from sa_api import views
 
 urlpatterns = [
-    path('hello', views.hello),
+    path('hello', views.hello), ## to be delete
     path('dashboard', views.dashboard),
     path('summary_rosette', views.summary_rosette),
     path('summary_file', views.summary_file),

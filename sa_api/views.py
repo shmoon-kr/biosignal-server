@@ -695,7 +695,58 @@ def dashboard(request):
 
     target = request.GET.get('target')
 
-    if target is None or target == 'rosette':
+    if target is None:
+        beds_red = list()
+        beds_orange = list()
+        beds_green = list()
+        beds_blue = list()
+        beds_client = set()
+
+        bed_re = re.compile('([B-L]|IPACU|OB|WREC|EREC|NREC|PICU1)-[0-9]{2}')
+
+        clients_all = Client.objects.all()
+
+        for client in clients_all:
+            if bed_re.match(client.bed.name) if client.bed is not None else False:
+                beds_client.add(client.bed.name)
+                if client.color_info()[1] == 'red':
+                    beds_red.append(client.bed.name)
+                elif client.color_info()[1] == 'orange':
+                    beds_orange.append(client.bed.name)
+                elif client.status == Client.STATUS_RECORDING:
+                    beds_blue.append(client.bed.name)
+                else:
+                    beds_green.append(client.bed.name)
+
+        if settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'] is not None:
+            db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                                 user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                                 password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                                 db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+            cursor = db.cursor()
+            cursor.execute('SELECT bed, status FROM legacy_bed_status')
+            rows = cursor.fetchall()
+            for row in rows:
+                if row[0] not in beds_client:
+                    if row[1] == 'Green':
+                        beds_green.append(row[0])
+                    elif row[1] == 'Red':
+                        beds_red.append(row[0])
+
+        template = loader.get_template('dashboard01.html')
+        #sidebar_menu, loc = get_sidebar_menu('dashboard_rosette')
+        context = {
+            #'loc': loc,
+            #'sidebar_menu': sidebar_menu,
+            'since': str(since),
+            'beds_red': json.dumps(beds_red),
+            'beds_orange': json.dumps(beds_orange),
+            'beds_green': json.dumps(beds_green),
+            'beds_blue': json.dumps(beds_blue),
+        }
+        return HttpResponse(template.render(context, request))
+
+    elif target is None or target == 'rosette':
         beds_red = list()
         beds_orange = list()
         beds_green = list()

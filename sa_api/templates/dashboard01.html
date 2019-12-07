@@ -1,10 +1,833 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+<html>
 
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- Tell the browser to be responsive to screen width -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+<!-- Favicon icon -->
+<link rel="shortcut icon" href="/static/favi.ico" />
+<title>AMC Bio Signal</title>
+<!-- Custom CSS -->
+<link href="/static/elite/css/style.css" rel="stylesheet">
+<style>
+label {
+    display: inline-block;
+    width: 5em;
+}
+
+.container {
+    /* remember to set a width */
+    margin-right: auto;
+    margin-left: auto;
+    margin-top:7%;
+    margin-bottom:auto;
+}
+
+section div svg text:hover.west{
+    fill: #2D4F28;
+    font-weight: bold;
+}
+section div svg text:hover.east{
+    fill: #0A6886;
+    font-weight: bold;
+}
+section div svg text:hover.sin{
+    fill: #422C62;
+    font-weight: bold;
+}
+</style>
+<!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+<![endif]-->
+</head>
+
+<body class="horizontal-nav skin-megna fixed-layout">
+    <!-- Preloader - style you can find in spinners.css -->
+    <div class="preloader">
+        <div class="loader">
+            <div class="loader__figure"></div>
+            <p class="loader__label">AMC Bio Signal</p>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- Main wrapper - style you can find in pages.scss -->
+    <!-- ============================================================== -->
+    <div id="main-wrapper">
+        <!-- Topbar header - style you can find in pages.scss -->
+        <header class="topbar">
+            <nav class="navbar top-navbar navbar-expand-md navbar-dark">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="dashboard">
+                        <!-- Logo icon --><b>
+                            <!--You can put here icon as well // <i class="wi wi-sunset"></i> //-->
+                            <!-- Dark Logo icon
+                            <img src="/static/assets/images/logo-icon.png" alt="homepage" class="dark-logo" />-->
+                            <!-- Light Logo icon
+                            <img src="/static/assets/images/logo-light-icon.png" alt="homepage" class="light-logo" />-->
+                        </b>
+                        <!--End Logo icon -->
+                        <!-- Logo text -->
+						<span class="hidden-sm-down">
+                         <!-- dark Logo text
+                         <img src="/static/assets/images/logo-text.png" alt="homepage" class="dark-logo" />-->
+                         <!-- Light Logo text
+                         <img src="/static/assets/images/logo-light-text.png" class="light-logo" alt="homepage" />-->
+						 Asan Medical Center
+						</span>
+                    </a>
+                </div>
+
+
+                <div class="navbar-collapse">
+                    <!-- ============================================================== -->
+                    <!-- toggle and nav items -->
+                    <!-- ============================================================== -->
+                    <ul class="navbar-nav mr-auto">
+                        <!-- This is  -->
+                        <li class="nav-item"> <a class="nav-link nav-toggler d-block d-md-none waves-effect waves-dark" href="javascript:void(0)"><i class="ti-menu"></i></a> </li>
+                        <li class="nav-item"> <a class="nav-link sidebartoggler d-none waves-effect waves-dark" href="javascript:void(0)"><i class="icon-menu"></i></a> </li>
+                    </ul>
+
+                    <ul class="navbar-nav my-lg-0">
+                        <li class="nav-item right-side-toggle"> <a class="nav-link  waves-effect waves-light" href="javascript:void(0)"><i class="ti-settings"></i></a></li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+        <!-- End Topbar header -->
+
+        <!-- Left Sidebar - style you can find in sidebar.scss  -->
+        <aside class="left-sidebar">
+            <!-- Sidebar scroll-->
+            <div class="scroll-sidebar">
+                <!-- Sidebar navigation-->
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li>
+						    <a class="has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="ti-image"></i>
+						    <span class="hide-menu">Dashboard</span></a>
+                            <ul aria-expanded="false" class="collapse">
+                                <li><a href="dashboard">Anesthesiology </a></li>
+                                <li><a href="dashboard">Etc.</a></li>
+                                <li><a href="dashboard.html">Trend</a></li>
+                            </ul>
+                        </li>
+                        <li>
+						    <a class="has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="ti-stats-up"></i>
+							<span class="hide-menu">서관</span></a>
+                            <ul aria-expanded="false" class="collapse">
+                                <li><a href="summary">B Rosette</a></li>
+                                <li><a href="summary.html">C Rosette</a></li>
+                                <li><a href="summary.html">D Rosette</a></li>
+                                <li><a href="summary.html">E Rosette</a></li>
+                                <li><a href="summary.html">Recovery</a></li>
+                            </ul>
+                        </li>
+                        <li>
+						    <a class="has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="ti-stats-up"></i>
+							<span class="hide-menu">동관</span></a>
+                            <ul aria-expanded="false" class="collapse">
+                                <li><a href="app-calendar.html">F Rosette</a></li>
+                                <li><a href="app-chat.html">G Rosette</a></li>
+                                <li><a href="app-ticket.html">H Rosette</a></li>
+                                <li><a href="app-contact.html">I Rosette</a></li>
+								<li><a href="app-contact.html">L Rosette</a></li>
+                                <li><a href="app-contact2.html">Recovery</a></li>
+                            </ul>
+                        </li>
+                        <li>
+						    <a class="has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="ti-stats-up"></i>
+							<span class="hide-menu">신관</span></a>
+                            <ul aria-expanded="false" class="collapse">
+                                <li><a href="app-calendar.html">J Rosette</a></li>
+                                <li><a href="app-chat.html">K Rosette</a></li>
+                                <li><a href="app-ticket.html">Delivery Floor</a></li>
+                                <li><a href="app-contact2.html">Recovery</a></li>
+								<li><a href="app-contact.html">PICU1</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </nav>
+                <!-- End Sidebar navigation -->
+            </div>
+            <!-- End Sidebar scroll-->
+        </aside>
+
+        <!-- Page wrapper  -->
+        <div class="page-wrapper">
+            <!-- ============================================================== -->
+            <!-- Container fluid  -->
+            <!-- ============================================================== -->
+            <div class="container-fluid">
+                <!-- ============================================================== -->
+                <!-- Bread crumb and right sidebar toggle -->
+                <!-- ============================================================== -->
+                <div class="row page-titles">
+                    <div class="col-md-5 align-self-center">
+                        <h4 class="text-themecolor">Dashboard</h4>
+                    </div>
+                    <div class="col-md-7 align-self-center text-right">
+                        <div class="d-flex justify-content-end align-items-center">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="javascript:void(0)">Home</a></li>
+                                <li class="breadcrumb-item">Dashboard</li>
+                                <li class="breadcrumb-item active">Anesthesiology</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row layer">
+                    <div class="col-lg-3 col-md-6 col-sm-12">
+                        <div style="text-align:center">
+							<svg version="1.1" id="레이어_1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="381.86px" height="594.697px" viewBox="0 0 381.86 594.697" enable-background="new 0 0 381.86 594.697" xml:space="preserve">
+								<rect x="-0.183" fill="#ECEEF2" width="381.859" height="594.697"></rect>
+								<path fill="#647C9A" d="M361.502,58.62c0,5.403-4.347,9.783-9.71,9.783H29.702c-5.363,0-9.711-4.379-9.711-9.783V29.275c0-5.402,4.348-9.782,9.711-9.782h322.09c5.363,0,9.71,4.38,9.71,9.782V58.62z"></path>
+								<rect x="19.932" y="95.715" fill="#647C9A" width="200.63" height="124.36"></rect>
+								<rect x="241.125" y="95.715" fill="#647C9A" width="120.377" height="124.36"></rect>
+								<rect x="240.914" y="244.065" fill="#647C9A" width="120.029" height="124.36"></rect>
+								<rect x="240.914" y="394.757" fill="#647C9A" width="120.029" height="124.362"></rect>
+								<rect id="E-06R" x="19.378" y="95.715" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"></rect>
+								<rect id="E-07R" x="59.505" y="95.715" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"></rect>
+								<rect id="E-08R" x="99.63" y="95.715" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"></rect>
+								<rect id="E-09R" class="bed" x="139.756" y="95.715" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="E-10R" x="179.882" y="95.715" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"></rect>
+								<rect id="E-05R" x="19.378" y="177.879" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"></rect>
+								<rect id="E-04R" x="59.505" y="177.879" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"></rect>
+								<rect id="E-03R" x="99.63" y="177.879" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"></rect>
+								<rect id="E-02R" class="bed" x="139.756" y="177.879" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="E-01R" class="bed" x="179.882" y="177.879" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"></rect>
+								<rect id="D-01R" x="240.74" y="95.715" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="D-02R" x="280.866" y="95.715" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="D-03R" x="320.992" y="95.715" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"></rect>
+								<rect id="D-04R" x="240.74" y="177.879" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="D-05R" x="280.866" y="177.879" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="D-06R" x="320.992" y="177.879" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.38"></rect>
+								<rect id="C-01R" class="bed" x="240.74" y="244.013" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="C-02R" class="bed" x="280.866" y="244.013" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="C-03R" x="320.992" y="244.013" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<rect id="C-04R" x="240.74" y="327.044" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="C-05R" x="280.866" y="327.044" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="C-06R" x="320.992" y="327.044" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<rect id="B-01R" x="240.74" y="394.757" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="B-02R" x="320.992" y="394.757" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<rect id="B-04R" x="240.74" y="477.791" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"></rect>
+								<rect id="B-03R" x="280.866" y="477.791" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"></rect>
+								<text transform="matrix(1 0 0 1 157.5347 56.2715)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1288">서관</text>
+								<text id="D-01T" transform="matrix(1 0 0 1 246.4004 121.9043)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">D01</text>
+								<text id="D-02T" transform="matrix(1 0 0 1 286.8887 121.9043)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">D02</text>
+								<text id="D-03T" transform="matrix(1 0 0 1 325.4736 121.9043)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">D03</text>
+								<text id="D-04T" transform="matrix(1 0 0 1 246.4004 205.0532)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">D04</text>
+								<text id="D-05T" transform="matrix(1 0 0 1 286.0723 205.0532)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">D05</text>
+								<text id="D-06T" transform="matrix(1 0 0 1 325.4736 205.0532)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">D06</text>
+								<text id="E-01T" class="bed" transform="matrix(1 0 0 1 186.1533 205.0532)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">E01</text>
+								<text id="E-02T" class="bed" transform="matrix(1 0 0 1 146.4819 205.0532)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">E02</text>
+								<text id="E-03T" transform="matrix(1 0 0 1 105.4502 205.0532)" font-family="'MalgunGothicRegular'" font-size="17.1189">E03</text>
+								<text id="E-04T" transform="matrix(1 0 0 1 66.3208 205.0532)" font-family="'MalgunGothicRegular'" font-size="17.1189">E04</text>
+								<text id="E-05T" transform="matrix(1 0 0 1 25.291 205.0532)" font-family="'MalgunGothicRegular'" font-size="17.1189">E05</text>
+								<g>
+									<text id="E-06T" transform="matrix(1 0 0 1 25.291 121.9043)" font-family="'MalgunGothicRegular'" font-size="17.1189">E06</text>
+								</g>
+								<text id="E-07T" transform="matrix(1 0 0 1 66.3208 121.9043)" font-family="'MalgunGothicRegular'" font-size="17.1189">E07</text>
+								<text id="E-08T" transform="matrix(1 0 0 1 105.4502 121.9043)" font-family="'MalgunGothicRegular'" font-size="17.1189">E08</text>
+								<text id="E-09T" class="bed" transform="matrix(1 0 0 1 146.4819 121.9043)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">E09</text>
+								<text id="E-10T" transform="matrix(1 0 0 1 186.1533 121.9043)" font-family="'MalgunGothicRegular'" font-size="17.1189">E10</text>
+								<text id="C-01T" class="bed" transform="matrix(1 0 0 1 246.4004 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">C01</text>
+								<text id="C-02T" class="bed" transform="matrix(1 0 0 1 286.8887 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">C02</text>
+								<text id="C-03T" transform="matrix(1 0 0 1 325.4736 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">C03</text>
+								<text id="C-04T" transform="matrix(1 0 0 1 246.4004 352.8735)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">C04</text>
+								<text id="C-05T" transform="matrix(1 0 0 1 286.0723 352.8735)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">C05</text>
+								<text id="C-06T" transform="matrix(1 0 0 1 325.4736 352.8735)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">C06</text>
+								<text id="B-01T" transform="matrix(1 0 0 1 246.4004 421.3481)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">B01</text>
+								<text id="B-02T" transform="matrix(1 0 0 1 327.1045 421.3481)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">B02</text>
+								<text id="B-03T" transform="matrix(1 0 0 1 286.8877 504.498)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">B03</text>
+								<text id="B-04T" transform="matrix(1 0 0 1 246.4004 504.498)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">B04</text>
+								<text transform="matrix(1 0 0 1 275.0459 165.3809)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">D 로젯</text>
+								<text transform="matrix(1 0 0 1 275.0459 311.2983)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">C 로젯</text>
+								<text transform="matrix(1 0 0 1 275.0459 462.9214)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">B 로젯</text>
+								<g>
+									<text transform="matrix(1 0 0 1 95.6929 165.3809)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">E 로젯</text>
+								</g>
+								<rect x="19.482" y="244.697" fill="#647C9A" width="120.171" height="330.67"></rect>
+								<rect id="WREC-01R" x="98.178" y="244.645" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="WREC-02R" x="98.178" y="286.236" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="WREC-03R" x="98.178" y="327.393" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.427"></rect>
+								<rect id="WREC-04R" x="98.178" y="368.824" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="WREC-05R" x="98.178" y="409.76" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="WREC-06R" x="98.178" y="451.351" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="WREC-07R" x="98.178" y="492.508" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.427"></rect>
+								<rect id="WREC-08R" x="98.178" y="533.939" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text id="WREC-01T" transform="matrix(1 0 0 1 106.6528 271.1387)" font-family="'MalgunGothicRegular'" font-size="17.139">01</text>
+								<text id="WREC-02T" transform="matrix(1 0 0 1 106.6528 312.4102)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">02</text>
+								<text id="WREC-03T" transform="matrix(1 0 0 1 106.6528 353.6343)" font-family="'MalgunGothicRegular'" font-size="17.139">03</text>
+								<text id="WREC-04T" transform="matrix(1 0 0 1 106.6528 394.7515)" font-family="'MalgunGothicRegular'" font-size="17.139">04</text>
+								<text id="WREC-05T" transform="matrix(1 0 0 1 106.6528 436.2539)" font-family="'MalgunGothicRegular'" font-size="17.139">05</text>
+								<text id="WREC-06T" transform="matrix(1 0 0 1 106.6528 477.5254)" font-family="'MalgunGothicRegular'" font-size="17.139">06</text>
+								<text id="WREC-07T" transform="matrix(1 0 0 1 106.6528 518.75)" font-family="'MalgunGothicRegular'" font-size="17.139">07</text>
+								<text id="WREC-08T" transform="matrix(1 0 0 1 106.6528 559.8672)" font-family="'MalgunGothicRegular'" font-size="17.139">08</text>
+								<rect id="WREC-15R" x="19.482" y="492.508" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.427"></rect>
+								<rect id="WREC-14R" x="19.482" y="533.939" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="WREC-13R" x="19.482" y="244.645" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="WREC-12R" x="19.482" y="286.236" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="WREC-11R" x="19.482" y="327.393" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.427"></rect>
+								<rect id="WREC-10R" x="19.482" y="368.824" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="WREC-09R" x="19.482" y="409.761" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text id="WREC-15T" transform="matrix(1 0 0 1 27.9565 518.75)" font-family="'MalgunGothicRegular'" font-size="17.139">15</text>
+								<text id="WREC-14T" transform="matrix(1 0 0 1 27.9565 559.8672)" font-family="'MalgunGothicRegular'" font-size="17.139">14</text>
+								<text id="WREC-13T" transform="matrix(1 0 0 1 27.9565 271.1387)" font-family="'MalgunGothicRegular'" font-size="17.139">13</text>
+								<text id="WREC-12T" transform="matrix(1 0 0 1 27.9565 312.4102)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">12</text>
+								<text id="WREC-11T" transform="matrix(1 0 0 1 27.9565 353.6343)" font-family="'MalgunGothicRegular'" font-size="17.139">11</text>
+								<text id="WREC-10T" transform="matrix(1 0 0 1 27.9565 394.7515)" font-family="'MalgunGothicRegular'" font-size="17.139">10</text>
+								<text id="WREC-09T" transform="matrix(1 0 0 1 27.9565 435.689)" font-family="'MalgunGothicRegular'" font-size="17.139">09</text>
+								<text transform="matrix(1 0 0 1 29.4414 477.5259)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">WREC</text>
+							</svg>
+						</div>
+                    </div>
+					<div class="col-lg-3 col-md-6 col-sm-12">
+                        <div style="text-align:center">
+							<svg version="1.1" id="레이어_1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="381.86px" height="802.441px" viewBox="0 0 381.86 802.441" enable-background="new 0 0 381.86 802.441" xml:space="preserve">
+								<rect x="0.704" fill="#ECEEF2" width="381.859" height="802.441"></rect>
+								<rect x="20.396" y="534.252" fill="#93A3A4" width="339.623" height="248.189"></rect>
+								<rect x="241.452" y="244.065" fill="#93A3A4" width="120.029" height="124.36"></rect>
+								<rect id="L-01R" x="241.278" y="244.013" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="L-02R" x="281.404" y="244.013" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="L-03R" x="321.53" y="244.013" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<rect id="L-04R" x="241.278" y="327.044" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="L-05R" x="321.53" y="327.044" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<text id="L-01T" transform="matrix(1 0 0 1 246.9395 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189">L01</text>
+								<text id="L-02T" transform="matrix(1 0 0 1 287.4268 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189">L02</text>
+								<text id="L-03T" transform="matrix(1 0 0 1 326.0117 269.7241)" font-family="'MalgunGothicRegular'" font-size="17.1189">L03</text>
+								<text id="L-04T" transform="matrix(1 0 0 1 246.9395 352.8735)" font-family="'MalgunGothicRegular'" font-size="17.1189">L05</text>
+								<text id="L-05T" transform="matrix(1 0 0 1 326.0117 352.8735)" font-family="'MalgunGothicRegular'" font-size="17.1189">L04</text>
+								<text transform="matrix(1 0 0 1 275.584 311.2983)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">L 로젯</text>
+								<path fill="#93A3A4" d="M362.39,59.06c0,5.409-4.353,9.793-9.721,9.793H30.198c-5.369,0-9.723-4.384-9.723-9.793V29.681c0-5.408,4.354-9.794,9.723-9.794h322.471c5.368,0,9.721,4.386,9.721,9.794V59.06z"></path>
+								<rect x="20.222" y="96.199" fill="#93A3A4" width="120.52" height="124.506"></rect>
+								<rect x="160.861" y="96.199" fill="#93A3A4" width="200.165" height="124.506"></rect>
+								<rect x="20.396" y="244.723" fill="#93A3A4" width="120.172" height="270.806"></rect>
+								<rect id="H-01R" class="bed" x="160.861" y="96.199" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"></rect>
+								<rect id="H-02R" x="201.035" y="96.199" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.172" height="41.429"></rect>
+								<rect id="H-03R" class="bed" x="241.207" y="96.199" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="H-04R" x="281.38" y="96.199" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"></rect>
+								<rect id="H-05R" x="321.554" y="96.199" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.175" height="41.429"></rect>
+								<rect id="H-06R" class="bed" x="321.554" y="137.329" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.175" height="41.429"></rect>
+								<rect id="H-07R" x="281.38" y="178.46" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="80.349" height="41.429"></rect>
+								<rect id="H-08R" class="bed" x="201.035" y="178.46" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.172" height="41.429"></rect>
+								<rect id="H-09R" class="bed" x="160.861" y="178.46" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"></rect>
+								<rect id="G-01R" x="20.222" y="96.199" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"></rect>
+								<rect id="G-02R" class="bed" x="60.396" y="96.199" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="G-03R" x="100.568" y="96.199" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="G-04R" class="bed" x="20.222" y="178.46" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"></rect>
+								<rect id="G-05R" x="60.396" y="178.46" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="G-06R" x="100.568" y="178.46" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="F-10R" x="20.222" y="244.672" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"></rect>
+								<rect id="F-09R" x="20.222" y="286.261" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"></rect>
+								<rect id="F-08R" x="20.222" y="327.419" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.426"></rect>
+								<rect id="F-07R" x="20.222" y="368.849" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="F-06R" x="20.222" y="410.005" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="F-05R" x="20.222" y="451.164" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.426"></rect>
+								<rect id="F-01R" x="100.568" y="244.672" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="F-02R" x="100.568" y="286.261" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="F-03R" x="100.568" y="327.419" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.426"></rect>
+								<rect id="F-04R" class="bed" x="100.568" y="368.849" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text transform="matrix(1 0 0 1 159.9292 57.708)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1749">동관</text>
+								<text id="F-01T" transform="matrix(1 0 0 1 106.0908 271.165)" font-family="'MalgunGothicRegular'" font-size="17.139">F01</text>
+								<text id="F-02T" transform="matrix(1 0 0 1 106.0908 312.4365)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">F02</text>
+								<text id="F-03T" transform="matrix(1 0 0 1 106.0908 353.6606)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">F03</text>
+								<text id="F-04T" class="bed" transform="matrix(1 0 0 1 106.0908 394.7778)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">F04</text>
+								<text id="F-10T" transform="matrix(1 0 0 1 25.7432 271.165)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">F10</text>
+								<text id="F-09T" transform="matrix(1 0 0 1 25.7432 312.4365)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">F09</text>
+								<text id="F-08T" transform="matrix(1 0 0 1 25.7432 353.6606)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">F08</text>
+								<text id="F-07T" transform="matrix(1 0 0 1 25.7432 394.7778)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">F07</text>
+								<text id="F-06T" transform="matrix(1 0 0 1 25.7432 436.4722)" font-family="'MalgunGothicRegular'" font-size="17.139">F06</text>
+								<text id="F-05T" transform="matrix(1 0 0 1 25.7432 477.5884)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">F05</text>
+								<rect id="IPACU-01R" x="20.494" y="534.252" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="59.259" height="41.43"></rect>
+								<text id="IPACU-01T" transform="matrix(1 0 0 1 21.9341 561.457)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">IPACU1</text>
+								<rect id="Y-01R" x="161.499" y="473.919" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="59.621" height="41.43"></rect>
+								<text id="Y-01T" transform="matrix(1 0 0 1 177.0415 500.0327)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">Y01</text>
+								<rect id="IPACU-02R" x="20.494" y="575.842" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="59.259" height="41.428"></rect>
+								<text id="IPACU-02T" transform="matrix(1 0 0 1 21.9341 601.9541)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">IPACU2</text>
+								<text id="H-01T" class="bed" transform="matrix(1 0 0 1 165.2578 122.6909)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H01</text>
+								<text id="H-02T" transform="matrix(1 0 0 1 205.6533 122.6909)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H02</text>
+								<text id="H-03T" class="bed" transform="matrix(1 0 0 1 245.6436 122.6909)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H03</text>
+								<text id="H-04T" transform="matrix(1 0 0 1 285.8242 122.6909)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H04</text>
+								<text id="H-05T" transform="matrix(1 0 0 1 325.8115 122.6909)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H05</text>
+								<text id="H-06T" class="bed" transform="matrix(1 0 0 1 325.8115 164.314)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H06</text>
+								<text id="H-07T" transform="matrix(1 0 0 1 308.5361 205.665)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H07</text>
+								<text id="H-08T" class="bed" transform="matrix(1 0 0 1 205.6533 205.665)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H08</text>
+								<text id="H-09T" class="bed" transform="matrix(1 0 0 1 165.2578 205.665)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">H09</text>
+								<text id="G-01T" transform="matrix(1 0 0 1 25.376 122.6909)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">G01</text>
+								<text id="G-02T" class="bed" transform="matrix(1 0 0 1 65.9111 122.6909)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">G02</text>
+								<text id="G-03T" transform="matrix(1 0 0 1 104.5425 122.6909)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">G03</text>
+								<text id="G-04T" class="bed" transform="matrix(1 0 0 1 25.376 205.937)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">G04</text>
+								<text id="G-05T" transform="matrix(1 0 0 1 65.0952 205.937)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">G05</text>
+								<text id="G-06T" transform="matrix(1 0 0 1 104.5425 205.937)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">G06</text>
+								<text transform="matrix(1 0 0 1 54.0547 164.314)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">G 로젯</text>
+								<text transform="matrix(1 0 0 1 233.9258 164.314)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">H 로젯</text>
+								<rect x="241.384" y="390.708" fill="#93A3A4" width="120.169" height="124.508"></rect>
+								<rect id="I-01R" x="321.554" y="390.658" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.175" height="41.43"></rect>
+								<rect id="I-02R" x="321.554" y="431.789" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.175" height="41.43"></rect>
+								<rect id="I-03R" x="321.554" y="472.97" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.175" height="41.43"></rect>
+								<rect id="I-04R" x="241.207" y="390.658" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<text id="I-01T" transform="matrix(1 0 0 1 329.2148 417.1514)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">I01</text>
+								<text id="I-04T" transform="matrix(1 0 0 1 249.4316 417.1514)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">I04</text>
+								<text id="I-02T" transform="matrix(1 0 0 1 329.2148 458.4229)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">I02</text>
+								<text id="I-03T" transform="matrix(1 0 0 1 329.2148 499.647)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">I03</text>
+								<text transform="matrix(1 0 0 1 253.5117 478.8267)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">I 로젯</text>
+								<text transform="matrix(1 0 0 1 75.6816 457.8462)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">F 로젯</text>
+								<rect id="EREC-01R" x="319.846" y="534.252" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="EREC-02R" x="319.846" y="575.842" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-03R" x="319.846" y="616.998" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-04R" x="319.846" y="658.43" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-05R" x="319.846" y="699.582" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-06R" x="239.558" y="534.252" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.43"></rect>
+								<rect id="EREC-07R" x="239.558" y="575.842" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="EREC-08R" x="239.558" y="616.998" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="EREC-09R" x="239.558" y="658.43" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="EREC-10R" x="239.558" y="699.582" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="EREC-11R" x="239.558" y="741.014" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="EREC-12R" x="199.377" y="534.252" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="EREC-13R" x="199.377" y="575.842" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-14R" x="199.377" y="616.998" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-15R" x="199.377" y="658.43" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-16R" x="199.377" y="699.582" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-17R" x="119.756" y="534.252" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="EREC-18R" x="119.756" y="575.842" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="EREC-19R" x="119.756" y="616.998" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text id="EREC-01T" transform="matrix(1 0 0 1 330.3672 560.7441)" font-family="'MalgunGothicRegular'" font-size="17.139">01</text>
+								<text id="EREC-02T" transform="matrix(1 0 0 1 330.3672 602.0156)" font-family="'MalgunGothicRegular'" font-size="17.139">02</text>
+								<text id="EREC-03T" transform="matrix(1 0 0 1 330.3672 643.2402)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">03</text>
+								<text id="EREC-04T" transform="matrix(1 0 0 1 330.3672 684.3574)" font-family="'MalgunGothicRegular'" font-size="17.139">04</text>
+								<text id="EREC-05T" transform="matrix(1 0 0 1 330.3672 725.8242)" font-family="'MalgunGothicRegular'" font-size="17.139">05</text>
+								<text id="EREC-06T" transform="matrix(1 0 0 1 250.0801 560.7441)" font-family="'MalgunGothicRegular'" font-size="17.139">06</text>
+								<text id="EREC-07T" transform="matrix(1 0 0 1 250.0801 602.0156)" font-family="'MalgunGothicRegular'" font-size="17.139">07</text>
+								<text id="EREC-08T" transform="matrix(1 0 0 1 250.0801 643.2402)" font-family="'MalgunGothicRegular'" font-size="17.139">08</text>
+								<text id="EREC-09T" transform="matrix(1 0 0 1 250.0801 684.3574)" font-family="'MalgunGothicRegular'" font-size="17.139">09</text>
+								<text id="EREC-10T" transform="matrix(1 0 0 1 250.0801 725.8242)" font-family="'MalgunGothicRegular'" font-size="17.139">10</text>
+								<text id="EREC-11T" transform="matrix(1 0 0 1 250.0801 766.9414)" font-family="'MalgunGothicRegular'" font-size="17.139">11</text>
+								<text transform="matrix(1 0 0 1 133.8428 761.7266)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">EREC</text>
+								<text id="EREC-12T" transform="matrix(1 0 0 1 209.8984 560.7441)" font-family="'MalgunGothicRegular'" font-size="17.139">12</text>
+								<text id="EREC-13T" transform="matrix(1 0 0 1 209.8984 602.0156)" font-family="'MalgunGothicRegular'" font-size="17.139">13</text>
+								<text id="EREC-14T" transform="matrix(1 0 0 1 209.8984 643.2402)" font-family="'MalgunGothicRegular'" font-size="17.139">14</text>
+								<text id="EREC-15T" transform="matrix(1 0 0 1 209.8984 684.3574)" font-family="'MalgunGothicRegular'" font-size="17.139">15</text>
+								<text id="EREC-16T" transform="matrix(1 0 0 1 209.8984 725.8242)" font-family="'MalgunGothicRegular'" font-size="17.139">16</text>
+								<text id="EREC-17T" transform="matrix(1 0 0 1 130.2783 560.7441)" font-family="'MalgunGothicRegular'" font-size="17.139">17</text>
+								<text id="EREC-18T" transform="matrix(1 0 0 1 130.2783 602.0156)" font-family="'MalgunGothicRegular'" font-size="17.139">18</text>
+								<text id="EREC-19T" transform="matrix(1 0 0 1 130.2783 643.2402)" font-family="'MalgunGothicRegular'" font-size="17.139">19</text>
+							</svg>
+						</div>
+                    </div>
+					<div class="col-lg-3 col-md-6 col-sm-12">
+                        <div style="text-align:center">
+							<svg version="1.1" id="레이어_1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="381.86px" height="757.754px" viewBox="0 0 381.86 757.754" enable-background="new 0 0 381.86 757.754" xml:space="preserve">
+								<rect x="0.417" fill="#ECEEF2" width="381.858" height="757.754"></rect>
+								<rect x="20.867" y="241.477" fill="#9FA0A0" width="120.171" height="496.277"></rect>
+								<rect id="NREC-01R" x="99.756" y="241.425" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="NREC-02R" x="99.756" y="283.016" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="NREC-03R" x="99.756" y="324.173" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.427"></rect>
+								<rect id="NREC-04R" x="99.756" y="365.604" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text id="NREC-01T" transform="matrix(1 0 0 1 108.8462 267.9189)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">01</text>
+								<text id="NREC-02T" transform="matrix(1 0 0 1 108.8462 309.1904)" font-family="'MalgunGothicRegular'" font-size="17.139">02</text>
+								<text id="NREC-03T" transform="matrix(1 0 0 1 108.8462 350.4146)" font-family="'MalgunGothicRegular'" font-size="17.139">03</text>
+								<text id="NREC-04T" transform="matrix(1 0 0 1 108.8462 391.5317)" font-family="'MalgunGothicRegular'" font-size="17.139">04</text>
+								<rect id="NREC-05R" x="99.756" y="406.541" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="NREC-06R" x="99.756" y="448.131" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="NREC-07R" x="99.756" y="489.289" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.426"></rect>
+								<rect id="NREC-08R" x="99.756" y="530.719" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text id="NREC-05T" transform="matrix(1 0 0 1 108.8462 433.0342)" font-family="'MalgunGothicRegular'" font-size="17.139">05</text>
+								<text id="NREC-06T" transform="matrix(1 0 0 1 108.8462 474.3057)" font-family="'MalgunGothicRegular'" font-size="17.139">06</text>
+								<text id="NREC-07T" transform="matrix(1 0 0 1 108.8462 515.5293)" font-family="'MalgunGothicRegular'" font-size="17.139">07</text>
+								<text id="NREC-08T" transform="matrix(1 0 0 1 108.8462 556.6465)" font-family="'MalgunGothicRegular'" font-size="17.139">08</text>
+								<rect id="NREC-09R" x="99.756" y="572.146" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="NREC-10R" x="99.756" y="613.738" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NREC-11R" x="99.756" y="654.895" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NREC-12R" x="99.756" y="696.326" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text id="NREC-09T" transform="matrix(1 0 0 1 108.8462 598.6406)" font-family="'MalgunGothicRegular'" font-size="17.139">09</text>
+								<text id="NREC-10T" transform="matrix(1 0 0 1 108.8462 639.9121)" font-family="'MalgunGothicRegular'" font-size="17.139">10</text>
+								<text id="NREC-11T" transform="matrix(1 0 0 1 108.8462 681.1367)" font-family="'MalgunGothicRegular'" font-size="17.139">11</text>
+								<text id="NREC-12T" transform="matrix(1 0 0 1 108.8462 722.2539)" font-family="'MalgunGothicRegular'" font-size="17.139">12</text>
+								<rect id="NREC-16R" x="20.867" y="572.146" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.43"></rect>
+								<rect id="NREC-15R" x="20.867" y="613.738" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NREC-14R" x="20.867" y="654.895" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NREC-13R" x="20.867" y="696.326" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text id="NREC-16T" transform="matrix(1 0 0 1 29.9575 598.6406)" font-family="'MalgunGothicRegular'" font-size="17.139">16</text>
+								<text id="NREC-15T" transform="matrix(1 0 0 1 29.9575 639.9121)" font-family="'MalgunGothicRegular'" font-size="17.139">15</text>
+								<text id="NREC-14T" transform="matrix(1 0 0 1 29.9575 681.1367)" font-family="'MalgunGothicRegular'" font-size="17.139" fill="#FFFFFF">14</text>
+								<text id="NREC-13T" transform="matrix(1 0 0 1 29.9575 722.2539)" font-family="'MalgunGothicRegular'" font-size="17.139">13</text>
+								<text transform="matrix(1 0 0 1 34.8267 452.1313)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">NREC</text>
+								<path fill="#9FA0A0" d="M362.102,58.848c0,5.402-4.347,9.782-9.71,9.782H30.301c-5.362,0-9.711-4.38-9.711-9.782V29.503c0-5.401,4.349-9.782,9.711-9.782h322.091c5.363,0,9.71,4.381,9.71,9.782V58.848z"></path>
+								<rect x="20.939" y="95.943" fill="#9FA0A0" width="120.027" height="124.36"></rect>
+								<rect x="241.897" y="95.943" fill="#9FA0A0" width="120.028" height="124.36"></rect>
+								<rect id="J-06R" class="bed" x="100.841" y="95.943" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="J-05R" class="bed" x="60.716" y="95.943" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<rect id="J-04R" class="bed" x="20.59" y="95.943" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"><title>Test</title></rect>
+								<rect id="J-03R" x="20.59" y="157.715" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="61.773"></rect>
+								<rect id="J-02R" class="bed" x="60.716" y="178.108" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<rect id="J-01R" class="bed" x="100.841" y="178.108" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="K-01R" x="241.724" y="95.943" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="K-02R" x="281.85" y="95.943" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<rect id="K-03R" x="321.975" y="95.943" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.127" height="61.773"></rect>
+								<rect id="K-04R" x="321.975" y="157.715" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.127" height="61.773"></rect>
+								<rect id="K-05R" x="281.85" y="178.108" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.125" height="41.381"></rect>
+								<rect id="K-06R" x="241.724" y="178.108" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<text transform="matrix(1 0 0 1 152.0713 56.499)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1288">신관</text>
+								<text id="K-01T" transform="matrix(1 0 0 1 248.4658 122.4043)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">K01</text>
+								<text id="K-02T" transform="matrix(1 0 0 1 288.8154 122.4043)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">K02</text>
+								<text id="K-03T" transform="matrix(1 0 0 1 327.1289 132.186)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">K03</text>
+								<text id="K-04T" transform="matrix(1 0 0 1 327.1289 193.0537)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">K04</text>
+								<text id="K-05T" transform="matrix(1 0 0 1 288.8154 205.2808)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">K05</text>
+								<text id="K-06T" transform="matrix(1 0 0 1 248.4658 205.2808)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">K06</text>
+								<text id="J-05T" class="bed" transform="matrix(1 0 0 1 70.1133 122.4043)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">J05</text>
+								<text id="J-06T" class="bed" transform="matrix(1 0 0 1 108.6982 122.4043)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">J06</text>
+								<text id="J-02T" class="bed" transform="matrix(1 0 0 1 69.2969 205.5522)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">J02</text>
+								<text id="J-04T" class="bed" transform="matrix(1 0 0 1 28.5391 132.186)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">J04</text>
+								<text id="J-03T" transform="matrix(1 0 0 1 27.7236 193.3252)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">J03</text>
+								<text id="J-01T" class="bed" transform="matrix(1 0 0 1 108.6982 205.5522)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">J01</text>
+								<rect id="OB-01R" x="241.636" y="241.386" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="120.551" height="41.381"></rect>
+								<text id="OB-01T" transform="matrix(1 0 0 1 280.8672 267.4683)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">OB01</text>
+								<rect id="OB-02R" class="bed" x="241.636" y="302.768" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="120.551" height="41.381"></rect>
+								<text id="OB-02T" class="bed" transform="matrix(1 0 0 1 280.8672 328.8506)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">OB02</text>
+								<text transform="matrix(1 0 0 1 73.7588 163.9785)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">J 로젯</text>
+								<text transform="matrix(1 0 0 1 257.1465 163.9785)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">K 로젯</text>
+							</svg>
+						</div>
+                    </div>
+					<div class="col-lg-3 col-md-6 col-sm-12">
+                        <div style="text-align:center">
+							<svg version="1.1" id="레이어_1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="381.86px" height="732.9px" viewBox="0 0 381.86 732.9" enable-background="new 0 0 381.86 732.9" xml:space="preserve">
+								<rect x="0.019" fill="#ECEEF2" width="381.858" height="732.9"></rect>
+								<path fill="#647C9A" d="M364.24,58.62c0,5.403-4.347,9.783-9.71,9.783H32.439c-5.363,0-9.711-4.379-9.711-9.783V29.275c0-5.402,4.348-9.782,9.711-9.782H354.53c5.363,0,9.71,4.38,9.71,9.782V58.62z"></path>
+								<rect x="20.483" y="89.244" fill="#647C9A" width="343.291" height="167.025"></rect>
+								<rect id="PICU1-01R" x="323.696" y="89.244" fill="#0000FF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"></rect>
+								<rect id="PICU1-02R" x="323.696" y="130.962" fill="#BB1839" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"></rect>
+								<rect id="PICU1-03R" x="323.697" y="172.343" fill="#0000FF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="PICU1-04R" x="323.697" y="214.061" fill="#0000FF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="PICU1-05R" x="192.106" y="172.343" fill="#0000FF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="PICU1-06R" x="192.106" y="214.061" fill="#0000FF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="PICU1-07R" x="151.98" y="172.343" fill="#0000FF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.38"></rect>
+								<rect id="PICU1-08R" x="151.98" y="214.061" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="PICU1-09R" x="21.201" y="131.728" fill="#0000FF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"></rect>
+								<rect id="PICU1-10R" x="21.201" y="173.446" fill="#008000" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"></rect>
+								<rect id="PICU1-11R" x="21.201" y="213.892" fill="#0000FF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"></rect>
+								<text transform="matrix(1 0 0 1 162.0361 56.2715)" fill="#FFFFFF" font-family="'MalgunGothicRegular'" font-size="39.1288">ICU</text>
+								<text id="PICU1-05T" transform="matrix(1 0 0 1 202.9268 198.5322)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">05</text>
+								<text id="PICU1-06T" transform="matrix(1 0 0 1 202.2305 241.2349)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">06</text>
+								<text id="PICU1-07T" transform="matrix(1 0 0 1 162.8008 198.5322)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">07</text>
+								<text id="PICU1-08T" transform="matrix(1 0 0 1 162.1045 241.2349)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">08</text>
+								<text id="PICU1-11T" transform="matrix(1 0 0 1 32.1143 241.0659)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">11</text>
+								<text id="PICU1-04T" transform="matrix(1 0 0 1 333.8213 241.2349)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">04</text>
+								<text id="PICU1-03T" transform="matrix(1 0 0 1 334.5176 198.5322)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">03</text>
+								<g>
+									<text id="PICU1-09T" transform="matrix(1 0 0 1 32.1143 157.917)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">09</text>
+								</g>
+								<g>
+									<text id="PICU1-10T" transform="matrix(1 0 0 1 32.1143 199.6353)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">10</text>
+								</g>
+								<g>
+									<text id="PICU1-01T" transform="matrix(1 0 0 1 334.6094 115.4336)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">01</text>
+								</g>
+								<g>
+									<text id="PICU1-02T" transform="matrix(1 0 0 1 334.6094 157.1519)" font-family="'MalgunGothicRegular'" font-size="17.1189" fill="#FFFFFF">02</text>
+								</g>
+								<g>
+									<text transform="matrix(1 0 0 1 165.7607 119.2539)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">PICU 1</text>
+								</g>
+								<rect x="20.192" y="275.155" fill="#647C9A" width="341.511" height="166.08"></rect>
+								<rect id="PICU2-01R" x="322.697" y="275.605" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.38"></rect>
+								<rect id="PICU2-02R" x="322.697" y="317.409" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.379"></rect>
+								<rect id="PICU2-04R" x="322.697" y="399.573" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.381"></rect>
+								<rect id="PICU2-05R" x="247.414" y="357.491" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="PICU2-06R" x="247.414" y="399.209" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"></rect>
+								<rect id="PICU2-07R" x="207.288" y="357.491" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="PICU2-08R" x="207.288" y="399.209" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"></rect>
+								<rect id="PICU2-09R" x="134.482" y="357.491" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="PICU2-10R" x="134.482" y="399.209" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"></rect>
+								<rect id="PICU2-11R" x="94.356" y="357.491" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<rect id="PICU2-12R" x="94.356" y="399.209" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"></rect>
+								<rect id="PICU2-13R" x="21.201" y="399.209" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.379"></rect>
+								<rect id="PICU2-14R" x="21.201" y="357.491" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.126" height="41.381"></rect>
+								<text id="PICU2-04R" transform="matrix(1 0 0 1 333.6104 426.7461)" font-family="'MalgunGothicRegular'" font-size="17.1189">04</text>
+								<text id="PICU2-11R" transform="matrix(1 0 0 1 105.1768 383.6802)" font-family="'MalgunGothicRegular'" font-size="17.1189">11</text>
+								<text id="PICU2-12R" transform="matrix(1 0 0 1 105.1768 426.3828)" font-family="'MalgunGothicRegular'" font-size="17.1189">12</text>
+								<text id="PICU2-10R" transform="matrix(1 0 0 1 145.3027 426.3828)" font-family="'MalgunGothicRegular'" font-size="17.1189">10</text>
+								<text id="PICU2-09R" transform="matrix(1 0 0 1 145.3027 383.6802)" font-family="'MalgunGothicRegular'" font-size="17.1189">09</text>
+								<text id="PICU2-13R" transform="matrix(1 0 0 1 32.0215 426.3828)" font-family="'MalgunGothicRegular'" font-size="17.1189">13</text>
+								<text id="PICU2-14R" transform="matrix(1 0 0 1 32.0215 383.6802)" font-family="'MalgunGothicRegular'" font-size="17.1189">14</text>
+								<text id="PICU2-08R" transform="matrix(1 0 0 1 218.1084 426.3828)" font-family="'MalgunGothicRegular'" font-size="17.1189">08</text>
+								<text id="PICU2-07R" transform="matrix(1 0 0 1 218.1084 383.6802)" font-family="'MalgunGothicRegular'" font-size="17.1189">07</text>
+								<text id="PICU2-06R" transform="matrix(1 0 0 1 258.2344 426.3828)" font-family="'MalgunGothicRegular'" font-size="17.1189">06</text>
+								<text id="PICU2-05R" transform="matrix(1 0 0 1 258.2344 383.6802)" font-family="'MalgunGothicRegular'" font-size="17.1189">05</text>
+								<g>
+									<text id="PICU2-02R" transform="matrix(1 0 0 1 333.6104 343.5972)" font-family="'MalgunGothicRegular'" font-size="17.1189">02</text>
+								</g>
+								<g>
+									<text id="PICU2-01R" transform="matrix(1 0 0 1 333.6104 301.7939)" font-family="'MalgunGothicRegular'" font-size="17.1189">01</text>
+								</g>
+									<rect x="322.697" y="359.125" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.127" height="41.381"></rect>
+								<g>
+									<text id="PICU2-03R" transform="matrix(1 0 0 1 333.6104 385.3154)" font-family="'MalgunGothicRegular'" font-size="17.1189">03</text>
+								</g>
+								<g>
+									<text transform="matrix(1 0 0 1 164.5796 309.4604)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.1189">PICU 2</text>
+								</g>
+								<rect x="22.436" y="464.624" fill="#647C9A" width="239.939" height="248.277"></rect>
+								<rect id="NRICU-01R" x="141.527" y="464.624" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.429"></rect>
+								<rect id="NRICU-02R" x="221.873" y="464.624" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.429"></rect>
+								<rect id="NRICU-03R" x="221.873" y="506.025" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NRICU-04R" x="221.873" y="547.182" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NRICU-05R" x="221.873" y="588.613" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NRICU-06R" x="221.873" y="630.041" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NRICU-07R" x="221.873" y="671.473" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NRICU-08R" x="141.527" y="630.039" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NRICU-09R" x="141.527" y="671.471" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NRICU-10R" x="101.637" y="630.039" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="NRICU-11R" x="101.637" y="671.471" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.174" height="41.428"></rect>
+								<rect id="NRICU-12R" x="22.56" y="630.037" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<rect id="NRICU-13R" x="22.56" y="671.469" fill="#FFFFFF" stroke="#000000" stroke-miterlimit="10" width="40.173" height="41.428"></rect>
+								<text transform="matrix(1 0 0 1 116.8477 567.8945)" fill="#F3F4F8" stroke="#F3F4F8" stroke-miterlimit="10" font-family="'MalgunGothicRegular'" font-size="17.139">NRICU</text>
+								<text id="NRICU-01T" transform="matrix(1 0 0 1 152.6177 491.1167)" font-family="'MalgunGothicRegular'" font-size="17.139">01</text>
+								<text id="NRICU-02T" transform="matrix(1 0 0 1 232.9629 491.1167)" font-family="'MalgunGothicRegular'" font-size="17.139">02</text>
+								<text id="NRICU-03T" transform="matrix(1 0 0 1 232.9629 532.1992)" font-family="'MalgunGothicRegular'" font-size="17.139">03</text>
+								<text id="NRICU-04T" transform="matrix(1 0 0 1 232.9629 573.4229)" font-family="'MalgunGothicRegular'" font-size="17.139">04</text>
+								<text id="NRICU-05T" transform="matrix(1 0 0 1 232.9629 614.54)" font-family="'MalgunGothicRegular'" font-size="17.139">05</text>
+								<text id="NRICU-06T" transform="matrix(1 0 0 1 232.9629 656.2822)" font-family="'MalgunGothicRegular'" font-size="17.139">06</text>
+								<text id="NRICU-07T" transform="matrix(1 0 0 1 232.9629 697.3994)" font-family="'MalgunGothicRegular'" font-size="17.139">07</text>
+								<text id="NRICU-08T" transform="matrix(1 0 0 1 152.6167 656.2803)" font-family="'MalgunGothicRegular'" font-size="17.139">08</text>
+								<text id="NRICU-09T" transform="matrix(1 0 0 1 152.6167 697.3975)" font-family="'MalgunGothicRegular'" font-size="17.139">09</text>
+								<text id="NRICU-10T" transform="matrix(1 0 0 1 112.7266 656.2803)" font-family="'MalgunGothicRegular'" font-size="17.139">10</text>
+								<text id="NRICU-11T" transform="matrix(1 0 0 1 112.7266 697.3975)" font-family="'MalgunGothicRegular'" font-size="17.139">11</text>
+								<text id="NRICU-12T" transform="matrix(1 0 0 1 33.6489 656.2783)" font-family="'MalgunGothicRegular'" font-size="17.139">12</text>
+								<text id="NRICU-13T" transform="matrix(1 0 0 1 33.6489 697.3955)" font-family="'MalgunGothicRegular'" font-size="17.139">13</text>
+							</svg>
+						</div>
+					</div>
+                </div>
+
+                <!-- Right sidebar -->
+                <div class="right-sidebar">
+                    <div class="slimscrollright">
+                        <div class="rpanel-title"> Service Panel <span><i class="ti-close right-side-toggle"></i></span> </div>
+                        <div class="r-panel-body">
+                            <ul id="themecolors" class="m-t-20">
+                                <li><b>With Light sidebar</b></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-default" class="default-theme">1</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-green" class="green-theme">2</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-red" class="red-theme">3</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-blue" class="blue-theme">4</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-purple" class="purple-theme">5</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-megna" class="megna-theme working">6</a></li>
+                                <li class="d-block m-t-30"><b>With Dark sidebar</b></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-default-dark" class="default-dark-theme ">7</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-green-dark" class="green-dark-theme">8</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-red-dark" class="red-dark-theme">9</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-blue-dark" class="blue-dark-theme">10</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-purple-dark" class="purple-dark-theme">11</a></li>
+                                <li><a href="javascript:void(0)" data-skin="skin-megna-dark" class="megna-dark-theme ">12</a></li>
+                            </ul>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <!-- End Container fluid  -->
+        </div>
+
+        <div class="modal fade" id="bed_detail" tabindex="-1" role="dialog" aria-labelledby="detail info">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="bed_detail_title">Bed info</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <table id="annotation_list" class="table">
+                            <tr>
+                                <th scope="col"  class="column-bed_name">
+                                    <div class="text"><span>number</span></div>
+                                    <div class="clear"></div>
+                                </th>
+                                <th scope="col"  class="column-bed_name">
+                                    <div class="text"><span>dt</span></div>
+                                    <div class="clear"></div>
+                                </th>
+                                <th scope="col"  class="column-bed_name">
+                                    <div class="text"><span>cat_1</span></div>
+                                    <div class="clear"></div>
+                                </th>
+                                <th scope="col"  class="column-bed_name">
+                                    <div class="text"><span>cat_2</span></div>
+                                    <div class="clear"></div>
+                                </th>
+                                <th scope="col"  class="column-bed_name">
+                                    <div class="text"><span>description</span></div>
+                                    <div class="clear"></div>
+                                </th>
+                                <th scope="col"  class="column-bed_name">
+                                    <div class="text"><span>action</span></div>
+                                    <div class="clear"></div>
+                                </th>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" id="btn-new-annotation" class="btn btn-primary">Add New Annotation</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="annotation_dialog" tabindex="-1" role="dialog" aria-labelledby="Add Annotation">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="bed_detail_title">Add Annotation</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <form>
+                            <div class="form-group">
+                                <label for="datepicker" class="control-label">Date:</label>
+                                <input type="text" id="datepicker" size="10" maxlength="10">
+                            </div>
+                            <div class="form-group">
+                                <label for="hh" class="control-label">Time:</label>
+                                <input id="hh" class="spinner" name="hh" size="2" maxlength="2">
+                                <input id="mm" class="spinner" name="mm" size="2" maxlength="2">
+                                <input id="ss" class="spinner" name="ss" size="2" maxlength="2">
+                            </div>
+                            <div class="form-group">
+                                <label for="cat1" class="control-label">Cat 1:</label>
+                                <select class="cat" name="cat1" id="cat1">
+                                    <option selected="selected">None</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cat2" class="control-label">Cat 2:</label>
+                                <select class="cat" name="cat2" id="cat2" disabled="true">
+                                    <option selected="selected">None</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="desc" class="control-label">Desc:</label>
+                                <input type="text" id="desc">
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                        <button type="button" id="btn-update-annotation" class="btn btn-primary">Add</button>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            © 2019 AMC
+        </footer>
+
+    </div>
+
+    <script src="/static/assets/node_modules/jquery/jquery-3.2.1.min.js"></script>
+    <!-- Bootstrap popper Core JavaScript -->
+    <script src="/static/assets/node_modules/popper/popper.min.js"></script>
+    <script src="/static/assets/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+    <!-- slimscrollbar scrollbar JavaScript -->
+    <script src="/static/elite/js/perfect-scrollbar.jquery.min.js"></script>
+    <!--Wave Effects -->
+    <script src="/static/elite/js/waves.js"></script>
+    <!--Menu sidebar -->
+    <script src="/static/elite/js/sidebarmenu.js"></script>
+    <!--Custom JavaScript -->
+    <script src="/static/elite/js/custom.min.js"></script>
+
+    <script>
+
+        //$( "#J-04R" ).tooltip();
+        $( ".bed" ).on('click', function (e) {
+
+            bedTitle = this.id.substr(0, this.id.length-1)
+            $('#bed_detail_title').text(bedTitle)
+            UpdateAnnotationData("get_annotation?bed=" + bedTitle);
+            $('#bed_detail').modal()
+            /*
+            $("#bed_detail").dialog({title: this.id.substr(0, this.id.length-1)});
+            $("#bed_detail").dialog( "option", "width", 800 );
+            $("#bed_detail").dialog( "option", "height", 600 );
+            UpdateAnnotationData("get_annotation?bed=" + $( "#bed_detail" ).dialog( "option", "title" ));
+            $("#bed_detail").dialog("open");
+            */
+        });
+
+        $( "#btn-new-annotation" ).on('click', function (e) {
+            $('#annotation_dialog').modal()
+
+            /*$("#annotation_dialog").dialog({title: 'Add New Annotation'});
+            $("#annotation_dialog").dialog( "option", "width", 400 );
+            $("#annotation_dialog").dialog("open");*/
+            UpdateSelectMenu(document.getElementById("cat1"), "None");
+            let dt = new Date(Date.now());
+            //let str = moment(dt).format('YYYY-MM-DD');
+            //$("#datepicker").datepicker( "setDate", "10/12/2012" );
+            //$("#datepicker").datepicker( "refresh" );
+            $("#hh").spinner( "value", dt.getHours());
+            $("#mm").spinner( "value", dt.getMinutes());
+            $("#ss").spinner( "value", dt.getSeconds());
+        });
+        $( "#btn-update-annotation" ).on('click', function (e) {
+            let cat1 = $("#cat1").val(), cat2 = $("#cat2").val(), desc = $("#desc").val(), hh = $("#hh").spinner( "value" );
+            let dt = new Date();
+            dt.setHours($("#hh").spinner( "value" ));
+            dt.setMinutes($("#mm").spinner( "value" ));
+            dt.setSeconds($("#ss").spinner( "value" ));
+            let bed = $( "#bed_detail" ).dialog( "option", "title" );
+            console.log(bed, dt);
+            UpdateAnnotationData("add_annotation?bed=" + bed + "&dt=" + dt.toISOString() + "&method=1&desc=" + desc + "&category_1=" + cat1 + "&category_2=" + cat2 );
+            $( "#annotation_dialog" ).dialog( "close" );
+        });
+        $( "#btn-cancel-annotation" ).on('click', function (e) {
+            $( "#annotation_dialog" ).dialog( "close" );
+        });
+
+        function DeleteAnnotation(i) {
+            UpdateAnnotationData("delete_annotation?bed=" + $( "#bed_detail" ).dialog( "option", "title" ) + "&id=" + i);
+        }
+
+        function UpdateAnnotationData(url){
+            let xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState === 4 && this.status === 200) {
+                    annotation_data = JSON.parse(xhttp.responseText);
+                    console.log(annotation_data);
+                    let annotation_table = document.getElementById('annotation_list');
+                    let row_count = annotation_table.rows.length;
+                    while (--row_count) {
+                        annotation_table.deleteRow(row_count);
+                    }
+                    for (let i=0; i<annotation_data.length; i++) {
+                        annotation_data[i].dt = new Date(annotation_data[i].dt);
+                        annotation_data[i].dt_end = annotation_data[i].dt_end?new Date(annotation_data[i].dt_end):null;
+                        let row = annotation_table.insertRow(i+1);
+                        row.insertCell(0).innerHTML = i+1;
+                        row.insertCell(1).innerHTML = annotation_data[i].dt.toLocaleString();
+                        row.insertCell(2).innerHTML = annotation_data[i].category[0];
+                        row.insertCell(3).innerHTML = annotation_data[i].category[1];
+                        row.insertCell(4).innerHTML = annotation_data[i].description;
+                        row.insertCell(5).innerHTML = '<button type="button" class="btn btn-primary" onclick="DeleteAnnotation(' + annotation_data[i].id + ')">Delete</button>';
+                    }
+                }
+            };
+            xhttp.open("GET", url, true);
+            xhttp.send();
+        }
+    </script>
 </body>
+
 </html>
