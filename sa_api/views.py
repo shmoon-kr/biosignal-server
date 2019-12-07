@@ -677,7 +677,8 @@ def review(request):
         )
         context['begin_date'] = str(begin_date)
         context['end_date'] = str(end_date)
-        template = loader.get_template('review.html')
+
+        template = loader.get_template('review01.html')
         return HttpResponse(template.render(context, request))
     else:
         r_dict = dict()
@@ -743,6 +744,83 @@ def dashboard(request):
             'beds_orange': json.dumps(beds_orange),
             'beds_green': json.dumps(beds_green),
             'beds_blue': json.dumps(beds_blue),
+        }
+        return HttpResponse(template.render(context, request))
+
+    elif target == 'trend':
+        dt_from = request.GET.get('begin_date')
+        dt_to = request.GET.get('end_date')
+        if dt_from is None:
+            dt_from = datetime.datetime.now() - datetime.timedelta(days=7)
+            dt_to = datetime.datetime.now()
+        elif dt_to is None:
+            dt_to = dt_from + datetime.timedelta(days=7)
+        dt_from = dt_from.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(tz)
+        dt_to = dt_to.astimezone(tz)
+
+        label_dates = list()
+        for i_dt in pandas.date_range(dt_from, dt_to):
+            label_dates.append(str(i_dt.date()))
+        label_dates_dict = dict()
+        for i, label in enumerate(label_dates):
+            label_dates_dict[label] = i
+
+        data = dict()
+        data['label_dates'] = label_dates
+        data['collected_files'] = dict()
+        data['collected_hours'] = dict()
+        data['total_hours'] = dict()
+
+        for summary in SummaryFileRecorded.objects.filter(record__begin_date__range=(dt_from, dt_to)):
+            if summary.record.bed.room.name not in data['total_hours']:
+                data['collected_files'][summary.record.bed.room.name] = [0] * len(label_dates)
+                data['collected_hours'][summary.record.bed.room.name] = [0] * len(label_dates)
+                data['total_hours'][summary.record.bed.room.name] = [0] * len(label_dates)
+            data['collected_files'][summary.record.bed.room.name][label_dates_dict[str(summary.record.begin_date.astimezone(tz).date())]] += 1
+            data['collected_hours'][summary.record.bed.room.name][label_dates_dict[str(summary.record.begin_date.astimezone(tz).date())]] += (summary.record.end_date - summary.record.begin_date).total_seconds()/3600
+
+        tmp_data = dict()
+        for summary in SummaryFileRecorded.objects.all():
+            month = summary.record.begin_date.strftime('%Y-%m')
+            if month not in tmp_data.keys():
+                tmp_data[month] = {'collected_files': 0, 'collected_hours': 0}
+            tmp_data[month]['collected_files'] += 1
+            tmp_data[month]['collected_hours'] += (summary.record.end_date-summary.record.begin_date).total_seconds()/3600
+
+        tmp_data = dict(sorted(tmp_data.items()))
+
+        data['accumulative'] = dict()
+        data['accumulative']['label_dates'] = list()
+        data['accumulative']['collected_hours'] = list()
+        data['accumulative']['collected_files'] = list()
+
+        collected_hours = 0
+        collected_files = 0
+        for key, val in tmp_data.items():
+            data['accumulative']['label_dates'].append(key)
+            collected_hours += val['collected_hours']
+            collected_files += val['collected_files']
+            data['accumulative']['collected_hours'].append(collected_hours)
+            data['accumulative']['collected_files'].append(collected_files)
+
+        data['storage_usage'] = dict()
+        data['storage_usage']['labels'] = ['Main Storage', 'NAS1 (Vol1)']
+        storages = list()
+        storages.append(shutil.disk_usage("/mnt/Data"))
+        storages.append(shutil.disk_usage("/mnt/NAS1"))
+        total = list()
+        free = list()
+        for storage in storages:
+            total.append(storage[0] // 2**40)
+            free.append(storage[2] // 2**40)
+        data['storage_usage']['total'] = total
+        data['storage_usage']['free'] = free
+
+        template = loader.get_template('dashboard_trend.html')
+        context = {
+            'since': str(since),
+            'data': data,
+            'data_json': json.dumps(data)
         }
         return HttpResponse(template.render(context, request))
 
@@ -967,8 +1045,11 @@ def summary_rosette(request):
 
     sidebar_menu, loc = get_sidebar_menu(rosette)
 
-    template = loader.get_template('summary_rosette.html')
+    ##template = loader.get_template('summary_rosette.html')
+    template = loader.get_template('summary01.html')
     context = {
+        'loc': loc,
+        'sidebar_menu': sidebar_menu,
         'data': data,
         'data_json': json.dumps(data),
         'loc': loc,
