@@ -1,19 +1,8 @@
-<!DOCTYPE html>
-<html>
+{% extends 'master.html' %}
 
-<head>
-<meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<!-- Tell the browser to be responsive to screen width -->
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="">
-<meta name="author" content="">
-<!-- Favicon icon -->
-<link rel="shortcut icon" href="/static/favi.ico" />
-<title>AMC Bio Signal : Review, {{ bed }}/{{ date }}</title>
-<!-- Custom CSS -->
-<link href="/static/elite/css/style.css" rel="stylesheet" />
+{% block title %}Review:{{ bed }}/{{ date }}{% endblock %}
 
+{% block head %}
     <link rel="stylesheet" type="text/css" href="/static/admin/css/base.css">
     <link rel="stylesheet" type="text/css" href="/static/admin/css/changelists.css">
     <link rel="stylesheet" type="text/css" href="/static/jquery-ui-themes-1.12.1/themes/base/jquery-ui.css">
@@ -39,104 +28,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.13/moment-timezone-with-data-2012-2022.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <!--link href="/static/assets/node_modules/ion-rangeslider/css/ion.rangeSlider.css" rel="stylesheet">
+    <link href="/static/assets/node_modules/ion-rangeslider/css/ion.rangeSlider.skinModern.css" rel="stylesheet"
 
-</head>
+    <link href="/static/assets/node_modules/select2/dist/css/select2.min.css" rel="stylesheet" type="text/css" />
+    <link href="/static/assets/node_modules/switchery/dist/switchery.min.css" rel="stylesheet" />
+    <link href="/static/assets/node_modules/bootstrap-select/bootstrap-select.min.css" rel="stylesheet" />
+    <link href="/static/assets/node_modules/bootstrap-tagsinput/dist/bootstrap-tagsinput.css" rel="stylesheet" />
+    <link href="/static/assets/node_modules/bootstrap-touchspin/dist/jquery.bootstrap-touchspin.min.css" rel="stylesheet" />
+    <link href="/static/assets/node_modules/multiselect/css/multi-select.css" rel="stylesheet" type="text/css" />
+    <link href="/static/elite/css/pages/form-icheck.css" rel="stylesheet">-->
+{% endblock %}
 
-<body class="horizontal-nav skin-megna fixed-layout">
-
-    <!-- ============================================================== -->
-    <!-- Main wrapper - style you can find in pages.scss -->
-    <!-- ============================================================== -->
-    <div id="main-wrapper">
-        <header class="topbar">
-            <nav class="navbar top-navbar navbar-expand-md navbar-dark">
-                <div class="navbar-header">
-                    <a class="navbar-brand" href="dashboard">
-                        <!-- Logo icon --><b>
-                            <!--You can put here icon as well // <i class="wi wi-sunset"></i> //-->
-                            <!-- Dark Logo icon
-                            <img src="/static/assets/images/logo-icon.png" alt="homepage" class="dark-logo" />-->
-                            <!-- Light Logo icon
-                            <img src="/static/assets/images/logo-light-icon.png" alt="homepage" class="light-logo" />-->
-                        </b>
-                        <!--End Logo icon -->
-                        <!-- Logo text -->
-						<span class="hidden-sm-down">
-                         <!-- dark Logo text
-                         <img src="/static/assets/images/logo-text.png" alt="homepage" class="dark-logo" />-->
-                         <!-- Light Logo text
-                         <img src="/static/assets/images/logo-light-text.png" class="light-logo" alt="homepage" />-->
-						 Asan Medical Center
-						</span>
-                    </a>
-                </div>
-
-            </nav>
-        </header>
-        <!-- End Topbar header -->
-
-        <aside class="left-sidebar">
-            <!-- Sidebar scroll-->
-            <div class="scroll-sidebar">
-                <!-- Sidebar navigation-->
-                <nav class="sidebar-nav">
-                    <ul id="sidebarnav">
-                        <li>
-						    <a class="has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="ti-image"></i>
-						    <span class="hide-menu">Dashboard</span></a>
-                            <ul aria-expanded="false" class="collapse">
-                                <li><a href="dashboard">Anesthesiology </a></li>
-                                <li><a href="dashboard?target=etc">Etc.</a></li>
-                                <li><a href="dashboard?target=trend">Trend</a></li>
-                            </ul>
-                        </li>
-                        <li>
-						    <a class="has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="ti-stats-up"></i>
-							<span class="hide-menu">서관</span></a>
-                            <ul aria-expanded="false" class="collapse">
-                                <li><a href="summary_rosette?rosette=B">B Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=C">C Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=D">D Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=E">E Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=WREC">Recovery</a></li>
-                            </ul>
-                        </li>
-                        <li>
-						    <a class="has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="ti-stats-up"></i>
-							<span class="hide-menu">동관</span></a>
-                            <ul aria-expanded="false" class="collapse">
-                                <li><a href="summary_rosette?rosette=F">F Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=G">G Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=H">H Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=I">I Rosette</a></li>
-								<li><a href="summary_rosette?rosette=L">L Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=EREC">Recovery</a></li>
-                            </ul>
-                        </li>
-                        <li>
-						    <a class="has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false"><i class="ti-stats-up"></i>
-							<span class="hide-menu">신관</span></a>
-                            <ul aria-expanded="false" class="collapse">
-                                <li><a href="summary_rosette?rosette=J">J Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=J">K Rosette</a></li>
-                                <li><a href="summary_rosette?rosette=OB">Delivery Floor</a></li>
-                                <li><a href="summary_rosette?rosette=NREC">Recovery</a></li>
-								<li><a href="summary_rosette?rosette=PICU1">PICU1</a></li>
-                            </ul>
-                        </li>
-                    </ul>
-                </nav>
-                <!-- End Sidebar navigation -->
-            </div>
-            <!-- End Sidebar scroll-->
-        </aside>
-
-        <!-- Page wrapper  -->
+{% block content %}
         <div class="page-wrapper">
             <div class="container-fluid">
-                <!-- ============================================================== -->
-                <!-- Bread crumb and right sidebar toggle -->
-                <!-- ============================================================== -->
+
                 <div class="row page-titles">
                     <div class="col-md-5 align-self-center">
                         <h4 class="text-themecolor">{{ bed }}/{{ date }}</h4>
@@ -155,52 +62,78 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card">
-<h1 align="center"> {{ bed }}, {{ date }} <a href="/download_vital_file?file={{ vital_file }}"> Download vital file</a></h1>
+                            <div class="card-body">
+                                <h2 class="card-title">Download</h2>
+                                <h6 class="card-subtitle">
+                                    <a href="/download_vital_file?file={{ vital_file }}"> {{ bed }}, {{ date }} vital file</a>
+                                &nbsp; / &nbsp;
+                                    <label for="select-download-csv">CSV</label>
+                                    <select id="select-download-csv" class="select-action">
+                                        {% for key, val in meta_data.items %}
+                                            {% if val.number %}
+                                                <option>{{ key }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-<div class="results">
-    <table id="annotation_list">
-        <thead>
-        <tr>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>number</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>dt</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>dt_end</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>method</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>cat_1</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>cat_2</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>description</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>comment</span></div>
-                <div class="clear"></div>
-            </th>
-            <th scope="col"  class="column-bed_name">
-                <div class="text"><span>action</span></div>
-                <div class="clear"></div>
-            </th>
-        </tr>
-        </thead>
-    </table>
-</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+
+                            <div class="card-body">
+                                <h2 class="card-title">Annotation</h2>
+                                <div class="table-responsive results">
+                                    <table id="annotation_list" class="table">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>number</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>dt</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>dt_end</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>method</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>cat_1</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>cat_2</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>description</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>comment</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                                <th scope="col"  class="column-bed_name">
+                                                    <div class="text"><span>action</span></div>
+                                                    <div class="clear"></div>
+                                                </th>
+                                            </tr>
+                                        </thead>
+
+
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div><!-- /.row -->
@@ -208,76 +141,78 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card">
-<fieldset>
-    <legend>Number</legend>
-    <div id="number-chart-control" class="chart-control">
-        <label for="browser-number-height">Height</label>
-        <select id="browser-number-height">
-            <option selected="selected">400px</option>
-            <option>300px</option>
-            <option>200px</option>
-        </select>
+                            <div class="card-body">
+                                <h2 class="card-title">Number</h2>
 
-        <select id="select-download-csv" class="select-action">
-            {% for key, val in meta_data.items %}
-                {% if val.number %}
-                    <option>{{ key }}</option>
-                {% endif %}
-            {% endfor %}
-        </select>
-
-        <br></br>
+                                <span>
+                                    <label for="browser-number-height">Height</label>
+                                    <select id="browser-number-height">
+                                        <option selected="selected">400px</option>
+                                        <option>300px</option>
+                                        <option>200px</option>
+                                    </select>
+                                </span>
+                                <span id="number-chart-control" class="chart-control">
         {% for key, val in meta_data.items %}
             {% if val.number %}
-                <label for="cbx_chart_{{ val.id }}">{{ key }}</label>
+                <label for="cbx_chart_{{ val.id }}" style="margin-bottom: 0px">{{ key }}</label>
                 <input type="checkbox" id="cbx_chart_{{ val.id }}"{% if val.is_main %} checked{% endif %} onclick="ToggleNumberChart('{{ val.id }}')">
             {% endif %}
         {% endfor %}
-    </div>
-</fieldset>
-                        </div>
-                    </div>
-                </div><!-- /.row -->
+                                </span>
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-<fieldset>
-    <legend>Wave</legend>
-    <div id="wave-chart-control" class="chart-control">
-        <label for="browser-wave-height">Height</label>
-        <select id="browser-wave-height">
-            <option selected="selected">400px</option>
-            <option>300px</option>
-            <option>200px</option>
-        </select>
-        {% for device, info in meta_data.items %}
-            {% for waveinfo in info.waves %}
-                <label><input type="checkbox" id="cbx_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}"{% if waveinfo.is_main %} checked{% endif %} onclick="ToggleWaveChart('{{ waveinfo.id }}_{{ waveinfo.channel }}')"> {{ device }}_{{ waveinfo.channel }} <br></label>
-            {% endfor %}
-        {% endfor %}
-    </div>
-</fieldset>
-                        </div>
-                    </div>
-                </div><!-- /.row -->
+                            </div>
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-<div id="slider_new"></div>
+                            <div class="card-body">
+                                <h4 class="card-subtitle">Set Time Pointer</h4>
+                                <div id="slider_new"></div>
+                            </div>
+
+                            <div class="card-body">
 
 {% for key, val in meta_data.items %}
     {% if val.number and val.is_main %}
         <div id="div_chart_{{ val.id }}" class="div-chart div-chart-number" title="test"></div>
     {% endif %}
 {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div><!-- /.row -->
 
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h2 class="card-title">Wave</h2>
+
+                                <span>
+                                    <label for="browser-wave-height">Height</label>
+                                    <select id="browser-wave-height">
+                                        <option selected="selected">400px</option>
+                                        <option>300px</option>
+                                        <option>200px</option>
+                                    </select>
+                                </span>
+                                <span id="wave-chart-control" class="chart-control">
+        {% for device, info in meta_data.items %}
+            {% for waveinfo in info.waves %}
+                <label for="cbx_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" style="margin-bottom: 0px">{{ device }}_{{ waveinfo.channel }}</label>
+                <input type="checkbox" id="cbx_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}"{% if waveinfo.is_main %} checked{% endif %} onclick="ToggleWaveChart('{{ waveinfo.id }}_{{ waveinfo.channel }}')" />
+            {% endfor %}
+        {% endfor %}
+                                </span>
+
+                            </div>
+
+                            <div class="card-body">
 {% for device, info in meta_data.items %}
     {% for waveinfo in info.waves %}
         <div id="div_chart_{{ waveinfo.id }}_{{ waveinfo.channel }}" class="div-chart div-chart-wave" style="display:none"></div>
     {% endfor %}
 {% endfor %}
+                            </div>
                         </div>
                     </div>
                 </div><!-- /.row -->
@@ -285,8 +220,9 @@
             </div><!-- /.container-fluid -->
         </div>
     </div>
+{% endblock %}
 
-
+{% block extra %}
 <div id="annotation_dialog" title="Add Annotation">
     <text id="dia_dt"></text>
     <br>
@@ -306,16 +242,9 @@
     <button id="btn-add-annotation">Add</button>
     <button id="btn-cancel-annotation">Cancel</button>
 </div>
+{% endblock %}
 
-
-
-
-
-
-
-
-
-    <!-- Bootstrap popper Core JavaScript -->
+{% block script %}
 <script src="/static/assets/node_modules/popper/popper.min.js"></script>
 <script src="/static/assets/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
 <!-- slimscrollbar scrollbar JavaScript -->
@@ -326,6 +255,7 @@
 <script src="/static/elite/js/sidebarmenu.js"></script>
 <!--Custom JavaScript -->
 <script src="/static/elite/js/custom.min.js"></script>
+<script src="/static/assets/node_modules/switchery/dist/switchery.min.js"></script>
 
 <script>
 
@@ -1023,6 +953,4 @@
     });
 
 </script>
-
-</body>
-</html>
+{% endblock %}

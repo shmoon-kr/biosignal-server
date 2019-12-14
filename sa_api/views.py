@@ -688,6 +688,94 @@ def review(request):
         r_dict['MESSAGE'] = 'Invalid parameters.'
         return HttpResponse(json.dumps(r_dict, sort_keys=True, indent=4), content_type="application/json; charset=utf-8", status=400)
 
+@csrf_exempt
+def trend(request):
+
+    since = datetime.date(2019, 5, 7)
+
+    dt_from = request.GET.get('begin_date')
+    dt_to = request.GET.get('end_date')
+    if dt_from is None:
+        dt_from = datetime.datetime.now() - datetime.timedelta(days=7)
+        dt_to = datetime.datetime.now()
+    elif dt_to is None:
+        dt_to = dt_from + datetime.timedelta(days=7)
+    dt_from = dt_from.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(tz)
+    dt_to = dt_to.astimezone(tz)
+
+    label_dates = list()
+    for i_dt in pandas.date_range(dt_from, dt_to):
+        label_dates.append(str(i_dt.date()))
+    label_dates_dict = dict()
+    for i, label in enumerate(label_dates):
+        label_dates_dict[label] = i
+
+    data = dict()
+    data['label_dates'] = label_dates
+    data['collected_files'] = dict()
+    data['collected_hours'] = dict()
+    data['total_hours'] = dict()
+
+    for summary in SummaryFileRecorded.objects.filter(record__begin_date__range=(dt_from, dt_to)):
+        if summary.record.bed.room.name not in data['total_hours']:
+            data['collected_files'][summary.record.bed.room.name] = [0] * len(label_dates)
+            data['collected_hours'][summary.record.bed.room.name] = [0] * len(label_dates)
+            data['total_hours'][summary.record.bed.room.name] = [0] * len(label_dates)
+        data['collected_files'][summary.record.bed.room.name][
+            label_dates_dict[str(summary.record.begin_date.astimezone(tz).date())]] += 1
+        data['collected_hours'][summary.record.bed.room.name][
+            label_dates_dict[str(summary.record.begin_date.astimezone(tz).date())]] += (
+                                                                                                   summary.record.end_date - summary.record.begin_date).total_seconds() / 3600
+
+    tmp_data = dict()
+    for summary in SummaryFileRecorded.objects.all():
+        month = summary.record.begin_date.strftime('%Y-%m')
+        if month not in tmp_data.keys():
+            tmp_data[month] = {'collected_files': 0, 'collected_hours': 0}
+        tmp_data[month]['collected_files'] += 1
+        tmp_data[month]['collected_hours'] += (
+                                                          summary.record.end_date - summary.record.begin_date).total_seconds() / 3600
+
+    tmp_data = dict(sorted(tmp_data.items()))
+
+    data['accumulative'] = dict()
+    data['accumulative']['label_dates'] = list()
+    data['accumulative']['collected_hours'] = list()
+    data['accumulative']['collected_files'] = list()
+
+    collected_hours = 0
+    collected_files = 0
+    for key, val in tmp_data.items():
+        data['accumulative']['label_dates'].append(key)
+        collected_hours += val['collected_hours']
+        collected_files += val['collected_files']
+        data['accumulative']['collected_hours'].append(collected_hours)
+        data['accumulative']['collected_files'].append(collected_files)
+
+    data['storage_usage'] = dict()
+    data['storage_usage']['labels'] = ['Main Storage', 'NAS1 (Vol1)']
+
+    try:
+        storages = list()
+        storages.append(shutil.disk_usage("/mnt/Data"))
+        storages.append(shutil.disk_usage("/mnt/NAS1"))
+        total = list()
+        free = list()
+        for storage in storages:
+            total.append(storage[0] // 2 ** 40)
+            free.append(storage[2] // 2 ** 40)
+        data['storage_usage']['total'] = total
+        data['storage_usage']['free'] = free
+    except:
+        print("no file or directory")
+
+    template = loader.get_template('dashboard02.html')
+    context = {
+        'since': str(since),
+        'data': data,
+        'data_json': json.dumps(data)
+    }
+    return HttpResponse(template.render(context, request))
 
 @csrf_exempt
 def dashboard(request):
@@ -719,20 +807,24 @@ def dashboard(request):
                 else:
                     beds_green.append(client.bed.name)
 
-        if settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'] is not None:
-            db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
-                                 user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
-                                 password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
-                                 db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
-            cursor = db.cursor()
-            cursor.execute('SELECT bed, status FROM legacy_bed_status')
-            rows = cursor.fetchall()
-            for row in rows:
-                if row[0] not in beds_client:
-                    if row[1] == 'Green':
-                        beds_green.append(row[0])
-                    elif row[1] == 'Red':
-                        beds_red.append(row[0])
+        try:
+
+            if settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'] is not None:
+                db = MySQLdb.connect(host=settings.SERVICE_CONFIGURATIONS['DB_SERVER_HOSTNAME'],
+                                     user=settings.SERVICE_CONFIGURATIONS['DB_SERVER_USER'],
+                                     password=settings.SERVICE_CONFIGURATIONS['DB_SERVER_PASSWORD'],
+                                     db=settings.SERVICE_CONFIGURATIONS['DB_SERVER_DATABASE'])
+                cursor = db.cursor()
+                cursor.execute('SELECT bed, status FROM legacy_bed_status')
+                rows = cursor.fetchall()
+                for row in rows:
+                    if row[0] not in beds_client:
+                        if row[1] == 'Green':
+                            beds_green.append(row[0])
+                        elif row[1] == 'Red':
+                            beds_red.append(row[0])
+        except:
+            print("can't connect DB")
 
         template = loader.get_template('dashboard01.html')
         #sidebar_menu, loc = get_sidebar_menu('dashboard_rosette')
@@ -744,83 +836,6 @@ def dashboard(request):
             'beds_orange': json.dumps(beds_orange),
             'beds_green': json.dumps(beds_green),
             'beds_blue': json.dumps(beds_blue),
-        }
-        return HttpResponse(template.render(context, request))
-
-    elif target == 'trend':
-        dt_from = request.GET.get('begin_date')
-        dt_to = request.GET.get('end_date')
-        if dt_from is None:
-            dt_from = datetime.datetime.now() - datetime.timedelta(days=7)
-            dt_to = datetime.datetime.now()
-        elif dt_to is None:
-            dt_to = dt_from + datetime.timedelta(days=7)
-        dt_from = dt_from.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(tz)
-        dt_to = dt_to.astimezone(tz)
-
-        label_dates = list()
-        for i_dt in pandas.date_range(dt_from, dt_to):
-            label_dates.append(str(i_dt.date()))
-        label_dates_dict = dict()
-        for i, label in enumerate(label_dates):
-            label_dates_dict[label] = i
-
-        data = dict()
-        data['label_dates'] = label_dates
-        data['collected_files'] = dict()
-        data['collected_hours'] = dict()
-        data['total_hours'] = dict()
-
-        for summary in SummaryFileRecorded.objects.filter(record__begin_date__range=(dt_from, dt_to)):
-            if summary.record.bed.room.name not in data['total_hours']:
-                data['collected_files'][summary.record.bed.room.name] = [0] * len(label_dates)
-                data['collected_hours'][summary.record.bed.room.name] = [0] * len(label_dates)
-                data['total_hours'][summary.record.bed.room.name] = [0] * len(label_dates)
-            data['collected_files'][summary.record.bed.room.name][label_dates_dict[str(summary.record.begin_date.astimezone(tz).date())]] += 1
-            data['collected_hours'][summary.record.bed.room.name][label_dates_dict[str(summary.record.begin_date.astimezone(tz).date())]] += (summary.record.end_date - summary.record.begin_date).total_seconds()/3600
-
-        tmp_data = dict()
-        for summary in SummaryFileRecorded.objects.all():
-            month = summary.record.begin_date.strftime('%Y-%m')
-            if month not in tmp_data.keys():
-                tmp_data[month] = {'collected_files': 0, 'collected_hours': 0}
-            tmp_data[month]['collected_files'] += 1
-            tmp_data[month]['collected_hours'] += (summary.record.end_date-summary.record.begin_date).total_seconds()/3600
-
-        tmp_data = dict(sorted(tmp_data.items()))
-
-        data['accumulative'] = dict()
-        data['accumulative']['label_dates'] = list()
-        data['accumulative']['collected_hours'] = list()
-        data['accumulative']['collected_files'] = list()
-
-        collected_hours = 0
-        collected_files = 0
-        for key, val in tmp_data.items():
-            data['accumulative']['label_dates'].append(key)
-            collected_hours += val['collected_hours']
-            collected_files += val['collected_files']
-            data['accumulative']['collected_hours'].append(collected_hours)
-            data['accumulative']['collected_files'].append(collected_files)
-
-        data['storage_usage'] = dict()
-        data['storage_usage']['labels'] = ['Main Storage', 'NAS1 (Vol1)']
-        storages = list()
-        storages.append(shutil.disk_usage("/mnt/Data"))
-        storages.append(shutil.disk_usage("/mnt/NAS1"))
-        total = list()
-        free = list()
-        for storage in storages:
-            total.append(storage[0] // 2**40)
-            free.append(storage[2] // 2**40)
-        data['storage_usage']['total'] = total
-        data['storage_usage']['free'] = free
-
-        template = loader.get_template('dashboard_trend.html')
-        context = {
-            'since': str(since),
-            'data': data,
-            'data_json': json.dumps(data)
         }
         return HttpResponse(template.render(context, request))
 
