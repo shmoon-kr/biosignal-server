@@ -1,4 +1,4 @@
-Django==3.0
+Django==3.0.7
 fluent-logger==0.9.3
 mysqlclient==1.4.4
 pyfluent==0.2.1
